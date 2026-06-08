@@ -76,6 +76,26 @@ def create_driver(app, options = {})
   Capybara::Playwright::Driver.new(app, **default_options.merge(options))
 end
 
+def enable_browser_error_logging
+  page.driver.with_playwright_page do |pw|
+    pw.on('console', lambda { |msg|
+      puts "\e[31mBROWSER ERROR: #{msg.text}\e[0m" if msg.type == 'error'
+    })
+  end
+end
+
+RSpec.configure do |config|
+  config.before(:each, type: :system) { driven_by :rack_test }
+  config.before(:each, :js,     type: :system) { driven_by :playwright_headless }
+  config.before(:each, :chrome, type: :system) { driven_by :chrome }
+  config.before(:each, :firefox, type: :system) { driven_by :firefox }
+
+  # CI: force all system tests through the JS driver
+  if ENV['CAPYBARA_DRIVER'].present?
+    config.define_derived_metadata { |m| m[ENV['CAPYBARA_DRIVER'].to_sym] = true }
+  end
+end
+
 Capybara.register_driver :playwright_headless do |app|
   create_driver(app)
 end
@@ -90,24 +110,11 @@ end
 
 Capybara.threadsafe = true   # required for parallel test isolation
 Capybara.default_max_wait_time = ENV.fetch('CAPYBARA_TIMEOUT', 20).to_i
-
-RSpec.configure do |config|
-  config.before(:each, type: :system) { driven_by :rack_test }
-  config.before(:each, :js,     type: :system) { driven_by :playwright_headless }
-  config.before(:each, :chrome, type: :system) { driven_by :chrome }
-  config.before(:each, :firefox, type: :system) { driven_by :firefox }
-
-  # CI: force all system tests through the JS driver
-  if ENV['CAPYBARA_DRIVER'].present?
-    config.define_derived_metadata { |m| m[ENV['CAPYBARA_DRIVER'].to_sym] = true }
-  end
-end
 ```
 
-IMPORTANT: Do NOT use Playwright's `slowMo` option. It artificially delays
-every browser action and masks race conditions. It may make tests pass
-initially, but you'll pay for it later with flaky tests. Fix timing issues
-properly with explicit waits instead.
+IMPORTANT: Do NOT use Playwright's `slowMo` option. It artificially delays every browser action and masks race conditions.
+It may make tests pass initially, but you'll pay for it later with flaky tests.
+Fix timing issues properly with explicit waits instead.
 
 **Separate navigation timeout from element timeout.** Full page navigations inherently take longer than waiting for an element to appear. Use a higher `default_navigation_timeout` (e.g., 5s) than the general element `timeout` (e.g., 3s) in CI:
 
@@ -126,86 +133,27 @@ CAPYBARA_NAV_TIMEOUT: 5
 
 Playwright's built-in auto-waiting replaces lockstep synchronization.
 
----
+## CI Configuration
 
-## 2. Accessing the Playwright Page Object
+The system tests job in CI should be updated to use our shared flow that sets up and runs system tests with Playwright.
 
-When you need Playwright-native capabilities not exposed through Capybara, access the underlying page:
+```yaml
+# .github/workflows/ci.yml — system tests job
 
-```ruby
-def pw_page
-  page.driver.with_playwright_page do |playwright_page|
-    return playwright_page
-  end
-end
+- name: Run shared flow
+  uses: RoleModel/actions/system-tests@v3
+  input:
+    web-driver: playwright
 ```
 
-Use `pw_page` sparingly — prefer Capybara's API when it works. Use it for: screenshots, timezone injection, cookie inspection, HTTP status checks, drag-and-drop mouse events, and download interception.
+Remove:
+- `WD_CHROME_PATH` environment variable
+- `selenium-webdriver` setup steps
+- Any step that used `browser-actions/setup-chrome` for Selenium
 
----
+### File Downloads
 
-## 3. Test Pattern Transformations
-
-### 3.1 Confirmation Dialogs
-
-Playwright does not auto-accept browser dialogs. You must explicitly handle them.
-
-**Turbo confirm modals** (DOM-based, not native browser dialogs):
-```ruby
-# Before
-click_on 'Delete'
-
-# After — wrap the triggering action in a block, then accept
-accept_turbo_confirm do
-  click_on 'Delete'
-end
-```
-
-`accept_turbo_confirm` should yield the block, then click the "Yes, I'm sure" button (or equivalent):
-```ruby
-def accept_turbo_confirm(button_text = "Yes, I'm sure")
-  yield if block_given?
-  return unless supports_javascript?
-  expect(page).to have_button(button_text)
-  click_on button_text
-end
-```
-
-**Native browser confirms** (`window.confirm`): use Capybara's built-in:
-```ruby
-accept_confirm { click_on 'Delete' }
-dismiss_confirm { click_on 'Delete' }
-```
-
-### 3.2 Explicit Waits After Navigation
-
-`capybara-lockstep` synchronized Capybara with all in-flight XHR/Turbo requests automatically. Playwright's auto-waiting is DOM-driven but does not know about application-level request completion the same way. Add an explicit content assertion after any action that triggers navigation or async rendering:
-
-```ruby
-# Before
-visit reports_path
-# ... immediately interact with page
-
-# After
-visit reports_path
-expect(page).to have_content 'Reports'   # wait for page to fully render
-# ... now safe to interact
-```
-
-Apply this pattern after:
-- `visit` calls
-- Form submissions — assert the flash message or resulting page content **before** checking the database
-- Opening panels/modals — assert that panel content is visible before interacting with it
-- Any `click_on` that triggers async rendering
-
-```ruby
-# Form submission: assert UI before database
-click_on 'Save'
-expect(page).to have_flash_notice('Saved successfully')  # first
-expect(record.reload.name).to eq('New Name')             # then
-```
-
-### 3.3 File Downloads
+If the app is testing file downloads, switch to Playwright's download event API instead of polling the filesystem.
 
 **Old approach — polling the filesystem:**
 ```ruby
@@ -253,104 +201,53 @@ Key details:
   File.read(path)
   ```
 
-### 3.4 Fill-In and Keyboard Events
+### PlaywrightHelper
 
-Playwright's `fill` programmatically sets values and dispatches `input` events — it does **not** simulate native keystrokes or fire `keyup`/`keydown` events.
-
-**Fix the app code, not the tests.** If Stimulus controllers or JS handlers listen on `keyup`/`keydown`, change them to listen on `input` instead. This is the correct fix — `input` is the standard event for value changes:
-
-```javascript
-// Before — breaks with Playwright
-data-action="keyup->password-complexity#validatePassword"
-
-// After — works with both Playwright and real users
-data-action="input->password-complexity#validatePassword"
-```
-
-Only as a temporary workaround, you can dispatch events manually in tests:
-```ruby
-fill_in 'Search', with: 'query'
-page.driver.with_playwright_page { |pw| pw.dispatch_event(':focus', 'keyup') }
-```
-
-But prefer fixing the source code to use `input` events.
-
-### 3.5 JS Debouncing and Throttling
-
-Selenium simulates individual keystrokes with natural delays between them, which naturally spaces out debounced/throttled handlers. Playwright sets values instantly, so debounced handlers may fire only once (or not at all) before the test moves on.
-
-**Best fix — reduce debounce in test environment:**
-```javascript
-// Read Rails env from a <meta> tag in the HTML head
-const debounceWait = getRailsEnv() === 'test' ? 1 : 600
-```
-
-```slim
-/ In your layout head (non-production only)
-- unless Rails.env.production?
-  meta name="RAILS_ENV" content=Rails.env
-```
-
-If you can't modify the app code, add explicit waits in the test after filling in debounced fields:
-```ruby
-fill_in 'Search', with: 'query'
-expect(page).to have_content 'Search results'  # wait for debounce to fire
-```
-
-### 3.6 Async Component Loading (`data-loaded` Pattern)
-
-Components that load JS libraries asynchronously and swap a placeholder for a real element (e.g., Google Places, map widgets, rich editors) can cause Playwright to interact with the placeholder before the real component mounts.
-
-**Add a `data-loaded` attribute to the component** that transitions from `false` to `true` when the library finishes initializing:
-```jsx
-// Placeholder
-<div class="places-field" data-loaded="false">Loading...</div>
-
-// After library loads
-<div class="places-field" data-loaded="true">
-  <input ... />
-</div>
-```
-
-**Wait for it in tests:**
-```ruby
-expect(page).to have_selector('.places-field[data-loaded="true"]')
-fill_in 'Address', with: '123 Main St'
-```
-
-### 3.7 Select / Option Elements
-
-Playwright handles `<select>` dropdowns differently from Selenium:
+Create a helper module for Playwright-specific utilities that don't fit in Capybara's API. Include it in RSpec configuration for system tests.
 
 ```ruby
-# Before — Selenium: click the select, then click the option
-find('select').click
-find('option', text: 'January').click
+# frozen_string_literal: true
 
-# After — Playwright: use select_option directly on the option
-find('option', text: 'January').select_option
+module PlaywrightHelper
+  include CapybaraHelper
 
-# Or use Capybara's select helper (still works)
-select 'January', from: 'Month'
-```
+  # Use Playwright's page object
+  def pw_page
+    page.driver.with_playwright_page do |page|
+      return page
+    end
+  end
 
-For year inputs in custom date pickers, confirm with Enter after setting:
-```ruby
-find('input.cur-year').set('2025').send_keys(:enter)
-```
+  # Helper method for taking screenshots in system tests
+  def screenshot(filename = nil, directory: 'tmp/screenshots', print_message: true, **options)
+    timestamp = Time.current.strftime('%Y-%m-%d_%H-%M-%S')
+    description = RSpec.current_example.full_description.tr(' ', '_')
+    filename ||= "#{description}_#{timestamp}"
 
-### 3.8 Text-Based Clicking
+    FileUtils.mkdir_p(directory)
 
-`click_on` uses Capybara's element-type heuristics. Playwright may be stricter about clicking non-interactive elements (spans, divs with text). For reliable text-based clicking:
+    if options[:fullPage] && pw_page.locator('body').present?
+      pw_page.locator('body').evaluate("element => element.style.overflow = 'visible'")
+    end
 
-```ruby
-def click_text(text)
-  return click_on(text) unless supports_javascript?
-  page.driver.with_playwright_page { |pw| pw.get_by_text(text).click }
+    pw_page.screenshot(path: "#{directory}/#{filename}.png", animations: 'disabled', **options)
+
+    puts "Screenshot saved to \e[4;96m#{directory}/#{filename}.png\e[0m" if print_message # rubocop:disable RSpec/Output
+  end
+
+  def click_text(text)
+    return click_on(text) unless supports_javascript?
+
+    pw_page.get_by_text(text).click
+  end
 end
 ```
 
-### 3.9 Drag and Drop (SortableJS / Complex DnD)
+Use `pw_page` sparingly — prefer Capybara's API when it works.
+
+There are some interactions that Selenium handled gracefully but Playwright requires more manual control over. Add helper methods for these cases in `PlaywrightHelper`:
+
+#### Drag and Drop (SortableJS / Complex DnD)
 
 Capybara's `element.drag_to(target)` is unreliable under Playwright for libraries like SortableJS that depend on precise mouse movement sequences. Use Playwright's low-level mouse API instead:
 
@@ -362,11 +259,7 @@ def pw_drag_element(source_element, target_element)
   from_x, from_y = element_center(source_element.native)
   to_x, to_y = element_center(target_element.native)
 
-  pw_page.mouse.move(from_x, from_y)
-  pw_page.mouse.down
-  pw_page.mouse.move(to_x, to_y, steps: 50)  # steps: smooth movement
-  sleep 0.2  # let SortableJS finish processing before releasing
-  pw_page.mouse.up
+  click_and_drag(source_element, target_element)
 end
 
 private
@@ -377,9 +270,17 @@ def element_center(native_element)
   # when dragging downward across group boundaries
   [(box['x'] + box['width'] / 2), (box['y'] + box['height'] * 0.55)]
 end
+
+def click_and_drag(source, target)
+  pw_page.mouse.move(from_x, from_y)
+  pw_page.mouse.down
+  pw_page.mouse.move(to_x, to_y, steps: 50)  # steps: smooth movement
+  sleep 0.2  # let SortableJS finish processing before releasing
+  pw_page.mouse.up
+end
 ```
 
-### 3.10 Browser Timezone Override
+#### Browser Timezone Override
 
 ```ruby
 # Before — Selenium CDP
@@ -405,7 +306,7 @@ end
 
 No cleanup needed — Playwright creates a fresh browser context per test.
 
-### 3.11 HTTP Status Code Checks
+#### HTTP Status Code Checks
 
 ```ruby
 # Before — only worked with rack_test driver
@@ -424,7 +325,7 @@ it 'serves the file', :js do
 end
 ```
 
-### 3.12 Cookie Access
+#### Cookie Access
 
 ```ruby
 # Before — rack session
@@ -438,7 +339,171 @@ def get_cookie(name)
 end
 ```
 
-### 3.13 Element Visibility
+### `data-testid` Selectors
+
+Configure Capybara to recognize `data-testid` if it isn't already:
+```ruby
+Capybara.configure { |config| config.test_id = 'data-testid' }
+
+# Usage in views
+div data-testid=dom_id(record) do
+  # ...
+end
+
+# Usage in tests
+find("[data-testid='#{dom_id(record)}']")
+# or with a helper:
+find(data_test(record))
+```
+
+Make all `data-testid` values unique on the page — Playwright will raise if it finds multiple matches.
+
+---
+
+## 2. Test Pattern Transformations
+
+### 2.1 Confirmation Dialogs
+
+If your app uses the '@rolemodel/turbo-confirm' package, triggering should be wrapped in a block that calls `accept_turbo_confirm` to click the confirmation button after the dialog appears.
+This is necessary because Playwright does not automatically handle DOM-based modals like Selenium did.
+Additionally, Playwright does not auto-accept browser dialogs.
+
+**Turbo confirm modals** (DOM-based, not native browser dialogs):
+```ruby
+# Before
+click_on 'Delete'
+
+# After — wrap the triggering action in a block, then accept
+accept_turbo_confirm do
+  click_on 'Delete'
+end
+```
+
+`accept_turbo_confirm` should yield the block, then click the "Yes, I'm sure" button (or equivalent):
+```ruby
+def accept_turbo_confirm(button_text = "Yes, I'm sure")
+  yield if block_given?
+  return unless supports_javascript?
+  expect(page).to have_button(button_text)
+  click_on button_text
+end
+```
+
+**Native browser confirms** (`window.confirm`): use Capybara's built-in:
+
+```ruby
+accept_confirm { click_on 'Delete' }
+dismiss_confirm { click_on 'Delete' }
+```
+
+### 2.2 Explicit Waits After Navigation
+
+`capybara-lockstep` synchronized Capybara with all in-flight XHR/Turbo requests automatically. Playwright's auto-waiting is DOM-driven but does not know about application-level request completion the same way.
+Add an explicit content assertion after any action that triggers navigation or async rendering:
+
+```ruby
+# Before
+visit reports_path
+# ... immediately interact with page
+
+# After
+visit reports_path
+expect(page).to have_content 'Reports'   # wait for page to fully render
+# ... now safe to interact
+```
+
+Apply this pattern after:
+- `visit` calls
+- Form submissions — assert the flash message or resulting page content **before** checking the database
+- Opening panels/modals — assert that panel content is visible before interacting with it
+- Any `click_on` that triggers async rendering
+
+```ruby
+# Form submission: assert UI before database
+click_on 'Save'
+expect(page).to have_flash_notice('Saved successfully')  # first
+expect(record.reload.name).to eq('New Name')             # then
+```
+
+### 2.3 Fill-In and Keyboard Events
+
+Playwright's `fill` programmatically sets values and dispatches `input` events — it does **not** simulate native keystrokes or fire `keyup`/`keydown` events.
+
+**Fix the app code, not the tests.** If Stimulus controllers or JS handlers listen on `keyup`/`keydown`, change them to listen on `input` instead. This is the correct fix — `input` is the standard event for value changes:
+
+```javascript
+// Before — breaks with Playwright
+data-action="keyup->password-complexity#validatePassword"
+
+// After — works with both Playwright and real users
+data-action="input->password-complexity#validatePassword"
+```
+
+### 2.4 JS Debouncing and Throttling
+
+Selenium simulates individual keystrokes with natural delays between them, which naturally spaces out debounced/throttled handlers. Playwright sets values instantly, so debounced handlers may fire only once (or not at all) before the test moves on.
+
+**Best fix — reduce debounce in test environment:**
+```javascript
+// Read Rails env from a <meta> tag in the HTML head
+const debounceWait = getRailsEnv() === 'test' ? 1 : 600
+```
+
+```slim
+/ In your layout head (non-production only)
+- unless Rails.env.production?
+  meta name="RAILS_ENV" content=Rails.env
+```
+
+If you can't modify the app code, add explicit waits in the test after filling in debounced fields:
+```ruby
+fill_in 'Search', with: 'query'
+expect(page).to have_content 'Search results'  # wait for debounce to fire
+```
+
+### 2.5 Async Component Loading (`data-loaded` Pattern)
+
+Components that load JS libraries asynchronously and swap a placeholder for a real element (e.g., Google Places, map widgets, rich editors) can cause Playwright to interact with the placeholder before the real component mounts.
+
+**Add a `data-loaded` attribute to the component** that transitions from `false` to `true` when the library finishes initializing:
+```jsx
+// Placeholder
+<div class="places-field" data-loaded="false">Loading...</div>
+
+// After library loads
+<div class="places-field" data-loaded="true">
+  <input ... />
+</div>
+```
+
+**Wait for it in tests:**
+```ruby
+expect(page).to have_selector('.places-field[data-loaded="true"]')
+fill_in 'Address', with: '123 Main St'
+```
+
+### 2.6 Select / Option Elements
+
+Playwright handles `<select>` dropdowns differently from Selenium:
+
+```ruby
+# Before — Selenium: click the select, then click the option
+find('select').click
+find('option', text: 'January').click
+
+# After — Playwright: use select_option directly on the option
+find('option', text: 'January').select_option
+
+# Or use Capybara's select helper (still works)
+select 'January', from: 'Month'
+```
+
+For year inputs in custom date pickers, confirm with Enter after setting:
+```ruby
+find('input.cur-year').set('2025').send_keys(:enter)
+```
+
+### 2.7 Element Visibility
 
 Playwright's visibility model is stricter than Selenium's. Elements hidden via CSS `opacity`, `visibility`, or off-screen positioning that Selenium found may require `visible: false`:
 
@@ -447,7 +512,7 @@ Playwright's visibility model is stricter than Selenium's. Elements hidden via C
 expect(page).to have_link('Create shift', href: path, visible: false)
 ```
 
-### 3.14 Element Scoping (Ambiguity Resolution)
+### 2.8 Element Scoping (Ambiguity Resolution)
 
 Playwright raises on ambiguous matches. Resolve in this order of preference:
 
@@ -465,28 +530,12 @@ Playwright raises on ambiguous matches. Resolve in this order of preference:
    ```ruby
    find('[data-testid="person-search-results-polled"]')
    ```
-4. **`click_button` / `click_link` over `click_on`** — when both links and buttons share text (e.g., "Update"), use the specific method to avoid ambiguity
+4. **`click_button` / `click_link` / `click_text` over `click_on`** — use the specific method to avoid ambiguity.
 5. **`match: :first`** — last resort only; prefer one of the above
-
-### 3.15 Screenshots
-
-```ruby
-def screenshot(filename = nil, directory: 'tmp/screenshots', **options)
-  timestamp = Time.current.strftime('%Y-%m-%d_%H-%M-%S')
-  filename ||= "#{RSpec.current_example.full_description.tr(' ', '_')}_#{timestamp}"
-  FileUtils.mkdir_p(directory)
-
-  page.driver.with_playwright_page do |pw|
-    # For full-page screenshots, make body scrollable
-    pw.locator('body').evaluate("el => el.style.overflow = 'visible'") if options[:fullPage]
-    pw.screenshot(path: "#{directory}/#{filename}.png", animations: 'disabled', **options)
-  end
-end
-```
 
 ---
 
-## 4. Writing New Playwright Tests
+## 3. Writing New Playwright Tests
 
 ### When to use `:js`
 
@@ -506,28 +555,6 @@ it 'filters results dynamically', :js do
   expect(page).to have_content 'Filtered results'
 end
 ```
-
-### `data-testid` Selectors
-
-Configure Capybara to recognize `data-testid`:
-```ruby
-Capybara.configure { |config| config.test_id = 'data-testid' }
-```
-
-Add `data-testid` attributes to elements that need stable test targeting:
-```ruby
-# In views
-div data-testid=dom_id(record) do
-  # ...
-end
-
-# In tests
-find("[data-testid='#{dom_id(record)}']")
-# or with a helper:
-find(data_test(record))
-```
-
-Make all `data-testid` values unique on the page — Playwright will raise if it finds multiple matches.
 
 ### Wait Patterns
 
@@ -567,15 +594,9 @@ Or enable via env var in the driver's `before(:each, :js)` hook:
 enable_browser_error_logging if ENV['LOG_BROWSER_ERRORS'] == 'true'
 ```
 
-### Parallel Test Isolation
-
-- Scope download paths with `TEST_ENV_NUMBER`: `tmp/downloads/test#{ENV.fetch('TEST_ENV_NUMBER', '')}`
-- Set `Capybara.threadsafe = true`
-- Use `let!` (not `let`) for factory records that must exist when the browser renders the page
-
 ---
 
-## 5. Common Pitfalls
+## 4. Common Pitfalls
 
 ### Timing Issues After Removing capybara-lockstep
 
@@ -595,6 +616,8 @@ Playwright may not wait for Turbo Frame responses automatically. If a frame-targ
 
 ### `let` vs `let!` in JS Tests
 
+Use `let!` (not `let`) for factory records that must exist when the browser renders the page.
+
 ```ruby
 # Broken — Playwright renders the page before :active_record_callbacks fires,
 # so the record doesn't exist yet
@@ -607,10 +630,6 @@ end
 # Fixed
 let!(:user) { create(:user) }
 ```
-
-### Form ID / Button `form:` Attribute Mismatch
-
-If a submit button outside a `<form>` tag uses `form: dom_id(record)` but the form element has a different id, Playwright will not submit the form. Ensure the `id` on the `<form>` exactly matches the `form:` attribute on the button.
 
 ### Flash Message Accumulation
 
@@ -662,30 +681,3 @@ end
 ### Ensure `:js` Tag on All JS-Dependent Tests
 
 Every test that clicks buttons relying on Turbo, Stimulus, or any JS behavior must be tagged `:js`. Without it, Capybara uses `rack_test` which doesn't execute JavaScript. Don't rely on inherited metadata from parent `describe` blocks — be explicit.
-
----
-
-## 6. CI Configuration
-
-```yaml
-# .github/workflows/ci.yml — system tests job
-
-- name: Setup Node
-  uses: actions/setup-node@v4
-
-- name: Install JS dependencies
-  run: yarn install
-
-- name: Install Playwright browsers
-  run: yarn playwright install chromium
-
-- name: Run system tests
-  env:
-    CAPYBARA_DRIVER: js   # forces all system tests through Playwright
-  run: bundle exec rspec spec/system
-```
-
-Remove:
-- `WD_CHROME_PATH` environment variable
-- `selenium-webdriver` setup steps
-- Any step that used `browser-actions/setup-chrome` for Selenium
