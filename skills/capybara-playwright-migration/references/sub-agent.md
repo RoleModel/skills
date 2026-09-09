@@ -8,6 +8,32 @@ You will receive these values from the parent orchestrator:
 
 - **TEST_FILE** — path to the system test file you are responsible for (e.g., `spec/system/users_spec.rb`)
 - **TRACKER_PATH** — path to the tracking document (e.g., `tmp/playwright_migration_tracker.md`)
+- **AGENT_NUMBER** — your slot number (1–5), assigned by the orchestrator. Each slot has its own isolated test database. Slots are reused across files — your database may contain state from a previous agent's run, but `db:test:prepare` handles this.
+
+## Step 0 — Prepare Your Test Environment
+
+Each sub-agent runs against its own test database to avoid collisions with other parallel agents. Your `AGENT_NUMBER` determines which database you use via the `TEST_ENV_NUMBER` environment variable.
+
+Before running any tests, prepare your isolated database:
+
+```bash
+TEST_ENV_NUMBER=<AGENT_NUMBER> bin/rails db:test:prepare 2>&1
+```
+
+This creates (or reuses) a database named `<app>_test_<AGENT_NUMBER>` with the current schema.
+
+You **must** prefix every `bundle exec rspec` command in this migration with both:
+
+- `TEST_ENV_NUMBER=<AGENT_NUMBER>` — so Rails and ActiveRecord connect to your isolated database
+- `CAPYBARA_DRIVER=js` — so all system tests run through the Playwright driver with JavaScript enabled, not just those tagged `:js`
+
+Without `CAPYBARA_DRIVER=js`, untagged system tests fall back to `rack_test`, which cannot execute JavaScript and won't exercise the Playwright driver at all.
+
+If `db:test:prepare` fails (e.g., pending migrations), run:
+
+```bash
+TEST_ENV_NUMBER=<AGENT_NUMBER> bin/rails db:drop db:create db:schema:load RAILS_ENV=test 2>&1
+```
 
 ## Step 1 — Read the Test File
 
@@ -17,63 +43,40 @@ Read your assigned `TEST_FILE` to understand what the tests do. Note:
 - What interactions they perform (form fills, clicks, drag-and-drop, downloads, confirmations)
 - Any Selenium-specific patterns (CDP calls, `rack_mock_session`, `capybara-lockstep` references)
 
-## Step 2 — Run the Test File (Attempt 1 of 3)
+## What Counts as a Simple Fix
 
-Run the test file:
+Every fix you apply must be **small and targeted** — a few lines of change at most. You may:
 
-```bash
-bundle exec rspec <TEST_FILE> --format documentation 2>&1
-```
+- Apply a known pattern from `references/fixing-tests.md` — read it and match the failure symptom to the appropriate pattern
+- Make minor application code tweaks required by those patterns (e.g., changing `keyup` to `input` in a Stimulus controller)
+- If a failure doesn't match any known pattern, make one small obvious adjustment (add a wait, scope a selector, add `let!`)
 
-- If **all tests pass**: skip to Step 5 with status `Success`.
-- If **any tests fail**: proceed to Step 3.
+You must **never**:
 
-## Step 3 — Apply Fixes
+- Investigate root causes across multiple files
+- Try multiple different fix strategies for the same failure
+- Spend more than a few lines of change per failing test
 
-Read `references/fixing-tests.md` from the capybara-playwright-migration skill. For each failing test, identify which pattern applies and make the fix. Use this mapping table to quickly find the right pattern:
+If a failure doesn't match a known pattern and no small obvious fix presents itself, that test is **unresolvable** — do not spend time investigating. Move on.
 
-| Failure symptom | Pattern in fixing-tests.md |
-|---|---|
-| Assertions pass then immediately fail, or elements not found after action | Timing Issues After Removing capybara-lockstep |
-| `Playwright::Error` multiple elements match selector | Duplicate `data-testid` Values |
-| Turbo Frame link click doesn't update content | Turbo Frame Navigation |
-| Factory record not found on page in `:js` test | `let` vs `let!` in JS Tests |
-| Old flash message still in DOM, or obscures next click | Flash Message Accumulation |
-| Spinner/skeleton assertion flakes | Don't Assert Transient Loading States |
-| Multi-step form button click fails | Assert Button Existence Before Clicking |
-| New window/tab operation times out | New Window / Tab Operations |
-| Confirmation dialog not handled | Confirmation Dialogs |
-| `ElementNotFound` after page navigation | Explicit Waits After Navigation |
-| `fill_in` doesn't trigger JS handler | Fill-In and Keyboard Events |
-| Debounced search/filter doesn't fire | JS Debouncing and Throttling |
-| Async component not ready on page | Async Component Loading (`data-loaded` Pattern) |
-| Select/dropdown interaction fails | Select / Option Elements |
-| Element found but interaction fails (hidden/off-screen) | Element Visibility |
-| `Playwright::Error` ambiguous element match | Element Scoping (Ambiguity Resolution) |
-| Test needs JS but isn't tagged | When to use `:js` |
-| Implicit wait doesn't catch async update | Wait Patterns |
-| Drag-and-drop doesn't work | Drag and Drop (SortableJS / Complex DnD) |
-| Timezone-dependent test fails | Browser Timezone Override |
-| HTTP status code check fails | HTTP Status Code Checks |
-| Cookie access fails | Cookie Access |
-| `data-testid` selector not found | `data-testid` Selectors |
-| Download test fails | File Downloads |
+## Step 2 — Run, Fix, Re-run (3 Attempts)
 
-If a failure does not match any known pattern, use your best judgment to fix it. Prefer minimal, targeted changes — do not refactor unrelated code.
+You get **3 attempts** to get the test file passing. Each attempt is one full run of the file followed by fixes (if needed). The loop:
 
-## Step 4 — Re-run the Test File (Attempts 2 and 3)
+1. Run the entire test file:
 
-After applying fixes, re-run the test file:
+   ```bash
+   TEST_ENV_NUMBER=<AGENT_NUMBER> CAPYBARA_DRIVER=js bundle exec rspec <TEST_FILE> --format documentation 2>&1
+   ```
 
-```bash
-bundle exec rspec <TEST_FILE> --format documentation 2>&1
-```
+   Note: the orchestrator running you enforces an overall time budget for this file from the outside and will kill and fail you if you run long — you do not need to (and should not try to) implement your own timeout around this command. Just run it plainly and wait for it to finish.
 
-- If **all tests pass**: proceed to Step 5 with status `Success`.
-- If **tests still fail** and this was attempt 2: return to Step 3 and apply additional fixes, then run attempt 3.
-- If **tests still fail** after attempt 3: proceed to Step 5 with status `Failed`.
+2. If **all tests pass**: proceed to Step 3 with status `Success`.
+3. If **any tests fail** and you have attempts remaining: apply **one simple fix** per failing test using the patterns in `references/fixing-tests.md`. Each fix must be small and targeted — a few lines at most. Then return to (1).
+4. If **this was attempt 3**: proceed to Step 3 with status `Failed`.
+5. If **no new fix can be identified** for any remaining failure: proceed to Step 3 with status `Failed`. Do not re-run with no changes.
 
-## Step 5 — Write Results to Tracker
+## Step 3 — Write Results to Tracker
 
 Read the full contents of `TRACKER_PATH`. Find the section for your `TEST_FILE` and update the Status and Results fields. Write the full file back.
 
@@ -106,3 +109,5 @@ Include only the tests that are still failing — do not list passing tests.
 3. **Limit application code changes to what is necessary** for the test to pass under Playwright (e.g., changing `keyup` to `input` in a Stimulus controller). Document any application code changes in the Results section.
 4. **Do not increase timeouts as a fix** unless the test involves genuinely slow operations (file downloads, new window/tab). Prefer proper wait assertions.
 5. **Write to the tracker atomically** — read the full file, update your section, write the full file back.
+6. **Fail fast** — if you cannot identify any new fix to apply for the remaining failures, proceed immediately to Step 3 rather than re-running with no changes.
+7. **Don't build your own timeout/watchdog around test runs.** The orchestrator enforces an overall time budget for you from outside and will kill and fail you if you run long. A timeout built from your own tool calls can't reliably survive between separate tool-call steps, so it won't protect you — just run tests plainly.
