@@ -290,7 +290,8 @@ if (numstat) {
   const rows = [];
   for (let i = 0; i < tok.length; i++) {
     if (!tok[i]) continue;
-    const [a, d, name] = tok[i].split('\t');
+    // Split on the first two tabs only: a path can contain a tab.
+    const [, a, d, name] = tok[i].match(/^([^\t]*)\t([^\t]*)\t([\s\S]*)$/);
     if (name) rows.push([a, d, name]);
     else { rows.push([a, d, tok[i + 2]]); i += 2; }
   }

@@ -11,13 +11,45 @@
  * comment like "-- note" (which arrives as "--- note") still counts as a deletion.
  */
 (function (root) {
+  // Git C-quotes a path that has tabs, quotes, backslashes or (by default) non-ASCII
+  // bytes: "caf\303\251.txt". Undo that so names match `git diff --numstat -z`.
+  const ESC = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
+  function unquote(s) {
+    if (s[0] !== '"') return s;
+    const bytes = [];
+    for (let i = 1; i < s.length - 1; i++) {
+      if (s[i] !== '\\') {
+        const ch = String.fromCodePoint(s.codePointAt(i));
+        bytes.push(...new TextEncoder().encode(ch));
+        i += ch.length - 1;
+      } else if (/[0-7]/.test(s[i + 1])) {
+        bytes.push(parseInt(s.substr(i + 1, 3), 8));
+        i += 3;
+      } else {
+        const c = s[++i];
+        bytes.push(c in ESC ? ESC[c] : c.charCodeAt(0));
+      }
+    }
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  }
+  // "diff --git a/x b/y", where either side may be quoted.
+  const Q = '"(?:[^"\\\\]|\\\\.)*"';
+  const HEADER = [new RegExp(`^(${Q}) (${Q})$`), new RegExp(`^(${Q}) (b/.+)$`), new RegExp(`^(a/.+) (${Q})$`), /^(a\/.+) (b\/.+)$/];
+  function headerPaths(rest) {
+    for (const re of HEADER) {
+      const m = rest.match(re);
+      if (m) return [unquote(m[1]).slice(2), unquote(m[2]).slice(2)];
+    }
+    return null;
+  }
+
   function parseDiff(raw) {
     const files = [];
     let cur = null, inHunk = false, hunk = -1;
     for (const line of String(raw).replace(/\n$/, '').split('\n')) {
       if (line.startsWith('diff --git ')) {
-        const m = line.match(/^diff --git a\/(.+) b\/(.+)$/);
-        cur = { name: m ? m[2] : line.slice(11), old: m ? m[1] : '', rows: [], add: 0, del: 0, status: 'modified' };
+        const m = headerPaths(line.slice(11));
+        cur = { name: m ? m[1] : line.slice(11), old: m ? m[0] : '', rows: [], add: 0, del: 0, status: 'modified' };
         files.push(cur);
         inHunk = false;
         hunk = -1;
