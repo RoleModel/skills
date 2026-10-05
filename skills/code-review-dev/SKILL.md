@@ -313,7 +313,10 @@ page is their approval step.
   keys; the page copies those over on first load. Checkmarks store the file's
   blob (`meta.blobs`, or a hash of its diff on `--stdin` pages), so they expire
   when the file changes. Comments are stored by (side, line), not row index, so
-  they survive a rebuild, a whitespace toggle and expanded context.
+  they survive a rebuild, a whitespace toggle and expanded context. Each line
+  comment also stores its file's `sig`; when the file has changed since, the
+  comment is marked stale and Submit stays off until the reviewer re-saves or
+  deletes it, because the same line number may now point at different code.
 - **Split view sizes its gutters with a `<colgroup>`.** It uses
   `table-layout: fixed`, which takes column widths from the first row, and that
   row is a hunk header spanning all four columns: without the colgroup each

@@ -42,18 +42,24 @@
       if (r !== null) localStorage.setItem(KEY + ':review', r);
     }
   } catch (e) { /* storage unavailable: start fresh */ }
-  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } };
+  // Storage can be blocked outright (reading localStorage throws) or full; the page then
+  // runs on in-memory state, and save() says so when drafts can't be kept.
+  const store = {
+    get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  };
+  const load = (k, d) => { try { return JSON.parse(store.get(k) || 'null') || d; } catch (e) { return d; } };
   let viewed = load(KEY, {});
-  const saveViewed = () => localStorage.setItem(KEY, JSON.stringify(viewed));
+  const saveViewed = () => store.set(KEY, JSON.stringify(viewed));
   const state = Object.assign({ comments: [], dismissed: [], body: '', bodyAttachments: [], event: META.event || 'COMMENT', submitted: null },
     load(KEY + ':review', {}));
   const save = () => {
-    try { localStorage.setItem(KEY + ':review', JSON.stringify(state)); }
-    catch (e) { flash('Could not save comments locally (storage full?). Large attachments are the usual cause.', true); }
+    if (!store.set(KEY + ':review', JSON.stringify(state)))
+      flash('Could not save comments locally (storage full or blocked?). They will be lost if you close this tab.', true);
   };
 
-  let hideWs = !!WS && localStorage.getItem('diffhidews') === '1';
-  let split = localStorage.getItem('diffsplit') === '1';
+  let hideWs = !!WS && store.get('diffhidews') === '1';
+  let split = store.get('diffsplit') === '1';
 
   // --- files, rows and lookups -------------------------------------------
   const main = $('filelist'), nav = $('navlist');
@@ -80,6 +86,12 @@
     else if (v && v !== f.sig) { f.stale = true; delete viewed[f.name]; }
   });
   saveViewed();
+
+  // A line comment remembers the file it was written against. Drafts are shared by every
+  // page for the PR, so after a push the same line number can point at different code:
+  // such a comment is stale until the reviewer checks it and saves it again.
+  const sigOf = (path) => { const f = byName.get(path); return f ? f.sig : undefined; };
+  const isStale = (c) => c.subject === 'line' && c.sig != null && byName.has(c.path) && sigOf(c.path) !== c.sig;
 
   // Existing review threads. Their line numbers are against the PR head, so
   // they only sit inline when this page shows the head; otherwise they're
@@ -108,6 +120,7 @@
     return c.start_line != null && c.start_line !== c.line ? 'Lines ' + c.start_line + '–' + c.line + old : 'Line ' + c.line + old;
   };
   const orphanNote = (c) => {
+    if (isStale(c)) return ' &middot; the file changed since you wrote this: check the line, then Edit and save to keep it';
     if (c.subject !== 'line' || rowsOf(c)) return '';
     const f = byName.get(c.path);
     if (hideWs && f && f.fullAt[c.side || 'RIGHT'].has(c.line)) return ' &middot; hidden with whitespace changes';
@@ -517,6 +530,11 @@
   };
 
   function openEditor(draft) {
+    if (!byName.has(draft.path)) {
+      // A --since page shares the PR's drafts but not every file; there is nowhere to show the editor.
+      flash(draft.path + ' is not in this page. Edit that comment from the full PR page.', true);
+      return;
+    }
     if (editing && (editing.body.trim() || editing.attachments.length) && !(draft.id && draft.id === editing.id)) {
       // Never throw away typed text; send the reviewer back to it instead.
       goToFile(byName.get(editing.path));
@@ -546,7 +564,8 @@
     const d = editing;
     if (!d.body.trim() && !d.attachments.length) return;
     const c = { id: d.id || uid('c'), sid: d.sid, thread_id: d.thread_id, path: d.path, subject: d.subject, side: d.side, line: d.line,
-      start_side: d.start_side, start_line: d.start_line, body: d.body, attachments: d.attachments };
+      start_side: d.start_side, start_line: d.start_line, body: d.body, attachments: d.attachments,
+      sig: d.subject === 'line' ? sigOf(d.path) : undefined };
     const at = state.comments.findIndex((x) => x.id === c.id);
     if (at === -1) state.comments.push(c); else state.comments[at] = c;
     editing = null;
@@ -672,10 +691,10 @@
       return;
     } else if (act === 'accept' && s) {
       state.comments.push({ id: uid('c'), sid: s.sid, path: s.path, subject: s.subject, side: s.side, line: s.line,
-        start_side: s.start_side ?? null, start_line: s.start_line ?? null, body: s.body, attachments: [] });
+        start_side: s.start_side ?? null, start_line: s.start_line ?? null, body: s.body, attachments: [], sig: sigOf(s.path) });
     } else if (act === 'edit-s' && s) {
       openEditor({ sid: s.sid, path: s.path, subject: s.subject, side: s.side, line: s.line,
-        start_side: s.start_side ?? null, start_line: s.start_line ?? null, body: s.body, attachments: [] });
+        start_side: s.start_side ?? null, start_line: s.start_line ?? null, body: s.body, attachments: [], sig: sigOf(s.path) });
       return;
     } else if (act === 'dismiss' && s) {
       state.dismissed.push(s.sid);
@@ -829,14 +848,14 @@
     $('svbody').innerHTML = '';
     $('svbody').appendChild(makeEditor(bodyDraft, {
       inline: true, placeholder: 'Overall feedback (optional). Markdown supported.',
-      onInput: () => { state.bodyAttachments = bodyDraft.attachments; save(); },
+      onInput: () => { state.bodyAttachments = bodyDraft.attachments; save(); refreshSubmit(); },
     }));
   };
   mountBody();
   if (PR) {
     sv.querySelectorAll('input[name=ev]').forEach((r) => {
       r.checked = r.value === state.event;
-      r.addEventListener('change', () => { state.event = r.value; save(); });
+      r.addEventListener('change', () => { state.event = r.value; save(); refreshSubmit(); });
     });
   }
 
@@ -887,9 +906,17 @@
     $('svhelp').innerHTML = !PR ? '' : SERVER
       ? 'Submitting posts every comment and reply above as one review. Comments on lines GitHub cannot anchor to are added to the summary instead.'
       : 'Submitting needs the local server: rebuild with <code>--serve</code>, or Copy JSON and have the agent run <code>pbpaste | node ~/.claude/skills/code-review-dev/scripts/submit-review.cjs -</code>.';
-    const sub = $('svsubmit');
-    if (sub) sub.disabled = !SERVER || (!all.length && !state.body.trim() && state.event !== 'APPROVE');
+    refreshSubmit();
     if (state.submitted) status('Last submitted ' + new Date(state.submitted.at).toLocaleString() + ': ' + state.submitted.url, 'ok');
+  }
+
+  function refreshSubmit() {
+    const sub = $('svsubmit');
+    if (!sub) return;
+    const stale = state.comments.filter(isStale).length;
+    sub.disabled = !SERVER || !!stale || (!state.comments.length && !state.body.trim() && state.event !== 'APPROVE');
+    if (stale) status(plural(stale, 'comment') + ' sit on files that changed since you wrote them. Check each one, then Edit and save it (or delete it) to submit.', 'err');
+    else if ($('svstatus').classList.contains('err')) status('');
   }
 
   function reviewData() {
@@ -1068,9 +1095,9 @@
   const setHl = (on) => {
     document.body.classList.toggle('nohl', !on);
     hlBtn.textContent = 'Syntax: ' + (on ? 'on' : 'off');
-    localStorage.setItem('diffsyntax', on ? '1' : '0');
+    store.set('diffsyntax', on ? '1' : '0');
   };
-  setHl(localStorage.getItem('diffsyntax') !== '0');
+  setHl(store.get('diffsyntax') !== '0');
   hlBtn.onclick = () => setHl(document.body.classList.contains('nohl'));
 
   // Rebuilding every table moves things around; keep the file you're in where it was.
@@ -1089,8 +1116,8 @@
   const showWsLabel = () => { wsBtn.textContent = 'Whitespace: ' + (hideWs ? 'hidden' : 'shown'); };
   if (!WS) { wsBtn.disabled = true; wsBtn.title = 'Needs a page built from git (not --stdin)'; }
   else if (!Object.keys(WS).length) { wsBtn.disabled = true; wsBtn.title = 'No whitespace-only changes in this diff'; }
-  const setWs = (on) => { if (wsBtn.disabled) return; hideWs = on; localStorage.setItem('diffhidews', on ? '1' : '0'); showWsLabel(); rebuildAll(); };
-  const setSplit = (on) => { split = on; localStorage.setItem('diffsplit', on ? '1' : '0'); splitBtn.textContent = 'View: ' + (on ? 'split' : 'unified'); rebuildAll(); };
+  const setWs = (on) => { if (wsBtn.disabled) return; hideWs = on; store.set('diffhidews', on ? '1' : '0'); showWsLabel(); rebuildAll(); };
+  const setSplit = (on) => { split = on; store.set('diffsplit', on ? '1' : '0'); splitBtn.textContent = 'View: ' + (on ? 'split' : 'unified'); rebuildAll(); };
   showWsLabel();
   splitBtn.textContent = 'View: ' + (split ? 'split' : 'unified');
   wsBtn.onclick = () => setWs(!hideWs);
