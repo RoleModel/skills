@@ -216,7 +216,9 @@ back unticked with a "changed since you viewed it" badge once it changes.
   page isn't at the PR head, sit at the top of their file. **Reply** drafts a
   reply that is posted as part of the review. Your own pending (unsubmitted)
   GitHub comments are not shown. GitHub bodies render through the page's Markdown,
-  so raw HTML in them (like `<img>` tags) shows as text.
+  so raw HTML in them (like `<img>` tags) shows as text, and Markdown images
+  show as links (only pasted attachments render inline), so opening the page
+  never fetches from a host a commenter chose.
 - **Expanding context.** Unchanged lines between hunks fold into gap rows with
   `↓ 20`, `↑ 20` and `All` buttons, as on GitHub. Files load lazily, one request
   each, through the local server, so this needs `--serve`; from `file://` the gaps

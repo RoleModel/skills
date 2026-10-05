@@ -2,7 +2,7 @@
  * Small GitHub-flavoured Markdown renderer for comment previews. The page is
  * offline, so this covers what review comments actually use: paragraphs with
  * GitHub's newline-as-break, headings, emphasis, strikethrough, code spans and
- * fences, links, images, autolinks, quotes, nested and task lists, tables, rules,
+ * fences, links, images (inline for attachments, links otherwise), autolinks, quotes, nested and task lists, tables, rules,
  * and ```suggestion blocks rendered as a before/after diff.
  *
  * opts.attachments maps an attachment id to a data URL, so `attachment:<id>`
@@ -23,8 +23,11 @@ const MD = (function () {
     };
     let s = String(src);
     s = s.replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, (_, _t, code) => keep('<code>' + esc(code) + '</code>'));
-    s = s.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (_, alt, u) =>
-      keep('<img alt="' + esc(alt) + '" src="' + esc(url(u)) + '">'));
+    // Only pasted attachments render inline. Any other image would be fetched as soon as
+    // the page renders, telling its host who is reviewing; show it as a link instead.
+    s = s.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (_, alt, u) => keep(/^attachment:/.test(u)
+      ? '<img alt="' + esc(alt) + '" src="' + esc(url(u)) + '">'
+      : '<a href="' + esc(url(u)) + '" target="_blank" rel="noopener">Image: ' + esc(alt || u) + '</a>'));
     s = s.replace(/\[([^\]]+)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (_, text, u) =>
       keep('<a href="' + esc(url(u)) + '" target="_blank" rel="noopener">' + esc(text) + '</a>'));
     s = s.replace(/(^|[\s(])(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g, (_, pre, u) =>
