@@ -290,6 +290,7 @@ page is their approval step.
 - `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `app.js`, inlined into every page.
 - `references/gathering.md`: how to get from a PR, commit, range, branch, or ticket ID to a build.
 - `references/preferences-template.md`: the per-user preferences file.
+- `usage.md` and `assets/screenshots/`: a guide for people using the page, with screenshots.
 
 ## Constraints that matter
 
