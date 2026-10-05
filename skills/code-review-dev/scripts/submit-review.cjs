@@ -32,15 +32,22 @@ function cmdError(e) {
   return out || e.message;
 }
 
+// Review JSON can be pasted in by hand, so the parts that become file names must not climb out of outDir.
+function plainName(value, what, pattern) {
+  if (!pattern.test(value) || /^\.+$/.test(value)) throw new Error(`Refusing ${what} ${JSON.stringify(value)}: it must be a plain file name.`);
+  return value;
+}
+const slugOf = (review) => plainName(review.slug || 'review', 'slug', /^[\w.-]+$/);
+
 // Write a review's attachments next to the page and point Markdown at them.
 function writeAttachments(review, outDir) {
-  const dir = path.join(outDir, `${review.slug || 'review'}-attachments`);
+  const dir = path.join(outDir, `${slugOf(review)}-attachments`);
   const saved = {};
   const all = (review.attachments || []).concat(...(review.comments || []).map((c) => c.attachments || []));
   for (const a of all) {
     if (!a || !a.data || saved[a.id]) continue;
     fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, `${a.id}-${String(a.name || 'file').replace(/[^\w.-]+/g, '_')}`);
+    const file = path.join(dir, `${plainName(String(a.id), 'attachment id', /^[\w-]+$/)}-${String(a.name || 'file').replace(/[^\w.-]+/g, '_')}`);
     fs.writeFileSync(file, Buffer.from(a.data.split(',')[1] || '', 'base64'));
     saved[a.id] = { name: a.name, file: path.resolve(file) };
   }
@@ -50,7 +57,7 @@ function writeAttachments(review, outDir) {
 // Save the review as JSON (attachment data replaced by paths) and Markdown, for an agent or a human to pick up.
 function saveReview(review, outDir) {
   const saved = writeAttachments(review, outDir);
-  const base = path.join(outDir, review.slug || 'review');
+  const base = path.join(outDir, slugOf(review));
   let md = review.markdown || '';
   for (const [id, a] of Object.entries(saved)) md = md.replace(ATT_LINK(id), (m, alt) => m.replace(`attachment:${id}`, a.file));
   const strip = (list) => (list || []).map((a) => ({ id: a.id, name: a.name, type: a.type, file: saved[a.id] && saved[a.id].file }));
