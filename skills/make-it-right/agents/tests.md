@@ -56,7 +56,12 @@ actual rules, a scope's filter, and the job the app gives the gem.
   expectations loosened in this change without a reason given.
 - **Fragility**: `sleep`, order dependence, hard-coded ids or dates,
   `Time.now` without freezing, and factories that build far more than the
-  spec needs.
+  spec needs. A spec that creates a record "a minute ago" and expects today's
+  date fails just after midnight. Freeze at `Time.current.noon`.
+- **Slow by default**: a system spec tagged `:js` for a flow that needs no
+  JavaScript (rack_test is many times faster), and truncation
+  (`use_transactional_tests = false`, DatabaseCleaner) on a whole group when
+  only the examples that open a second database connection need it.
 
 For each missing spec, give the file, the `describe` / `context`, and the
 assertion that would catch the regression.

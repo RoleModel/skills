@@ -24,7 +24,11 @@ it isn't this lens's finding.
 | JSON-backed model attributes | `json-typed-attributes` |
 | `spec/**` | `tdd` |
 
-When the project's docs and a RoleModel skill disagree, the project wins.
+3. `<SKILL_DIR>/references/rails-standards.md`: RoleModel's defaults for
+   anything the first two don't cover.
+
+When the project's docs and a RoleModel skill or default disagree, the project
+wins.
 
 ## Comments
 

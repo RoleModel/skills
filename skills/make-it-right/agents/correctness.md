@@ -21,7 +21,19 @@ and its callers to know what the code is handed and what it promises.
   commit.
 - **Data**: multi-step writes outside a transaction, a migration that locks a
   big table, can't be reversed, or adds `null: false` without a default or
-  backfill, and an index missing for a new foreign key or uniqueness rule.
+  backfill, and an index missing for a new foreign key or uniqueness rule. An
+  unreleased migration replaced under the same version: any database that ran
+  the old one skips the new one.
+- **Status from history**: "connected", "active", or "set up" worked out from
+  something that once happened (a timestamp) instead of what holds now (an
+  unrevoked token, a live record). Revoking or removing it leaves the UI
+  claiming the old state.
+- **Grouped series**: a `GROUP BY` period leaves out periods with no rows, so
+  the last row isn't "this week", and the gap between two rows doesn't tell
+  you the grain. Results relied on for order with no `ORDER BY`, such as a
+  `UNION ALL`.
+- **Failure that looks like success**: an error path that still returns 200,
+  such as a download that sends an empty file when its query fails.
 - **Queries**: N+1s added in the change, loading whole tables to filter in
   Ruby, a `count` in a loop.
 - **Turbo and Stimulus**: a stream or frame that targets an id that isn't

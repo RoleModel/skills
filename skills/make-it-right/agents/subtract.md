@@ -34,7 +34,7 @@ until a rung holds:
 | `native:` | A dependency or code that duplicates the framework or the platform. |
 | `reuse:` | A helper, concern, component, or pattern that already exists in the repo. Name it with `path:line`. |
 | `yagni:` | Abstraction, indirection, or configuration with one user. |
-| `shrink:` | Same behavior in fewer lines. |
+| `shrink:` | Same behavior in fewer lines. An empty branch (`- if !ai` with nothing under it, then `- elsif`) is `shrink:`: nest the rest under one positive `if`. |
 
 Put the tag first in the finding's "what": `delete: \`format_total\` has no
 callers. Remove it.` For each finding, add the lines it saves, as `(-N)`.

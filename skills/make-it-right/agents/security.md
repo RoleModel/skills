@@ -19,6 +19,11 @@ installed, use it as the checklist.
 - **Injection**: SQL built by interpolation, `send` / `public_send` /
   `constantize` with user input, a shell call with user input, `html_safe` /
   `raw` / `==` in Slim on anything a user typed, `innerHTML` in Stimulus.
+- **Spreadsheet formulas**: a CSV export with user-entered text. A cell that
+  starts with `=`, `+`, `-`, `@`, a tab, or a carriage return runs as a
+  formula when someone opens the file. Prefix those cells with `'`.
+- **Promises in copy**: text that tells users what access they're granting
+  ("read-only", "never writes") that isn't true for every role who sees it.
 - **Secrets**: credentials, tokens, or keys in code, fixtures, or logs. New
   sensitive params missing from `filter_parameters`.
 - **Redirects and uploads**: `redirect_to params[...]`, an upload with no

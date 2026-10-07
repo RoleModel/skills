@@ -21,8 +21,23 @@ If `<SKILL_DIR>/../rails-audit/references/poro_patterns.md` and
 - **Cohesion**: a class or method doing two jobs that change for different
   reasons. Callbacks that reach into other aggregates or call external
   services.
-- **Naming**: names that say how instead of what, or names that no longer
-  match the behavior after this change.
+- **Request or domain**: logic that reads `params` or `request` stays in the
+  controller, in a private method once it's more than a line. A choice the
+  domain makes, such as which record or which default, belongs on the model,
+  even when only a controller calls it today.
+- **Logic in views**: a view that works out state (counters, flags, a
+  `[x, y].min`) before it renders. Move it to a helper or presenter that
+  returns what to show, and let the view loop over it.
+- **Branching on a kind**: `if kind == 'x'` in more than one place, or a hash
+  constant plus view branches for each variant. Each variant's data belongs in
+  one object (a value object read from config), so the next variant is one
+  entry, not a hunt.
+- **Hidden one-to-many**: columns on a record that hold "the" X when a user
+  can have several, so a second X overwrites the first. That's a `has_many`
+  table.
+- **Naming**: names that say how instead of what, jokes or shorthand
+  (`_can_cant`), or names that no longer match the behavior after this
+  change.
 - **Boundaries**: external services called without a seam, and framework
   objects (`params`, `request`, `current_user`) leaking into models.
 
