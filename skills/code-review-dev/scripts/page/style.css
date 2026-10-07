@@ -160,6 +160,7 @@ body.submitting header .diffonly{display:none}
 #submitview h2{font-size:18px;margin:0 0 6px}
 .svtarget{color:var(--muted);font-size:13px;margin-bottom:16px}
 .svtarget a{color:var(--accent)}
+.svnote a{color:var(--accent)}
 .svblock{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:12px 14px;margin-bottom:16px}
 .svblock>h3{margin:0 0 8px;font-size:13px}
 .svevent{display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
