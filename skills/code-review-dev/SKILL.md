@@ -2,7 +2,9 @@
 name: code-review-dev
 description: >
   Render a git commit, range, branch, PR, or piped diff into a single self-contained HTML
-  review page with per-file sections, syntax highlighting, "viewed" checkboxes, percent of
+  review page that reviews in three steps: an Overview of the feature and the shape of the
+  change (with diagrams of what the code does, feature checks to confirm, and before/after
+  file sizes), then the Code, then Submit. The code step has per-file sections, syntax highlighting, "viewed" checkboxes, percent of
   changed lines reviewed, and a reading guide that groups files in the reviewer's preferred
   order. Shows the PR's existing review threads inline (with replies), unified or split view,
   a whitespace toggle, expandable context, keyboard navigation, and a re-review mode that
@@ -20,14 +22,25 @@ allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '2.1'
+  version: '3.0'
 license: MIT
 ---
 
 # Commit Review Page
 
-Turns a diff into an offline HTML page for file-by-file review, with comments
-that can be posted to the PR as one review.
+Turns a diff into an offline HTML page that reviews a change in three steps,
+with comments that can be posted to the PR as one review:
+
+1. **Overview**: the feature (what it does for the user, and checks to confirm
+   it does it well) and the shape of the change (layers, objects, departures
+   from the architecture, and how the codebase's shape moved), with diagrams.
+2. **Code**: the diff, file by file, in reading-guide order, with diagrams
+   next to the complex groups.
+3. **Submit**: the summary, verdict, comments and feature concerns, posted as
+   one review.
+
+The emphasis is on the quality of the feature; the code is the fallback for
+confirming it.
 
 ## Usage
 
@@ -61,11 +74,14 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
 2. **Load preferences.** Read `~/.claude/code-review-dev/preferences.md`, then
    `.claude/code-review-dev.md` in the repo if there is one. If the user-level file
    doesn't exist, this is their first use: ask them (below) before continuing.
-3. **Read the change** (`git show --stat`, the PR body or ticket, and enough
-   of the diff to know what each file does), then write the guide, including
-   any auto-reviews and suggested comments.
-4. **Build** with `--groups` (and `--pr`). Skip the guide only for a diff small
-   enough to read top-to-bottom, or if the user declines one. With `--pr` the
+3. **Read the change** (`git show --stat`, the PR body or ticket, the diff, and
+   the touched files at the head where the shape question needs them), then
+   write `tmp/review/<slug>.groups.json`, in this order:
+   - the **overview** first (feature, checks, shape, diagrams): read
+     `references/overview.md` for the format and what each part is for;
+   - then the **reading guide**, with auto-reviews and suggested comments.
+4. **Build** with `--groups` (and `--pr`). Skip the overview and guide only for
+   a diff small enough to read top-to-bottom, or if the user declines them. With `--pr` the
    build looks up the user's last submitted review on the PR (see
    **Re-reviewing** below) and prints a `re-review:` line.
 5. **Open it.**
@@ -76,7 +92,8 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
    - Without a PR: `open <path>`; the submit page offers Copy as Markdown. Serve
      it the same way if the user wants **Save for agent** to hand comments back,
      or to expand context around hunks (which reads files through the server).
-6. **Report** the self-check and groups lines, the PR (or that there isn't one),
+6. **Report** the self-check, groups and overview lines, a one-line summary of
+   the feature and of the shape (plus any departures you flagged), the PR (or that there isn't one),
    the `threads:` and `re-review:` lines, the commit's file/line totals, and the
    list of auto-reviewed files with their one-line summaries so the user knows
    what they are trusting you on.
@@ -103,10 +120,30 @@ is so they can edit it. Don't ask again once it exists. If they'd rather not
 answer, write the template with the defaults (data flow, tests with their code,
 conservative, bugs and risks only) and carry on.
 
+## The overview
+
+The page opens on the overview when there is one (and afterwards on whichever
+step the reviewer was last on). It has two parts, both written by you under
+`overview` in the groups file:
+
+- **The feature**: what the change does, the behaviour before and after, and
+  **feature checks**: behaviour for the reviewer to confirm, each marked Looks
+  right or Concern. Concerns and their notes are added to the review summary.
+- **The shape**: the shape of this change (layers, objects, new dependencies,
+  departures from the architecture instructions) and how it moves the shape
+  of the codebase as a whole. Under it the page adds two computed blocks, from
+  git: lines changed per area, and every touched file's length before and after.
+
+Diagrams (`structure`, `sequence`, `compare`, or hand-written `html`/`svg`) go
+in either part, and can also be pinned to a reading-guide group so they show
+next to the complex code they explain. Full format, guidance and examples:
+`references/overview.md`. Without an overview the page opens on the code, and
+the Overview step shows only the computed shape.
+
 ## The reading guide
 
 The script is plain Node with no model access, so the guide comes from you.
-Write `tmp/review/<slug>.groups.json`:
+It goes in the same `tmp/review/<slug>.groups.json`, next to `overview`:
 
 ```json
 {
@@ -210,6 +247,11 @@ back unticked with a "changed since you viewed it" badge once it changes.
 
 ## Reading the page
 
+- **Steps.** The header's **Overview / Code / Submit** switch steps (keys `1`,
+  `2`, `3`; hashes `#overview`, `#code`, `#submit`). A file or group anchor
+  (`#f3`, `#g1`), like the links in the overview, opens the code at that spot,
+  and returning to the code restores where you were. The sidebar shows the
+  feature-check count.
 - **Existing threads.** With `--pr`, the PR's review threads are loaded at build
   time and shown inline at their lines, with author, date and a link to GitHub.
   Resolved threads start collapsed. Outdated threads, or every thread when the
@@ -249,7 +291,9 @@ In the page:
   lines), and attachments: paste, drop, or Attach, up to 3 MB each, stored in
   the page.
 - **Finish review** opens the submit page (`#submit`): a summary editor, the
-  verdict (Comment / Approve / Request changes, only when there's a PR), every
+  verdict (Comment / Approve / Request changes, only when there's a PR), the
+  feature checks (concerns are appended to the summary as a **Feature
+  concerns** list when posted or copied), every
   comment and reply with its code (replies also quote what they answer),
   pending suggestions to accept or dismiss, and the auto-reviewed files.
   Comments can be edited or deleted from there.
@@ -289,7 +333,8 @@ page is their approval step.
 - `scripts/serve-review.cjs`: localhost server for Save, Submit and `/api/file` (also runs standalone on a built page).
 - `scripts/submit-review.cjs`: posts a review JSON through `gh`; `saveReview` writes the Markdown and JSON.
 - `scripts/lib/diff-parse.cjs`: the one diff parser, used by all three and inlined into the page.
-- `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `app.js`, inlined into every page.
+- `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `diagrams.js`, `app.js`, inlined into every page.
+- `references/overview.md`: the overview format (feature, checks, shape, diagrams) and how to write it.
 - `references/gathering.md`: how to get from a PR, commit, range, branch, or ticket ID to a build.
 - `references/preferences-template.md`: the per-user preferences file.
 - `usage.md` and `assets/screenshots/`: a guide for people using the page, with screenshots.
@@ -299,6 +344,8 @@ page is their approval step.
 - **The Node scripts must keep their `.cjs` extension.** Many repos set `"type":
   "module"` in `package.json`, which makes a `.js` file an ES module and breaks
   `require`. The `page/*.js` files are never required, only read as text.
+  The build needs `diagrams.js` to validate diagrams, so it evaluates that
+  file's text with `new Function` rather than `require`.
 - **Never put `overflow` on an ancestor of a sticky element.** An `overflow`
   value other than `visible` on any ancestor silently kills `position: sticky`
   on its descendants. This cost a round trip when `.file` had `overflow:hidden`
@@ -339,6 +386,17 @@ page is their approval step.
 - The served page gets its token by replacing the exact
   `<script id="server-src" type="application/json">null</script>` placeholder.
   Keep that string identical in `build-review.cjs` and `serve-review.cjs`.
+
+- **Diagram layout never measures the DOM.** `diagrams.js` sizes boxes from
+  label length with fixed arithmetic, so it renders the same in every browser
+  and in jsdom. Nodes in one row can differ in height (a `sub` line), so code
+  that asks "same row?" must compare `n.row`, not `y`.
+- Raw `html`/`svg` diagrams render in a shadow root; the page's CSS variables
+  inherit through it, nothing else does. `<script>` and `on*` attributes are
+  stripped, since diagrams are pictures.
+- The step views are body classes (`overviewing`, `submitting`, `done`) plus
+  `body.dataset.view`; the code view is the absence of the others. The last
+  step is remembered under `<KEY>:step`.
 
 ## Syntax highlighting
 
@@ -402,8 +460,14 @@ placeholder with `{"token":"t"}` before constructing it. jsdom doesn't
 implement `scrollIntoView` or `scrollTo`, so errors naming those are expected.
 
 That catches script errors and wrong arithmetic. It does **not** compute layout,
-so sticky positioning and visual stacking still need a human (or a screenshot)
-to confirm. Say so rather than claiming the layout is verified.
+so sticky positioning, visual stacking and diagram layout still need a human
+(or a screenshot) to confirm. Say so rather than claiming the layout is verified.
+jsdom sets `location.hash` without firing `hashchange` synchronously, so wait
+a tick before asserting which step is showing.
+
+For screenshots, Playwright can load the page straight from `file://` when a
+project has it installed (`require('playwright')`): `page.goto('file:///…/x.html#overview')`,
+then `page.screenshot`, in both `colorScheme: 'light'` and `'dark'`.
 
 For the highlighter specifically, assert *fidelity*: collect every
 `tr[data-r] td.c` textContent per file (unified view; in split view, the

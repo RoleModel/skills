@@ -10,7 +10,7 @@
  *   node build-review.cjs <commit-ish> -o out.html      # explicit output path
  *   node build-review.cjs <commit-ish> --title "..."    # override page title
  *   node build-review.cjs --stdin -o out.html           # read a diff from stdin
- *   node build-review.cjs <commit-ish> --groups g.json  # reading guide, auto-reviews, suggestions
+ *   node build-review.cjs <commit-ish> --groups g.json  # overview, reading guide, auto-reviews, suggestions
  *   node build-review.cjs <commit-ish> --serve [--port N]  # serve on localhost so Submit can post
  *   node build-review.cjs --pr <N> --event approve      # default verdict on the submit page
  *   node build-review.cjs --pr <N> --since last         # only what changed since your last review
@@ -100,7 +100,7 @@ if (opt('--since')) {
   target = `${sha}..${head}`;
 }
 
-let diff, numstat = null, wsDiff = null, headRev = null, title, slug, range = null, commitId = opt('--commit');
+let diff, numstat = null, wsDiff = null, headRev = null, baseRev = null, title, slug, range = null, commitId = opt('--commit');
 if (has('--stdin')) {
   diff = fs.readFileSync(0, 'utf8');
   title = opt('--title') || (pr ? `${pr.title} — #${pr.number}` : 'Diff review');
@@ -117,6 +117,12 @@ if (has('--stdin')) {
     head = target;
   }
   range = target;
+  // The "before" side, for the overview's before/after file sizes.
+  if (target.includes('...')) {
+    const [a, b] = target.split('...');
+    baseRev = git(['merge-base', a || 'HEAD', b || 'HEAD']).trim();
+  } else if (target.includes('..')) baseRev = git(['rev-parse', target.split('..')[0] || 'HEAD']).trim();
+  else if (args[0] !== EMPTY_TREE) baseRev = git(['rev-parse', args[0]]).trim();
   diff = git(['diff', ...args]);
   numstat = git(['diff', '--numstat', '-z', ...args]);
   wsDiff = git(['diff', '-w', ...args]);
@@ -168,6 +174,37 @@ if (headRev) {
   }
 }
 
+// --- file sizes before and after --------------------------------------------
+// The overview's "shape of the codebase" compares each touched file's length at
+// the base and the head. One `git cat-file --batch` call reads them all.
+const countLines = (specs) => {
+  if (!specs.length) return [];
+  const out = execFileSync('git', ['cat-file', '--batch'], { input: specs.join('\n') + '\n', maxBuffer: 1 << 30 });
+  const res = [];
+  let pos = 0;
+  for (let i = 0; i < specs.length; i++) {
+    const nl = out.indexOf(10, pos);
+    const m = out.subarray(pos, nl).toString().match(/^[0-9a-f]+ (\w+) (\d+)$/);
+    pos = nl + 1;
+    if (!m) { res.push(null); continue; } // missing: the file isn't on that side
+    const size = +m[2], blob = out.subarray(pos, pos + size);
+    pos += size + 1;
+    if (m[1] !== 'blob' || blob.includes(0)) { res.push(null); continue; } // binary
+    let n = 0;
+    for (const b of blob) if (b === 10) n++;
+    res.push(size && blob[size - 1] !== 10 ? n + 1 : n);
+  }
+  return res;
+};
+let sizes = null;
+if (headRev) {
+  try {
+    const before = baseRev ? countLines(parsed.map((f) => `${baseRev}:${f.old || f.name}`)) : parsed.map(() => null);
+    const after = countLines(parsed.map((f) => `${headRev}:${f.name}`));
+    sizes = Object.fromEntries(parsed.map((f, i) => [f.name, [f.status === 'added' ? 0 : before[i], f.status === 'deleted' ? 0 : after[i]]]));
+  } catch (e) { console.error(`overview: could not read file sizes (${e.message}); continuing without`); }
+}
+
 // --- re-review: which files changed since the last review ------------------
 if (lastReview && !since && headRev) {
   if (lastReview.sha === headRev) lastReview.changed = [];
@@ -211,8 +248,9 @@ if (pr && !has('--no-threads')) {
 // in as JSON. Either a bare array of groups, or
 //   { groups: [{title, why, auto?, files: [path | {path, summary?, auto?}]}],
 //     suggestions: [{path, line?, side?, start_line?, start_side?, body}] }
-// with groups in relevance order. Validated against the diff after the build.
-let guide = { groups: [], suggestions: [] };
+// with groups in relevance order, plus an optional `overview` (feature, shape,
+// diagrams) for the page's first step. Validated against the diff after the build.
+let guide = { groups: [], suggestions: [], overview: null };
 const groupsPath = opt('--groups');
 if (groupsPath) {
   let g;
@@ -226,6 +264,7 @@ if (groupsPath) {
       files: (grp.files || []).map((e) => (typeof e === 'string' ? { path: e } : e)),
     })),
     suggestions: g.suggestions || [],
+    overview: g.overview || null,
   };
 }
 
@@ -238,11 +277,12 @@ const asset = (f) => fs.readFileSync(path.join(PAGE, f), 'utf8');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // JSON islands escape "<" so nothing inside them can close the script tag.
 const island = (id, value) => `<script id="${id}" type="application/json">${JSON.stringify(value).replace(/</g, '\\u003c')}</script>`;
-const js = [fs.readFileSync(path.join(__dirname, 'lib', 'diff-parse.cjs'), 'utf8'), asset('highlight.js'), asset('markdown.js'), asset('app.js')]
+const js = [fs.readFileSync(path.join(__dirname, 'lib', 'diff-parse.cjs'), 'utf8'), asset('highlight.js'), asset('markdown.js'),
+  asset('diagrams.js'), asset('app.js')]
   .join('\n;\n').replace(/<\/script/gi, '<\\/script');
 const event = (opt('--event') || 'COMMENT').toUpperCase().replace(/[\s-]+/g, '_');
 if (!['COMMENT', 'APPROVE', 'REQUEST_CHANGES'].includes(event)) die('--event must be comment, approve or request_changes');
-const meta = { title, slug, range, commitId, pr, event, headRev, blobs, lastReview, since,
+const meta = { title, slug, range, commitId, pr, event, headRev, baseRev, blobs, sizes, lastReview, since,
   repoRoot: headRev ? git(['rev-parse', '--show-toplevel']).trim() : null };
 
 const html = `<!doctype html>
@@ -253,7 +293,7 @@ const html = `<!doctype html>
 ${asset('style.css')}
 </style></head><body>
 <header>
-<button id="goback" class="submitonly">&larr; Back to diff</button>
+<span class="steps" id="steps"><button data-step="overview"><b>1</b> Overview</button><button data-step="code"><b>2</b> Code</button><button data-step="submit"><b>3</b> Submit</button></span>
 <h1>${esc(title)}</h1>
 <span class="stats" id="stats"></span>
 <button id="expand" class="diffonly">Expand all</button>
@@ -267,6 +307,7 @@ ${asset('style.css')}
 <button id="gosubmit" class="primary diffonly">Finish review</button>
 </header>
 <div class="layout"><nav><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><div id="filelist"></div></main></div>
+<section id="overviewview"></section>
 <section id="submitview"></section>
 <section id="doneview"></section>
 ${island('diff-src', diff)}
@@ -333,6 +374,23 @@ if (groupsPath) {
       : s.line == null ? null : anchorProblem(commentableLines(f), s);
     if (problem) { console.error(`suggestions: ${s.path}:${s.line ?? 'file'} ${problem}`); bad++; }
   }
+  // The overview: every check has text, every diagram can be drawn and lands somewhere real.
+  const ov = guide.overview;
+  if (ov) {
+    // diagrams.js is browser source, so evaluate its text rather than require() it (see "Constraints").
+    const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
+    const titles = new Set(guide.groups.map((g) => g.title));
+    const checks = (ov.feature && ov.feature.checks) || [];
+    checks.forEach((c, i) => { if (!(c && (typeof c === 'string' || c.text))) { console.error(`overview: check ${i + 1} has no text`); bad++; } });
+    checks.forEach((c) => { if (c && c.path && !byName.has(c.path)) { console.error(`overview: check names a file not in the diff: ${c.path}`); bad++; } });
+    (ov.diagrams || []).forEach((d, i) => {
+      for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`)) { console.error(`overview: ${p}`); bad++; }
+      if (d && d.group && !titles.has(d.group)) { console.error(`overview: diagram "${d.title || i + 1}" names an unknown group "${d.group}"`); bad++; }
+      if (d && d.section && !['feature', 'shape'].includes(d.section)) { console.error(`overview: diagram "${d.title || i + 1}" section must be feature or shape`); bad++; }
+    });
+    const objs = (ov.shape && ov.shape.objects) || [];
+    objs.forEach((o) => { if (o && o.path && !byName.has(o.path)) { console.error(`overview: shape object names a file not in the diff: ${o.path}`); bad++; } });
+  }
   if (bad) { console.error(`groups check FAILED (${bad} problem(s))`); process.exit(1); }
   const loose = byName.size - seen.size;
   const total = parsed.reduce((n, f) => n + f.add + f.del, 0);
@@ -342,6 +400,12 @@ if (groupsPath) {
       (auto ? `; ${auto} auto-reviewed (${autoLines}/${total} lines)` : '') +
       (guide.suggestions.length ? `; ${guide.suggestions.length} suggested comment(s)` : '')
   );
+  if (ov) {
+    const ds = ov.diagrams || [];
+    console.error(`overview ok: feature${ov.feature ? '' : ' (missing)'}` +
+      `, ${(ov.feature && ov.feature.checks || []).length} check(s), shape${ov.shape ? '' : ' (missing)'}` +
+      `, ${ds.length} diagram(s)` + (ds.some((d) => d.group) ? ` (${ds.filter((d) => d.group).length} in groups)` : ''));
+  } else console.error('overview: none (the page opens on the code; the Overview step shows only the computed shape)');
 }
 console.error(pr ? `pr: ${pr.owner}/${pr.repo}#${pr.number} at ${commitId.slice(0, 10)}` : 'pr: none (comments stay local)');
 if (pr && !has('--no-threads')) {

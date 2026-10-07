@@ -1,10 +1,14 @@
 /**
- * The review page. build-review.cjs inlines this after diff-parse, highlight and
- * markdown, alongside JSON islands: #diff-src (the raw diff), #ws-src (the
- * whitespace-insensitive diff for the files where it differs), #threads-src
- * (the PR's existing review threads), #guide-src (reading guide, auto-reviewed
- * files, suggested comments) and #meta-src (title, slug, PR, commit, file
- * blobs, last review). #server-src is null from file:// and carries a token
+ * The review page. build-review.cjs inlines this after diff-parse, highlight,
+ * markdown and diagrams, alongside JSON islands: #diff-src (the raw diff),
+ * #ws-src (the whitespace-insensitive diff for the files where it differs),
+ * #threads-src (the PR's existing review threads), #guide-src (overview,
+ * reading guide, auto-reviewed files, suggested comments) and #meta-src (title,
+ * slug, PR, commit, file blobs and sizes, last review).
+ *
+ * The review runs in three steps, one view each: Overview (#overview: the
+ * feature and the shape of the change, with diagrams), Code (#code, or a file
+ * or group anchor: the diff) and Submit (#submit), then #done once posted. #server-src is null from file:// and carries a token
  * when serve-review.cjs serves the page, which is what enables Submit and
  * expanding context.
  */
@@ -26,6 +30,8 @@
   const SERVER = readJSON('server-src', null);
   const WS = readJSON('ws-src', null);
   const PR = META.pr || null;
+  const OV = GUIDE.overview || null;
+  const mdHtml = (s) => MD.render(String(s || ''), {});
   const hdr = document.querySelector('header');
   const canExpand = !!(SERVER && META.headRev);
 
@@ -51,7 +57,7 @@
   const load = (k, d) => { try { return JSON.parse(store.get(k) || 'null') || d; } catch (e) { return d; } };
   let viewed = load(KEY, {});
   const saveViewed = () => store.set(KEY, JSON.stringify(viewed));
-  const state = Object.assign({ comments: [], dismissed: [], body: '', bodyAttachments: [], event: META.event || 'COMMENT', submitted: null },
+  const state = Object.assign({ comments: [], dismissed: [], body: '', bodyAttachments: [], event: META.event || 'COMMENT', submitted: null, checks: {} },
     load(KEY + ':review', {}));
   const save = () => {
     if (!store.set(KEY + ':review', JSON.stringify(state)))
@@ -328,6 +334,23 @@
   const pendingSuggestions = () => suggestions.filter((s) =>
     !state.dismissed.includes(s.sid) && !state.comments.some((c) => c.sid === s.sid));
 
+  // Feature checks: behaviour the agent thinks is worth confirming. The reviewer marks each one
+  // "looks right" or "concern"; concerns (with their notes) go into the review summary.
+  const checks = ((OV && OV.feature && OV.feature.checks) || []).map((c) => (typeof c === 'string' ? { text: c } : c))
+    .map((c) => Object.assign({}, c, { kid: c.id || 'k' + hash(c.text) }));
+  const checkOf = (c) => state.checks[c.kid] || {};
+  const concerns = () => checks.filter((c) => checkOf(c).s === 'concern');
+  const concernsMd = () => {
+    const list = concerns();
+    if (!list.length) return '';
+    return '**Feature concerns**\n\n' + list.map((c) => '- ' + c.text.replace(/\s*\n\s*/g, ' ') +
+      (checkOf(c).note && checkOf(c).note.trim() ? ': ' + checkOf(c).note.trim().replace(/\s*\n\s*/g, ' ') : '')).join('\n');
+  };
+  const fullBody = () => [state.body.trim(), concernsMd()].filter(Boolean).join('\n\n');
+  // Diagrams can sit in the overview, in a reading-guide group (shown under its header in the code step), or both.
+  const diagrams = (OV && OV.diagrams) || [];
+  const diagramsIn = (section) => diagrams.filter((d) => (d.section || (d.group ? null : 'feature')) === section);
+
   // --- render the diff ----------------------------------------------------
   let tAdd = 0, tDel = 0, idx = 0;
   sections.forEach((g, gi) => {
@@ -336,6 +359,13 @@
       mh.className = 'ghead'; mh.id = 'g' + gi;
       mh.innerHTML = '<h2><span class="gnum">' + (gi + 1) + '.</span>' + esc(g.title) +
         '<span class="gct"></span></h2>' + (g.why ? '<p class="gwhy">' + esc(g.why) + '</p>' : '');
+      diagrams.filter((d) => d.group && d.group === g.title).forEach((d) => {
+        const det = document.createElement('details');
+        det.className = 'gdiag'; det.open = true;
+        det.innerHTML = '<summary>Diagram' + (d.title ? ': ' + esc(d.title) : '') + '</summary>';
+        det.appendChild(DIAG.render(Object.assign({}, d, { title: null }), mdHtml));
+        mh.appendChild(det);
+      });
       main.appendChild(mh);
       const nh = document.createElement('div');
       nh.className = 'ghead';
@@ -464,6 +494,7 @@
       (autoOnly.length ? '<div class="row"><span>Auto-reviewed</span><b>' + plural(autoOnly.length, 'file') + ', ' +
         plural(aLines, 'line') + '</b></div>' : '') +
       '<div class="row"><span>Comments</span><b>' + nc + (ns ? ' (+' + ns + ' suggested)' : '') + '</b></div>' +
+      (checks.length ? '<div class="row"><span>Feature checks</span><b><a href="#overview">' + checksLabel() + '</a></b></div>' : '') +
       (threads.length ? '<div class="row"><span>Threads</span><b>' + threads.length + (openThreads ? ' (' + openThreads + ' unresolved)' : '') + '</b></div>' : '') +
       review +
       '<hr><div class="row"><span>Total change</span><b><span class="add">+' + tAdd +
@@ -823,6 +854,155 @@
     return wrap;
   }
 
+  // --- the overview: step 1 ------------------------------------------------
+  // The feature and the shape of the change, before any code. The agent writes the prose, checks
+  // and diagrams (GUIDE.overview); where the change lands and how file sizes moved come from git.
+  const ovv = $('overviewview');
+  const SIZES = META.sizes || null;
+  const fileLink = (name, html) => {
+    const f = byName.get(name);
+    return f ? '<a href="#f' + f.i + '">' + (html || esc(name)) + '</a>' : (html || esc(name));
+  };
+  function checksLabel() {
+    const n = checks.filter((c) => checkOf(c).s).length, k = concerns().length;
+    return n + ' / ' + checks.length + (k ? ' · ' + plural(k, 'concern') : '');
+  }
+  const areaOf = (name) => {
+    const hit = ((OV && OV.shape && OV.shape.areas) || []).find((a) => a.prefix && name.startsWith(a.prefix));
+    if (hit) return hit.label || hit.prefix;
+    const dir = name.split('/').slice(0, -1);
+    return dir.slice(0, 3).join('/') || '(root)';
+  };
+  function landsHtml() {
+    const m = new Map();
+    files.forEach((f) => {
+      const k = areaOf(f.name), a = m.get(k) || { k, add: 0, del: 0, n: 0 };
+      a.add += f.add; a.del += f.del; a.n++;
+      m.set(k, a);
+    });
+    const rows = Array.from(m.values()).sort((a, b) => b.add + b.del - (a.add + a.del));
+    const max = Math.max(1, ...rows.map((r) => r.add + r.del));
+    return '<table class="ovbars">' + rows.map((r) => '<tr><td class="ovk"><code>' + esc(r.k) + '</code></td><td class="ovn">' +
+      plural(r.n, 'file') + '</td><td class="ovbar"><span><i class="a" style="width:' + (r.add / max * 100) + '%"></i><i class="d" style="width:' +
+      (r.del / max * 100) + '%"></i></span></td><td class="ovnum"><span class="add">+' + r.add + '</span> <span class="del">-' + r.del +
+      '</span></td></tr>').join('') + '</table>';
+  }
+  // A file that crosses this many lines in the change gets a badge: a nudge, not a rule.
+  const LARGE = 400;
+  function sizesHtml() {
+    if (!SIZES) return '<p class="svnote">File sizes need a page built from git (not <code>--stdin</code>).</p>';
+    const rows = files.map((f) => ({ f, b: (SIZES[f.name] || [])[0], a: (SIZES[f.name] || [])[1] }))
+      .filter((r) => r.b != null || r.a != null);
+    if (!rows.length) return '<p class="svnote">Only binary files changed.</p>';
+    const tb = rows.reduce((s, r) => s + (r.b || 0), 0), ta = rows.reduce((s, r) => s + (r.a || 0), 0);
+    const net = (r) => (r.a || 0) - (r.b || 0);
+    rows.sort((x, y) => Math.abs(net(y)) - Math.abs(net(x)) || x.f.i - y.f.i);
+    const max = Math.max(1, ...rows.map((r) => Math.max(r.a || 0, r.b || 0)));
+    const sign = (n) => (n > 0 ? '+' : '') + n.toLocaleString();
+    const tr = (r) => '<tr><td>' + fileLink(r.f.name, '<code>' + esc(r.f.name) + '</code>') +
+      (r.f.status !== 'modified' ? ' <span class="badge">' + r.f.status + '</span>' : '') +
+      ((r.a || 0) > LARGE && (r.b || 0) <= LARGE ? ' <span class="badge stale" title="Crossed ' + LARGE + ' lines in this change">now ' +
+        r.a + ' lines</span>' : '') + '</td><td class="ovnum">' + (r.b ?? '–') + ' → ' + (r.a ?? '–') + '</td><td class="ovnum ' +
+      (net(r) > 0 ? 'add' : net(r) < 0 ? 'del' : '') + '">' + sign(net(r)) + '</td><td class="ovsize" title="Before (grey) and after (blue), to scale">' +
+      '<i class="b" style="width:' + ((r.b || 0) / max * 100) + '%"></i><i class="a" style="width:' + ((r.a || 0) / max * 100) + '%"></i></td></tr>';
+    const TOP = 12, head = '<thead><tr><th>File</th><th>Lines</th><th>Net</th><th>Size, before and after</th></tr></thead>';
+    const nNew = rows.filter((r) => r.f.status === 'added').length, nGone = rows.filter((r) => r.f.status === 'deleted').length;
+    return '<p class="ovtotal">The touched files went from <b>' + tb.toLocaleString() + '</b> to <b>' + ta.toLocaleString() + '</b> lines (' +
+      sign(ta - tb) + ')' + (nNew ? ', ' + plural(nNew, 'new file') : '') + (nGone ? ', ' + plural(nGone, 'deleted file') : '') + '.</p>' +
+      '<table class="ovsizes">' + head + '<tbody>' + rows.slice(0, TOP).map(tr).join('') + '</tbody></table>' +
+      (rows.length > TOP ? '<details class="ovmore"><summary>' + plural(rows.length - TOP, 'more file') + '</summary><table class="ovsizes"><tbody>' +
+        rows.slice(TOP).map(tr).join('') + '</tbody></table></details>' : '');
+  }
+  const STATUS_TAG = { new: 'new', changed: 'changed', removed: 'removed', same: 'unchanged' };
+  function shapeFactsHtml(sh) {
+    const objs = sh.objects || [], deps = sh.dependencies || [], deps2 = deps.map((d) => (typeof d === 'string' ? { name: d } : d));
+    let h = '';
+    if ((sh.layers || []).length) h += '<div class="ovrow"><span class="ovlbl">Layers touched</span>' + sh.layers.map((l) => '<span class="chip">' + esc(l) + '</span>').join(' ') + '</div>';
+    if (objs.length) {
+      h += '<table class="ovobjs"><thead><tr><th>Object</th><th></th><th>Responsibility</th></tr></thead><tbody>' + objs.map((o) => {
+        const s = STATUS_TAG[o.status] ? o.status : 'changed';
+        return '<tr><td>' + (o.path ? fileLink(o.path, '<code>' + esc(o.name) + '</code>') : '<code>' + esc(o.name) + '</code>') +
+          '</td><td><span class="stag ' + s + '">' + STATUS_TAG[s] + '</span></td><td class="md">' + mdHtml(o.note) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    }
+    if (deps2.length) h += '<div class="ovrow"><span class="ovlbl">New dependencies</span>' + deps2.map((d) => '<span class="chip">' + esc(d.name) +
+      '</span>' + (d.note ? ' <span class="svnote">' + esc(d.note) + '</span>' : '')).join(' ') + '</div>';
+    return h;
+  }
+  function departuresHtml(sh) {
+    const list = (sh.departures || []).map((d) => (typeof d === 'string' ? { text: d } : d));
+    if (!list.length) return '';
+    return '<div class="ovwarn"><b>Departures from the architecture</b><ul>' + list.map((d) => '<li><span class="md">' + mdHtml(d.text) + '</span>' +
+      (d.path ? ' ' + fileLink(d.path, '<code>' + esc(d.path) + (d.line ? ':' + d.line : '') + '</code>') : '') + '</li>').join('') + '</ul></div>';
+  }
+  function checksHtml() {
+    return checks.map((c) => {
+      const k = checkOf(c);
+      return '<div class="chk ' + (k.s || '') + '" data-k="' + esc(c.kid) + '"><div class="chkbtns">' +
+        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">&#10003; Looks right</button>' +
+        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">! Concern</button></div>' +
+        '<div class="chktext md">' + mdHtml(c.text) + '</div>' +
+        (c.how ? '<div class="chkhow md"><b>How to check:</b> ' + mdHtml(c.how) + '</div>' : '') +
+        (c.path ? '<div class="chkfile">' + fileLink(c.path, '<code>' + esc(c.path) + '</code>') + '</div>' : '') +
+        (k.s === 'concern' ? '<textarea class="chknote" placeholder="What is wrong? This goes into the review summary.">' + esc(k.note || '') + '</textarea>' : '') +
+        '</div>';
+    }).join('');
+  }
+  const figures = (list) => {
+    const box = document.createElement('div');
+    box.className = 'ovdiags';
+    list.forEach((d) => box.appendChild(DIAG.render(d, mdHtml)));
+    return box;
+  };
+  function renderOverview() {
+    const fe = (OV && OV.feature) || {}, sh = (OV && OV.shape) || {};
+    ovv.innerHTML =
+      '<div class="ovhead"><div><div class="ovstep">Step 1 of 3</div><h2>What this change does, and its shape</h2>' +
+      '<p class="svnote">Read this before the code: decide whether the feature is right and the change is shaped well. The code is step 2.</p></div>' +
+      '<button type="button" class="primary" data-step="code">Start the code review &rarr;</button></div>' +
+      (OV ? '' : '<div class="ovblock"><p class="svnote">No overview was written for this change, so only the computed shape is shown. ' +
+        'The agent adds one under <code>overview</code> in the reading guide.</p></div>') +
+      (OV && (fe.summary || fe.behavior || checks.length || diagramsIn('feature').length)
+        ? '<section class="ovblock" id="ov-feature"><h3>The feature</h3>' + (fe.summary ? '<div class="md">' + mdHtml(fe.summary) + '</div>' : '') +
+          (fe.behavior ? '<h4>Behaviour</h4><div class="md">' + mdHtml(fe.behavior) + '</div>' : '') + '<div data-diags="feature"></div>' +
+          (checks.length ? '<h4>Feature checks <span class="ovct" id="ovchkct"></span></h4><p class="svnote">Confirm each in the app or by reasoning; ' +
+            'a concern and its note go into the review summary.</p><div id="ovchecks">' + checksHtml() + '</div>' : '') + '</section>'
+        : '') +
+      '<section class="ovblock" id="ov-shape"><h3>The shape of the change</h3>' + (sh.summary ? '<div class="md">' + mdHtml(sh.summary) + '</div>' : '') +
+      '<div data-diags="shape"></div>' + shapeFactsHtml(sh) + departuresHtml(sh) +
+      '<h4>Where the change lands</h4>' + landsHtml() +
+      '<h4>How the codebase\'s shape moved</h4>' + (sh.codebase ? '<div class="md">' + mdHtml(sh.codebase) + '</div>' : '') + sizesHtml() +
+      '</section>' +
+      '<div class="ovfoot"><button type="button" class="primary" data-step="code">Start the code review &rarr;</button></div>';
+    ['feature', 'shape'].forEach((sec) => {
+      const slot = ovv.querySelector('[data-diags="' + sec + '"]');
+      const list = diagramsIn(sec);
+      if (slot && list.length) slot.replaceWith(figures(list));
+    });
+    const ct = $('ovchkct');
+    if (ct) ct.textContent = checksLabel();
+  }
+  ovv.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-chk]');
+    if (!b) return;
+    const kid = b.closest('.chk').dataset.k, cur = state.checks[kid] || {};
+    state.checks[kid] = cur.s === b.dataset.chk ? {} : { s: b.dataset.chk, note: cur.note || '' };
+    save();
+    $('ovchecks').innerHTML = checksHtml();
+    $('ovchkct').textContent = checksLabel();
+    render();
+    if (b.dataset.chk === 'concern' && state.checks[kid].s) {
+      const ta = ovv.querySelector('.chk[data-k="' + kid + '"] .chknote');
+      if (ta) ta.focus();
+    }
+  });
+  ovv.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('chknote')) return;
+    const kid = e.target.closest('.chk').dataset.k;
+    state.checks[kid] = Object.assign({}, state.checks[kid], { note: e.target.value });
+    save();
+  });
+
   // --- the submit view ----------------------------------------------------
   const sv = $('submitview');
   sv.innerHTML =
@@ -833,6 +1013,7 @@
         ['REQUEST_CHANGES', 'Request changes', 'Feedback that must be addressed before merging']]
         .map((o) => '<label><input type="radio" name="ev" value="' + o[0] + '"> <span><b>' + o[1] + '</b><br><small>' +
           o[2] + '</small></span></label>').join('') + '</div>' : '') + '</div>' +
+    '<div class="svblock" id="svchkblock"><h3>Feature checks</h3><div id="svchk"></div></div>' +
     '<div class="svblock"><h3 id="svcount"></h3><div id="svlist"></div></div>' +
     '<div class="svblock" id="svautoblock"><h3>Auto-reviewed files</h3><ul class="svauto" id="svauto"></ul></div>' +
     '<div class="svblock"><div class="svactions">' +
@@ -899,6 +1080,15 @@
       html += card.replace('<div class="md">', snippetHtml(c) + quote + '<div class="md">');
     });
     $('svlist').innerHTML = html || '<p class="svnote">No comments yet. Click a line number in the diff to comment on it, drag across line numbers to comment on a range, or use a file\'s Comment button.</p>';
+    $('svchkblock').classList.toggle('hidden', !checks.length);
+    if (checks.length) {
+      const open = checks.filter((c) => !checkOf(c).s).length, list = concerns();
+      $('svchk').innerHTML = '<p class="svnote" style="margin-top:0">' + checksLabel() + ' checked' +
+        (open ? ' &middot; <a href="#overview">' + plural(open, 'check') + ' still open</a>' : '') + '. ' +
+        (list.length ? 'These concerns are added to the summary when you submit:' : 'No concerns raised.') + '</p>' +
+        (list.length ? '<ul class="svauto">' + list.map((c) => '<li><span class="md">' + mdHtml(c.text) + '</span>' +
+          (checkOf(c).note ? ' <span class="svnote">' + esc(checkOf(c).note) + '</span>' : '') + '</li>').join('') + '</ul>' : '');
+    }
     const autos = files.filter((f) => f.auto);
     $('svautoblock').classList.toggle('hidden', !autos.length);
     $('svauto').innerHTML = autos.map((f) => '<li><code>' + esc(f.name) + '</code> ' + esc(f.auto.summary || '') +
@@ -914,7 +1104,7 @@
     const sub = $('svsubmit');
     if (!sub) return;
     const stale = state.comments.filter(isStale).length;
-    sub.disabled = !SERVER || !!stale || (!state.comments.length && !state.body.trim() && state.event !== 'APPROVE');
+    sub.disabled = !SERVER || !!stale || (!state.comments.length && !fullBody() && state.event !== 'APPROVE');
     if (stale) status(plural(stale, 'comment') + ' sit on files that changed since you wrote them. Check each one, then Edit and save it (or delete it) to submit.', 'err');
     else if ($('svstatus').classList.contains('err')) status('');
   }
@@ -939,7 +1129,8 @@
       };
     });
     const data = { version: 1, title: META.title, slug: META.slug, range: META.range || null, pr: PR, commit_id: META.commitId || null,
-      event: PR ? state.event : null, body: state.body, attachments: (state.bodyAttachments || []).map(strip), comments,
+      event: PR ? state.event : null, body: fullBody(), attachments: (state.bodyAttachments || []).map(strip), comments,
+      feature_checks: checks.map((c) => ({ text: c.text, status: checkOf(c).s || 'open', note: checkOf(c).note || undefined })),
       auto_reviewed: files.filter((f) => f.auto).map((f) => ({ path: f.name, summary: f.auto.summary || '' })) };
     data.markdown = toMarkdown(data);
     return data;
@@ -1015,7 +1206,7 @@
       const r = await post('/api/submit', data);
       const nr = data.comments.filter((c) => c.subject === 'reply').length;
       state.submitted = { url: r.url, at: Date.now(), event: data.event, comments: data.comments.length - nr, replies: nr, notes: r.notes || [] };
-      state.comments = []; state.body = ''; state.bodyAttachments = [];
+      state.comments = []; state.body = ''; state.bodyAttachments = []; state.checks = {};
       save();
       mountBody();
       files.forEach(renderFile);
@@ -1047,22 +1238,44 @@
       '<div class="svactions">' + (s.url ? '<a class="btn primary" href="' + esc(s.url) + '" target="_blank" rel="noopener">Open the review on GitHub</a>' : '') +
       '<button type="button" id="doneback">Back to the diff</button></div>' +
       '<p class="svnote">You can close this tab.</p></div>';
-    $('doneback').onclick = () => { history.pushState(null, '', location.pathname + location.search); setView(); };
+    $('doneback').onclick = () => { history.pushState(null, '', '#code'); setView(); };
     return true;
   }
 
   // --- views, toolbar -----------------------------------------------------
+  // With no hash, the page reopens on the step you were last on: the overview first when there is one.
+  const STEP_KEY = KEY + ':step';
+  const ANCHOR = /^#[fg]\d+$/;
+  let codeY = 0;
   function setView() {
-    const done = location.hash === '#done' && renderDone();
-    const sub = !done && location.hash === '#submit';
-    document.body.classList.toggle('submitting', sub);
-    document.body.classList.toggle('done', !!done);
-    if (sub) { renderSubmit(); precheck(); }
-    if (sub || done) window.scrollTo(0, 0);
+    const h = location.hash, was = document.body.dataset.view;
+    const done = h === '#done' && renderDone();
+    let step = done ? 'done' : h === '#submit' ? 'submit' : h === '#overview' ? 'overview' : h === '#code' || ANCHOR.test(h) ? 'code' : null;
+    if (!step) step = (() => { try { return localStorage.getItem(STEP_KEY); } catch (e) { return null; } })() || (OV ? 'overview' : 'code');
+    if (was === 'code' && step !== 'code') codeY = window.scrollY;
+    document.body.dataset.view = step;
+    document.body.classList.toggle('overviewing', step === 'overview');
+    document.body.classList.toggle('submitting', step === 'submit');
+    document.body.classList.toggle('done', step === 'done');
+    document.querySelectorAll('#steps [data-step]').forEach((b) => b.classList.toggle('on', b.dataset.step === step));
+    if (step !== 'done') try { localStorage.setItem(STEP_KEY, step); } catch (e) { /* storage unavailable */ }
+    if (step === 'submit') { renderSubmit(); precheck(); }
+    if (step === 'overview') renderOverview();
+    if (step !== 'code') window.scrollTo(0, 0);
+    else if (was && was !== 'code') {
+      // The diff was hidden when the browser tried to follow the anchor, so follow it now.
+      const el = ANCHOR.test(h) && $(h.slice(1));
+      if (el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight);
+      else window.scrollTo(0, codeY);
+    }
   }
   addEventListener('hashchange', setView);
-  $('gosubmit').onclick = () => { location.hash = 'submit'; };
-  $('goback').onclick = () => { history.pushState(null, '', location.pathname + location.search); setView(); };
+  const goStep = (step) => { if (location.hash === '#' + step) setView(); else location.hash = step; };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-step]');
+    if (b) { e.preventDefault(); goStep(b.dataset.step); }
+  });
+  $('gosubmit').onclick = () => goStep('submit');
 
   files.forEach(renderFile);
   render();
@@ -1126,7 +1339,7 @@
   // --- keyboard -------------------------------------------------------------
   const KEYS = [['j / k', 'Next / previous file'], ['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
-    ['w', 'Show or hide whitespace changes'], ['?', 'This help'], ['Esc', 'Close this help']];
+    ['w', 'Show or hide whitespace changes'], ['1 / 2 / 3', 'Overview, code, submit'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');
   help.id = 'keyhelp'; help.className = 'hidden';
   help.innerHTML = '<div class="kbox"><h3>Keyboard shortcuts</h3><table>' +
@@ -1169,7 +1382,9 @@
     }
     if (e.key === '?') { toggleKeys(); e.preventDefault(); return; }
     if (e.key === 'Escape') { toggleKeys(false); return; }
-    if (document.body.classList.contains('submitting') || document.body.classList.contains('done')) return;
+    const STEPS = { 1: 'overview', 2: 'code', 3: 'submit' };
+    if (STEPS[e.key]) { goStep(STEPS[e.key]); e.preventDefault(); return; }
+    if (document.body.dataset.view !== 'code') return;
     const k = e.key;
     if (k === 'j') stepFile(1);
     else if (k === 'k') stepFile(-1);
@@ -1190,5 +1405,6 @@
   });
 
   const setHH = () => document.documentElement.style.setProperty('--hh', hdr.offsetHeight + 'px');
-  setHH(); addEventListener('resize', setHH);
+  // The header changes height when step switches show or hide the diff-only buttons, not just on window resize.
+  setHH(); new ResizeObserver(setHH).observe(hdr);
 })();
