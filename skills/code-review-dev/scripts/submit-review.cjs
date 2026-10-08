@@ -142,7 +142,7 @@ function submitReview(review, opts = {}) {
   let body = unattach(review.body, review.attachments).trim() + foldSection(folded);
   body = body.trim();
   if (folded.length) notes.push(`${folded.length} comment(s) will be added to the review summary because GitHub cannot anchor them inline.`);
-  if (!body && !inline.length && !files.length && !replies.length && event !== 'APPROVE') throw new Error('Nothing to submit: add a summary or at least one comment.');
+  if (!body && !inline.length && !files.length && !replies.length && event !== 'APPROVE') throw new Error('Nothing to submit: add a summary or at least one comment, or approve.');
 
   const payload = { commit_id: commitId, event, body, comments: inline };
   const result = { dryRun, url: null, inline: inline.length, fileComments: files.length, replies: replies.length, folded: folded.length, notes,

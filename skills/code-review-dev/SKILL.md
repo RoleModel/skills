@@ -318,6 +318,8 @@ copied JSON: `pbpaste | node $S/submit-review.cjs - [--dry-run]`. It:
   over GraphQL (`addPullRequestReviewThread`, `addPullRequestReviewThreadReply`)
   onto the same pending review, then submits it. A reply GitHub rejects is moved
   into the summary like any other;
+- posts an Approve with no summary or comments as a plain approval; Comment
+  and Request changes need one or the other, since GitHub requires a body;
 - refuses Approve or Request changes on the user's own PR (GitHub doesn't
   allow it) with a clear message;
 - **cannot upload attachments**: GitHub has no API for that. It saves them to

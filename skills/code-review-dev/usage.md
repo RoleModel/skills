@@ -176,6 +176,9 @@ remembers your choice.
 comment and reply with its code, any suggestions you haven't decided on, and
 the auto-reviewed files. Write a summary, pick Comment, Approve, or Request
 changes, and click **Submit review** to post it all to the PR as one review.
+When everything looks fine, pick Approve and submit with nothing written: that
+posts a plain approval. Comment and Request changes need a summary or at least
+one comment.
 
 ![Submit page with a summary, the verdict, one comment, one reply, a pending suggestion, and the auto-reviewed files](assets/screenshots/submit-page.png)
 

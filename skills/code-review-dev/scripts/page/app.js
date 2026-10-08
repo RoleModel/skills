@@ -1021,7 +1021,7 @@
     '<button type="button" id="svdl">Download JSON</button>' +
     (SERVER ? '<button type="button" id="svsave">Save for agent</button>' : '') + '<span class="sp"></span>' +
     (PR ? '<button type="button" class="primary" id="svsubmit">Submit review</button>' : '') +
-    '</div><div class="svnote" id="svhelp"></div><div class="svstatus" id="svstatus"></div></div>';
+    '</div><div class="svnote" id="svhelp"></div><div class="svnote" id="svempty"></div><div class="svstatus" id="svstatus"></div></div>';
 
   let bodyDraft;
   const mountBody = () => {
@@ -1104,7 +1104,13 @@
     const sub = $('svsubmit');
     if (!sub) return;
     const stale = state.comments.filter(isStale).length;
-    sub.disabled = !SERVER || !!stale || (!state.comments.length && !fullBody() && state.event !== 'APPROVE');
+    // GitHub takes an Approve with nothing else, but a Comment or Request changes needs a summary or a comment.
+    const empty = !state.comments.length && !fullBody();
+    sub.disabled = !SERVER || !!stale || (empty && state.event !== 'APPROVE');
+    $('svempty').textContent = !empty ? '' : state.event === 'APPROVE'
+      ? 'Nothing written, so this posts a plain approval.'
+      : 'Nothing written yet. Pick Approve to approve with no comments, or add a summary or a comment to ' +
+        (state.event === 'COMMENT' ? 'comment.' : 'request changes.');
     if (stale) status(plural(stale, 'comment') + ' sit on files that changed since you wrote them. Check each one, then Edit and save it (or delete it) to submit.', 'err');
     else if ($('svstatus').classList.contains('err')) status('');
   }
