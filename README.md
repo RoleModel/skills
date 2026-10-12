@@ -41,6 +41,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[polymorphic-parent-resources](skills/polymorphic-parent-resources)** | Serve a child resource that hangs off many different parents (comments, reports, duplications, attachments) from a single controller, using a route concern plus `resource_for` from `rolemodel_rails`. Includes a retrofit guide for consolidating existing per-parent controllers. |
 | **[rake-tasks](skills/rake-tasks)** | Rake tasks with `Rolemodel::Utility::TaskTools` from `rolemodel_rails`: `say_with_time` output, `indicate_progress`, `DRY_RUN` previews, and `sanitize_arguments` for optional positional arguments. |
 | **[tdd](skills/tdd)** | Test-driven development for Rails — outside-in with RSpec, Capybara, and FactoryBot. Covers the red-green loop, spec plans, and the Prove-It pattern for bugs. |
+| **[capybara-playwright-migration](skills/capybara-playwright-migration)** | Migrate Selenium-based Capybara system tests to `capybara-playwright-driver`, or look up the fix for a single failing Playwright spec. Full mode applies the gem and driver setup, then runs a rolling pool of sub-agents (one spec file each) tracked in `tmp/playwright_migration_tracker.md`. |
 
 ### Developer Workflow
 

@@ -38,6 +38,10 @@ Replace Selenium driver config with:
 ```ruby
 BROWSER_WINDOW_SIZE = [1400, 1400].freeze
 
+# Per-process so parallel runs don't collide. If the app already defines a download
+# path (e.g. DownloadHelper::DOWNLOAD_PATH), point this at it instead.
+DOWNLOAD_PATH = Rails.root.join("tmp/downloads/test#{ENV.fetch('TEST_ENV_NUMBER', '')}").to_s
+
 BROWSER_OPTIONS = [
   '--disable-backgrounding-occluded-windows',
   '--disable-background-timer-throttling',
@@ -54,7 +58,7 @@ def create_driver(app, options = {})
     args: BROWSER_OPTIONS,
     browser_type: :chromium,
     viewport: { width: BROWSER_WINDOW_SIZE[0], height: BROWSER_WINDOW_SIZE[1] },
-    downloadsPath: DownloadHelper::DOWNLOAD_PATH,
+    downloadsPath: DOWNLOAD_PATH,
     headless: true,
     reducedMotion: 'reduce',
     timeout: ENV.fetch('CAPYBARA_TIMEOUT', 20).to_i,
@@ -123,7 +127,7 @@ env:
 
 - name: Run shared flow
   uses: RoleModel/actions/system-tests@v3
-  input:
+  with:
     web-driver: playwright
 ```
 
@@ -135,17 +139,19 @@ Remove:
 
 ## Step 6: Create PlaywrightHelper (`spec/support/playwright_helper.rb`)
 
-Create a helper module for Playwright-specific utilities that don't fit in Capybara's API. Include it in RSpec configuration for system tests.
+Start with the base helpers below. It is self-contained — it does not depend on any app-specific helper. Fix-specific helpers (`accept_turbo_confirm`, `pw_drag_element`, `expect_download`, …) are defined in `fixing-tests.md` and get appended to this module only when a test needs them, so don't add them up front.
 
 ```ruby
 # frozen_string_literal: true
 
 module PlaywrightHelper
-  include CapybaraHelper
+  def supports_javascript?
+    page.driver.is_a?(Capybara::Playwright::Driver)
+  end
 
   def pw_page
-    page.driver.with_playwright_page do |page|
-      return page
+    page.driver.with_playwright_page do |playwright_page|
+      return playwright_page
     end
   end
 
@@ -156,10 +162,7 @@ module PlaywrightHelper
 
     FileUtils.mkdir_p(directory)
 
-    if options[:fullPage] && pw_page.locator('body').present?
-      pw_page.locator('body').evaluate("element => element.style.overflow = 'visible'")
-    end
-
+    pw_page.locator('body').evaluate("element => element.style.overflow = 'visible'") if options[:fullPage]
     pw_page.screenshot(path: "#{directory}/#{filename}.png", animations: 'disabled', **options)
 
     puts "Screenshot saved to \e[4;96m#{directory}/#{filename}.png\e[0m" if print_message # rubocop:disable RSpec/Output
@@ -171,4 +174,20 @@ module PlaywrightHelper
     pw_page.get_by_text(text).click
   end
 end
+
+RSpec.configure do |config|
+  config.include PlaywrightHelper, type: :system
+end
 ```
+
+## Step 7: Check Database Isolation (`config/database.yml`)
+
+The parallel migration gives each sub-agent its own database through `TEST_ENV_NUMBER`. That only works if the test database name interpolates it:
+
+```yaml
+test:
+  <<: *default
+  database: myapp_test<%= ENV['TEST_ENV_NUMBER'] %>
+```
+
+If the `test:` entry has a fixed name, add the interpolation. With `TEST_ENV_NUMBER` unset the name is unchanged, so single-process runs and CI are unaffected.

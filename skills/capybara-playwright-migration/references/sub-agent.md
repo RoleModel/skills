@@ -1,112 +1,64 @@
 # Playwright Migration Sub-Agent
 
-You are a sub-agent responsible for migrating a single system test file from Selenium to Playwright. Follow the steps below in order.
+You migrate a single system test file from Selenium to Playwright, then report back. The orchestrator records your result — you never touch the tracker.
 
 ## Inputs
 
-You will receive these values from the parent orchestrator:
+- **TEST_FILE** — the system test file you own (e.g. `spec/system/users_spec.rb`)
+- **AGENT_NUMBER** — your slot number. It selects your isolated test database via `TEST_ENV_NUMBER`. The orchestrator has already prepared it.
+- **SKILL_DIR** — absolute path to the skill. Fixes come only from `SKILL_DIR/references/fixing-tests.md`.
 
-- **TEST_FILE** — path to the system test file you are responsible for (e.g., `spec/system/users_spec.rb`)
-- **TRACKER_PATH** — path to the tracking document (e.g., `tmp/playwright_migration_tracker.md`)
-- **AGENT_NUMBER** — your slot number (1 to the pool size the user chose), assigned by the orchestrator. Each slot has its own isolated test database. Slots are reused across files — your database may contain state from a previous agent's run, but `db:test:prepare` handles this.
+## The Test Command
 
-## Step 0 — Prepare Your Test Environment
-
-Each sub-agent runs against its own test database to avoid collisions with other parallel agents. Your `AGENT_NUMBER` determines which database you use via the `TEST_ENV_NUMBER` environment variable.
-
-Before running any tests, prepare your isolated database:
+Every run uses exactly this command, through the Bash tool with `timeout: 600000` (the maximum):
 
 ```bash
-TEST_ENV_NUMBER=<AGENT_NUMBER> bin/rails db:test:prepare 2>&1
+TEST_ENV_NUMBER=<AGENT_NUMBER> CAPYBARA_DRIVER=js bundle exec rspec <TEST_FILE> --format documentation 2>&1
 ```
 
-This creates (or reuses) a database named `<app>_test_<AGENT_NUMBER>` with the current schema.
+- `TEST_ENV_NUMBER` connects to your slot's database, not another agent's.
+- `CAPYBARA_DRIVER=js` forces every example through Playwright. Without it, untagged examples run on `rack_test` and never exercise the new driver.
 
-You **must** prefix every `bundle exec rspec` command in this migration with both:
-
-- `TEST_ENV_NUMBER=<AGENT_NUMBER>` — so Rails and ActiveRecord connect to your isolated database
-- `CAPYBARA_DRIVER=js` — so all system tests run through the Playwright driver with JavaScript enabled, not just those tagged `:js`
-
-Without `CAPYBARA_DRIVER=js`, untagged system tests fall back to `rack_test`, which cannot execute JavaScript and won't exercise the Playwright driver at all.
-
-If `db:test:prepare` fails (e.g., pending migrations), run:
+**If the run times out**, a test hung. Kill it and stop — report `STATUS: Failed (hung)`:
 
 ```bash
-TEST_ENV_NUMBER=<AGENT_NUMBER> bin/rails db:drop db:create db:schema:load RAILS_ENV=test 2>&1
+pkill -f "rspec <TEST_FILE>" || true
 ```
+
+**If the first run fails with a database error** (missing database, pending migrations, schema mismatch), run `TEST_ENV_NUMBER=<AGENT_NUMBER> bin/rails db:test:prepare 2>&1` once and retry. This does not count as an attempt.
 
 ## Step 1 — Read the Test File
 
-Read your assigned `TEST_FILE` to understand what the tests do. Note:
+Note which examples are tagged `:js` or `:chrome`, what they interact with (forms, drag-and-drop, downloads, confirms, new windows), and any Selenium-only code (`execute_cdp`, `rack_mock_session`, lockstep calls).
 
-- Whether tests are tagged with `:js` or `:chrome`
-- What interactions they perform (form fills, clicks, drag-and-drop, downloads, confirmations)
-- Any Selenium-specific patterns (CDP calls, `rack_mock_session`, `capybara-lockstep` references)
+## Step 2 — Run, Fix, Re-run (Up to 3 Runs)
 
-## What Counts as a Simple Fix
+1. Run the file.
+2. **All pass** → report `Passed`.
+3. **Failures** → for each failing example, find its symptom in the index at the top of `fixing-tests.md` and apply that **one** documented fix — a few lines at most. Then run again.
+4. Stop and report `Failed` when either:
+   - three runs have happened, or
+   - no documented fix matches any remaining failure (never re-run without a change).
 
-`references/fixing-tests.md` is the **only** source of fixes you may apply. Every fix must be a documented solution from that file, and must be **small and targeted** — a few lines of change at most. You may:
+A failure that matches no documented fix is reported, not fixed. Do not improvise, investigate across files, or try a second strategy for the same failure.
 
-- Apply a known pattern from `references/fixing-tests.md` — read it and match the failure symptom to the appropriate pattern
-- Make minor application code tweaks that a documented pattern calls for (e.g., changing `keyup` to `input` in a Stimulus controller)
+## Scope Rules
 
-You must **never**:
+- **Edit only `TEST_FILE`, the application code it exercises, and — for documented helpers only — `spec/support/playwright_helper.rb` or `spec/support/capybara_drivers.rb`.** Never edit other specs, and never make any other change to those support files.
+- **Adding a documented helper.** If a fix uses a helper from a **Helper** block in `fixing-tests.md`, re-read the file that block names immediately before editing (another agent may have just added it). If the method is already defined, use it as is. Otherwise add the documented definition verbatim — inside the module for `playwright_helper.rb`, at the top level alongside `create_driver` for `capybara_drivers.rb`. Never change, reorder, or remove existing methods, and never add an undocumented one.
+- **App code and the support files are shared with other running agents.** Read the file immediately before editing it, since another agent may have changed it. Keep edits minimal, and list every file you changed outside `TEST_FILE` in `APP_CODE_CHANGED`.
+- **Don't raise timeouts** except for genuinely slow operations (downloads, new windows) as `fixing-tests.md` describes.
 
-- Apply a fix that is not documented in `references/fixing-tests.md`, however small or obvious it seems
-- Investigate root causes across multiple files
-- Try multiple different fix strategies for the same failure
-- Spend more than a few lines of change per failing test
+## Step 3 — Report
 
-If a failure doesn't match a documented pattern, that test is **unresolvable** — do not improvise a fix or spend time investigating. Record it as failing and move on.
+End your final message with this block, exactly, and nothing after it:
 
-## Step 2 — Run, Fix, Re-run (3 Attempts)
-
-You get **3 attempts** to get the test file passing. Each attempt is one full run of the file followed by fixes (if needed). The loop:
-
-1. Run the entire test file:
-
-   ```bash
-   TEST_ENV_NUMBER=<AGENT_NUMBER> CAPYBARA_DRIVER=js bundle exec rspec <TEST_FILE> --format documentation 2>&1
-   ```
-
-2. If **all tests pass**: proceed to Step 3 with status `Success`.
-3. If **any tests fail** and you have attempts remaining: apply **one documented fix** per failing test from `references/fixing-tests.md`; skip any failure that matches no documented pattern. Each fix must be small and targeted — a few lines at most. Then return to (1).
-4. If **this was attempt 3**: proceed to Step 3 with status `Failed`.
-5. If **no documented fix applies** to any remaining failure: proceed to Step 3 with status `Failed`. Do not re-run with no changes.
-
-## Step 3 — Write Results to Tracker
-
-Read the full contents of `TRACKER_PATH`. Find the section for your `TEST_FILE` and update the Status and Results fields. Write the full file back.
-
-### On Success
-
-```markdown
-### <TEST_FILE>
-**Status:** Success
-**Results:** All tests passing. <N> tests, 0 failures.
+```
+STATUS: Passed | Failed | Failed (hung)
+TESTS: <passing>/<total>
+APP_CODE_CHANGED: <comma-separated paths, or none>
+FAILURES:
+- <example description>: <one line — what fails and why no documented fix applied>
 ```
 
-### On Failure (after 3 attempts)
-
-```markdown
-### <TEST_FILE>
-**Status:** Failed
-**Results:** <N> of <M> tests still failing after 3 attempts.
-
-Remaining failures:
-- `test name or description`: <one-line explanation of what fails and why>
-- `test name or description`: <one-line explanation of what fails and why>
-```
-
-Include only the tests that are still failing — do not list passing tests.
-
-## Rules
-
-1. **Only modify your assigned TEST_FILE and the application code it exercises.** Do not modify other test files or shared support files.
-2. **Do not modify `spec/support/capybara_drivers.rb` or `spec/support/playwright_helper.rb`** — those were set up in Step 1 of the parent migration and are shared across all tests.
-3. **Limit application code changes to what is necessary** for the test to pass under Playwright (e.g., changing `keyup` to `input` in a Stimulus controller). Document any application code changes in the Results section.
-4. **Do not increase timeouts as a fix** unless the test involves genuinely slow operations (file downloads, new window/tab). Prefer proper wait assertions.
-5. **Write to the tracker atomically** — read the full file, update your section, write the full file back.
-6. **Fail fast** — if no documented fix applies for the remaining failures, proceed immediately to Step 3 rather than re-running with no changes.
-7. **Don't build your own timeout/watchdog around test runs.** A timeout built from your own tool calls can't reliably survive between separate tool-call steps, so it won't protect you — just run tests plainly.
-8. **Only documented fixes.** Never apply a fix that is not in `references/fixing-tests.md`. An undocumented failure is reported, not fixed.
+List only still-failing examples under `FAILURES` (write `- none` when passing).
