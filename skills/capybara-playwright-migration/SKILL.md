@@ -37,7 +37,17 @@ Read `references/initial-migration-steps.md` and apply every change it describes
 
 Run `bundle install` and confirm the app boots. Do not proceed until this step is clean.
 
-## Step 2 — Build Test Inventory
+## Step 2 — Checkpoint: Confirm and Size the Pool
+
+Stop here and get two answers from the user before touching any tests. Ask them one at a time, using AskUserQuestion when it is available.
+
+1. **Continue?** Summarize what Step 1 changed, then ask whether to begin migrating/fixing the system tests now.
+   - If the user says no, stop. Tell them the initial migration is in place and that they can resume later by asking to continue the Playwright migration from Step 3.
+2. **How many sub-agents?** Count the system test files (`find spec/system -name "*_spec.rb" -type f | wc -l`) and ask how many sub-agents to run in parallel. Include the file count in the question and offer 5 as the recommended default.
+   - Call the answer `POOL_SIZE`. It must be a whole number of at least 1; if it exceeds the file count, use the file count.
+   - Each slot gets its own test database, so a larger pool means more databases and more load on the machine.
+
+## Step 3 — Build Test Inventory
 
 Create a tracking document at `tmp/playwright_migration_tracker.md`.
 
@@ -66,33 +76,39 @@ Create a tracking document at `tmp/playwright_migration_tracker.md`.
 
 Every file starts with `Status: Pending` and an empty `Results:` field.
 
-## Step 3 — Migrate Tests (Rolling Pool of 5)
+## Step 4 — Migrate Tests (Rolling Pool of `POOL_SIZE`)
 
-You maintain 5 agent **slots** numbered 1–5. Each slot maps to an isolated test database. Keep all 5 slots active at all times — as soon as one agent finishes, immediately fill its slot with the next pending file. Do **not** wait for all 5 to finish before spawning more.
+You maintain `POOL_SIZE` agent **slots** numbered 1–`POOL_SIZE`. Each slot maps to an isolated test database. Keep every slot active at all times — as soon as one agent finishes, immediately fill its slot with the next pending file. Do **not** wait for the whole pool to finish before spawning more.
 
-### 3a — Start the pool
+### 4a — Spawning a sub-agent
 
-Take the first 5 pending files from the tracker. Spawn 5 sub-agents **in parallel** using the Agent tool — one per slot. Each sub-agent receives this prompt:
+Every sub-agent, whether it starts the pool or refills a slot, is spawned with the Agent tool and receives this prompt:
 
-> You are a sub-agent responsible for migrating a single system test file from Selenium to Playwright. Read `references/sub-agent.md` from the capybara-playwright-migration skill for your full instructions. Also read `references/fixing-tests.md` from the same skill for fix patterns. Your assigned test file is: `<path>`. The tracking document is at: `tmp/playwright_migration_tracker.md`. Your agent number is: `<N>` (use this as your AGENT_NUMBER for test environment isolation).
+> You are a sub-agent responsible for migrating a single system test file from Selenium to Playwright. Read `references/sub-agent.md` from the capybara-playwright-migration skill for your full instructions, and `references/fixing-tests.md` from the same skill — it is the **only** source of fixes you may apply. Your assigned test file is: `<path>`. The tracking document is at: `tmp/playwright_migration_tracker.md`. Your agent number is: `<N>` (use this as your AGENT_NUMBER for test environment isolation).
 
-### 3b — On each agent completion
+Keep a note of which file each slot is working on.
+
+### 4b — Start the pool
+
+Take the first `POOL_SIZE` pending files from the tracker and spawn one sub-agent per slot, all in the same message so they run in parallel (4a).
+
+### 4c — On each agent completion
 
 When any sub-agent completes:
 
-1. **Hung agent check** — if the agent returned empty or no output, it likely hung on a stuck test. Spawn a recovery sub-agent for that file (this does **not** consume a slot):
+1. **Hung agent check** — if the agent returned empty or no output, it likely hung on a stuck test. Spawn a recovery sub-agent for that file.
+2. **Refill the slot** — read the tracker for the next file with `Status: Pending`. If one exists, immediately spawn a new sub-agent for it in the slot that just freed up (4a).
+3. **Drain** — if no pending files remain, do not spawn. Wait for the remaining active agents and recovery agents to finish.
 
-   > You are a recovery sub-agent. A previous agent for `<path>` returned no output, likely due to a hung test. Skip directly to Step 3 of `references/sub-agent.md` and record this file as Failed in the tracker at `tmp/playwright_migration_tracker.md` with the result: "Sub-agent returned no output — test likely hung or timed out."
+Recovery sub-agents do **not** consume a slot. Spawn each one with this prompt:
 
-2. **Refill the slot** — read the tracker for the next file with `Status: Pending`. If one exists, immediately spawn a new sub-agent for it using the same slot number that just freed up.
+> You are a recovery sub-agent. Read `references/recovery-agent.md` from the capybara-playwright-migration skill and follow it exactly. TEST_FILE: `<path>`. TRACKER_PATH: `tmp/playwright_migration_tracker.md`.
 
-3. **Drain** — if no pending files remain, do not spawn. Wait for the remaining active agents to finish.
+### 4d — Pool complete
 
-### 3c — Pool complete
+Once all agents (including recovery agents) have completed and no pending files remain, proceed to Step 5.
 
-Once all agents have completed and no pending files remain, proceed to Step 4.
-
-## Step 4 — Display Results
+## Step 5 — Display Results
 
 Read the final `tmp/playwright_migration_tracker.md` and present a summary to the user:
 

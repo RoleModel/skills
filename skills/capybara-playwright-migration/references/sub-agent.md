@@ -8,7 +8,7 @@ You will receive these values from the parent orchestrator:
 
 - **TEST_FILE** — path to the system test file you are responsible for (e.g., `spec/system/users_spec.rb`)
 - **TRACKER_PATH** — path to the tracking document (e.g., `tmp/playwright_migration_tracker.md`)
-- **AGENT_NUMBER** — your slot number (1–5), assigned by the orchestrator. Each slot has its own isolated test database. Slots are reused across files — your database may contain state from a previous agent's run, but `db:test:prepare` handles this.
+- **AGENT_NUMBER** — your slot number (1 to the pool size the user chose), assigned by the orchestrator. Each slot has its own isolated test database. Slots are reused across files — your database may contain state from a previous agent's run, but `db:test:prepare` handles this.
 
 ## Step 0 — Prepare Your Test Environment
 
@@ -45,19 +45,19 @@ Read your assigned `TEST_FILE` to understand what the tests do. Note:
 
 ## What Counts as a Simple Fix
 
-Every fix you apply must be **small and targeted** — a few lines of change at most. You may:
+`references/fixing-tests.md` is the **only** source of fixes you may apply. Every fix must be a documented solution from that file, and must be **small and targeted** — a few lines of change at most. You may:
 
 - Apply a known pattern from `references/fixing-tests.md` — read it and match the failure symptom to the appropriate pattern
-- Make minor application code tweaks required by those patterns (e.g., changing `keyup` to `input` in a Stimulus controller)
-- If a failure doesn't match any known pattern, make one small obvious adjustment (add a wait, scope a selector, add `let!`)
+- Make minor application code tweaks that a documented pattern calls for (e.g., changing `keyup` to `input` in a Stimulus controller)
 
 You must **never**:
 
+- Apply a fix that is not documented in `references/fixing-tests.md`, however small or obvious it seems
 - Investigate root causes across multiple files
 - Try multiple different fix strategies for the same failure
 - Spend more than a few lines of change per failing test
 
-If a failure doesn't match a known pattern and no small obvious fix presents itself, that test is **unresolvable** — do not spend time investigating. Move on.
+If a failure doesn't match a documented pattern, that test is **unresolvable** — do not improvise a fix or spend time investigating. Record it as failing and move on.
 
 ## Step 2 — Run, Fix, Re-run (3 Attempts)
 
@@ -69,12 +69,10 @@ You get **3 attempts** to get the test file passing. Each attempt is one full ru
    TEST_ENV_NUMBER=<AGENT_NUMBER> CAPYBARA_DRIVER=js bundle exec rspec <TEST_FILE> --format documentation 2>&1
    ```
 
-   Note: the orchestrator running you enforces an overall time budget for this file from the outside and will kill and fail you if you run long — you do not need to (and should not try to) implement your own timeout around this command. Just run it plainly and wait for it to finish.
-
 2. If **all tests pass**: proceed to Step 3 with status `Success`.
-3. If **any tests fail** and you have attempts remaining: apply **one simple fix** per failing test using the patterns in `references/fixing-tests.md`. Each fix must be small and targeted — a few lines at most. Then return to (1).
+3. If **any tests fail** and you have attempts remaining: apply **one documented fix** per failing test from `references/fixing-tests.md`; skip any failure that matches no documented pattern. Each fix must be small and targeted — a few lines at most. Then return to (1).
 4. If **this was attempt 3**: proceed to Step 3 with status `Failed`.
-5. If **no new fix can be identified** for any remaining failure: proceed to Step 3 with status `Failed`. Do not re-run with no changes.
+5. If **no documented fix applies** to any remaining failure: proceed to Step 3 with status `Failed`. Do not re-run with no changes.
 
 ## Step 3 — Write Results to Tracker
 
@@ -109,5 +107,6 @@ Include only the tests that are still failing — do not list passing tests.
 3. **Limit application code changes to what is necessary** for the test to pass under Playwright (e.g., changing `keyup` to `input` in a Stimulus controller). Document any application code changes in the Results section.
 4. **Do not increase timeouts as a fix** unless the test involves genuinely slow operations (file downloads, new window/tab). Prefer proper wait assertions.
 5. **Write to the tracker atomically** — read the full file, update your section, write the full file back.
-6. **Fail fast** — if you cannot identify any new fix to apply for the remaining failures, proceed immediately to Step 3 rather than re-running with no changes.
-7. **Don't build your own timeout/watchdog around test runs.** The orchestrator enforces an overall time budget for you from outside and will kill and fail you if you run long. A timeout built from your own tool calls can't reliably survive between separate tool-call steps, so it won't protect you — just run tests plainly.
+6. **Fail fast** — if no documented fix applies for the remaining failures, proceed immediately to Step 3 rather than re-running with no changes.
+7. **Don't build your own timeout/watchdog around test runs.** A timeout built from your own tool calls can't reliably survive between separate tool-call steps, so it won't protect you — just run tests plainly.
+8. **Only documented fixes.** Never apply a fix that is not in `references/fixing-tests.md`. An undocumented failure is reported, not fixed.
