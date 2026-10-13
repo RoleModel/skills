@@ -1,6 +1,6 @@
 # RoleModel Rails standards
 
-Defaults the standards lens applies when the project's docs and the matching
+Defaults the conventions and data-patterns principles apply when the project's docs and the matching
 skills say nothing. Cite a finding as `rails-standards: <heading>`.
 
 ## Partials declare their locals

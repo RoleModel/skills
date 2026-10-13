@@ -1,7 +1,7 @@
-# Tests lens
+# Coverage
 
-Tests are what let a human trust this change without reading every line, so
-this lens carries the most weight. Find the behavior no spec would catch
+Specs are what let a human trust this change without reading every line, so
+this principle carries the most weight. Find the behavior no spec would catch
 breaking, the specs written at the wrong level, and the specs that only test
 Rails or a gem.
 
@@ -15,26 +15,25 @@ and Capybara conventions. The levels below take precedence over it.
 
 | Level | How many | What belongs there |
 |---|---|---|
-| **System** | One happy path per user-facing flow | The user does the main job start to finish, in the browser, and sees it worked. Not every branch. The UX lens walks the branches. |
+| **System** | One happy path per user-facing flow | The user does the main job start to finish, in the browser, and sees it worked. Not every branch. The UI/UX principle walks the branches. |
 | **Request** | Very few | Only what neither a system spec nor a model spec can reach: JSON and API responses, webhooks, status codes and redirects with no UI, an authorization denial that has no screen. |
 | **Model** | Most of the suite | Every rule the change adds to a model or PORO: each branch of each method, custom validations, scopes with logic, callbacks with effects, calculations, state transitions, and their edges (nil, empty, zero, boundaries, duplicates). |
 
 Push behavior down. A branch tested in a system or request spec that a model
 spec could cover should move to a model spec. If the logic can't be reached
-from a model spec because it lives in a controller or view, that's a design
-finding too: hand it to the design lens.
+from a model spec because it lives in a controller or view, report that for
+the maintainable principle too.
 
 ## Not framework or library tests
 
-Report specs that test Rails or a gem instead of this app's code as
-`delete:`, and delete them:
+Report specs that test Rails or a gem instead of this app's code as `delete:`:
 
 - Declared associations (`it { is_expected.to belong_to(:account) }`) and
   plain `presence` / `uniqueness` / `length` validations with no condition.
 - That `has_secure_password`, Devise, Pundit's DSL, `enum`, or `normalizes`
   does what its documentation says.
-- That a route exists, a controller renders a template, or a factory is
-  valid, when nothing else would break if it stopped.
+- That a route exists, a controller renders a template, or a factory is valid,
+  when nothing else would break if it stopped.
 - Stubbing a method and then asserting the stub was called.
 
 Test the app's **use** of those tools: a conditional validation, a policy's
@@ -50,18 +49,12 @@ actual rules, a scope's filter, and the job the app gives the gem.
 - **Request-spec creep**: a request spec that repeats what a system or model
   spec already shows.
 - **Weak assertions**: asserting a method was called instead of what happened,
-  `have_content` on text that appears regardless, and specs that pass with
-  the feature removed.
-- **Weakened specs**: assertions deleted, `skip` / `pending` / `xit` added, or
-  expectations loosened in this change without a reason given.
+  `have_content` on text that appears regardless, and specs that pass with the
+  feature removed.
 - **Fragility**: `sleep`, order dependence, hard-coded ids or dates,
-  `Time.now` without freezing, and factories that build far more than the
-  spec needs. A spec that creates a record "a minute ago" and expects today's
-  date fails just after midnight. Freeze at `Time.current.noon`.
-- **Slow by default**: a system spec tagged `:js` for a flow that needs no
-  JavaScript (rack_test is many times faster), and truncation
-  (`use_transactional_tests = false`, DatabaseCleaner) on a whole group when
-  only the examples that open a second database connection need it.
+  `Time.now` without freezing. A spec that creates a record "a minute ago" and
+  expects today's date fails just after midnight. Freeze at
+  `Time.current.noon`.
 
 For each missing spec, give the file, the `describe` / `context`, and the
 assertion that would catch the regression.
@@ -70,9 +63,9 @@ assertion that would catch the regression.
 
 An untested branch in money, permissions, or data integrity is `high`. Any
 other untested branch is `medium`. A wrong-level spec or a framework test is
-`low`, unless it's slowing the suite or hiding a gap.
+`low`, unless it hides a gap.
 
-## Not this lens
+## Not this principle
 
-Bugs in the implementation go to correctness. You report what is missing,
-misplaced, or unnecessary in the specs, not what is wrong with the code.
+Bugs in the code go to acceptance. Specs this change weakened go to blast
+radius. Slow specs go to `make-it-fast`.

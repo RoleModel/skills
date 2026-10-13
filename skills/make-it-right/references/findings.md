@@ -1,6 +1,6 @@
 # Findings
 
-Every lens reports in this format. Report everything you find, including
+Every agent reports in this format. Report everything you find, including
 things you're unsure of. A separate verifier scores and filters them, so
 holding back a finding loses it for good.
 
@@ -9,7 +9,7 @@ holding back a finding loses it for good.
 One finding per line:
 
 ```
-- <path>:<line> | <severity> | <lens> | <what is wrong and what it causes>. <the fix>. | <evidence>
+- <path>:<line> | <severity> | <principle> | <what is wrong and what it causes>. <the fix>. | <evidence>
 ```
 
 - **path:line**: where the fix goes. Use the first line of a range.
@@ -22,7 +22,7 @@ One finding per line:
   app/jobs/sync_job.rb:12 with nil`). A finding with neither is taste, so
   drop it.
 
-End with `<lens>: <n> findings` or `<lens>: nothing to report`.
+End with `<principle>: <n> findings` or `<principle>: nothing to report`.
 
 ## Severity
 
@@ -33,7 +33,7 @@ End with `<lens>: <n> findings` or `<lens>: nothing to report`.
 | **medium** | Wrong in a rare case, a design problem that will cost the next change, or a convention violation. |
 | **low** | Polish: naming, small simplifications, minor style the linters miss. |
 
-## Out of scope for every lens
+## Out of scope for every agent
 
 - Anything the project's linters or formatters already enforce.
 - Lines carrying a lint-ignore or a comment explaining the choice. Report

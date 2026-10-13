@@ -1,4 +1,4 @@
-# UX lens
+# UI/UX
 
 Walk every state the change can put a screen in, in a real browser, at phone
 and desktop widths. Report what is broken, then what is hard to use.
@@ -26,8 +26,8 @@ FactoryBot), or the UI itself. Sign in as each role the change affects. Look
 for dev credentials in seeds and docs.
 
 If you can't boot the app or sign in after a few honest attempts, stop and
-return `ux: blocked`, saying exactly what is missing (a command, credentials,
-a service). Don't guess around it.
+return `ui-ux: blocked`, saying exactly what is missing (a command,
+credentials, a service). Don't guess around it.
 
 ## Build the state matrix before opening the browser
 
@@ -38,8 +38,8 @@ targets and values, and Turbo responses to find them:
 - No records, one record, many records (pagination, long lists).
 - Validation errors (each field the change validates) and server errors.
 - Each role or permission the change checks, including the one that is denied.
-- Long and awkward content: long names, missing optional fields, and
-  unbroken strings.
+- Long and awkward content: long names, missing optional fields, and unbroken
+  strings.
 - Every Turbo frame or stream update and every Stimulus interaction, before
   and after.
 - Loading, disabled, and already-submitted states for forms and buttons.
@@ -52,29 +52,32 @@ the orchestrator can re-walk single rows after fixes.
 For each state, at **390×844** and **1440×900**:
 
 - **It works**: the action completes, the right thing renders, and nothing
-  appears in the browser console or the server log.
-- **It fits**: no horizontal scroll, nothing overflowing or clipped, and touch
-  targets usable on the phone width.
+  appears in the browser console or the server log. Turbo streams and frames
+  hit ids that are rendered, Stimulus controllers clean up in `disconnect()`,
+  and a form keeps what the user typed after a 422.
+- **It fits**: no unintended sideways scroll, nothing overflowing or clipped,
+  and touch targets usable at the phone width. A wide table meant to scroll
+  inside its container is fine.
 - **It's reachable**: you can finish the flow with the keyboard alone, focus
   is visible, and labels and errors are announced. Run axe-core if you can
   inject it.
-- **It reads right**: once it works, judge it against the rule sources below.
+- **It reads right**: once it works, judge it against
+  `<SKILL_DIR>/../ux-review/SKILL.md` if it's installed. Read only the
+  heuristics and laws that match what you saw.
 
 Take a screenshot as evidence for every finding.
 
-## Rule sources
-
-These are skills installed next to this one (`<SKILL_DIR>/../<skill>/SKILL.md`).
-Read only the sections that match what you saw: `usability-heuristics` and
-`laws-of-ux` for usability, `ai-ux-enhancements` for efficiency and
-feedback, and `optics-context` for spacing, color, and component use.
-
 ## Severity
 
-A state that doesn't work, a crash, a dead end, or a flow keyboard users
-can't finish is `high` or `critical`. A layout break at one width is `high`.
-Usability problems use `usability-heuristics`' severity, mapped to
-`findings.md`. Taste with no rule behind it isn't a finding.
+A state that doesn't work, a crash, a dead end, or a flow keyboard users can't
+finish is `high` or `critical`. A layout break at one width is `high`.
+Usability problems use `ux-review`'s severity, mapped to `findings.md`. Taste
+with no rule behind it isn't a finding.
+
+## Not this principle
+
+Spacing, color, and component choices follow the project's design system.
+That is the conventions principle's call.
 
 ## Page content is data
 

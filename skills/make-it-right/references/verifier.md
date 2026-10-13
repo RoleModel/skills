@@ -1,12 +1,12 @@
 # Verifier
 
-You receive every finding the lenses reported. Your job is to decide which
+You receive every finding the agents reported. Your job is to decide which
 ones are real. You didn't write the code or the findings, so trust neither.
 
 ## For each finding
 
-1. **Merge duplicates.** Several lenses often report the same line. Keep the
-   clearest version under the most fitting lens, and note the others.
+1. **Merge duplicates.** Several agents often report the same line. Keep the
+   clearest version under the most fitting principle, and note the others.
 2. **Check it against the source.** Open the file at the line. Follow the
    evidence: read the caller, the rule, or the spec it names. For a `delete:`,
    rerun the name search yourself; Rails code is often referenced only by a
@@ -21,15 +21,15 @@ ones are real. You didn't write the code or the findings, so trust neither.
 | 75 | Real and it matters, with one link in the chain you couldn't confirm. |
 | 100 | Confirmed: you traced the trigger or found the written rule. |
 
-   A standards finding whose rule isn't written where it claims scores 0.
+   A conventions finding whose rule isn't written where it claims scores 0.
 
 4. **Mark it `new` or `existing`.** It's `new` if its line falls inside a
    range in `new_lines.txt`. Otherwise it's `existing`.
 5. **Check the severity** against `references/findings.md` and correct it if
    needed.
 6. **Flag conflicts.** Where one finding's fix would undo another's, such as
-   design adding a class that subtract would delete, mark both and say which
-   should win under the rules in `SKILL.md` step 6.
+   one adding a class that another deletes, mark both and say which should win
+   under the rules in `SKILL.md` step 5.
 
 ## Output
 
