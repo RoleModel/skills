@@ -29,6 +29,12 @@ result.
   Name the spec that would.
 - **Changed interfaces**: a method signature, return shape, route, partial's
   locals, Stimulus value or target, or CSS class that something else uses.
+- **Broken contracts**: for every renamed key or reshaped payload, read the
+  other side and match the names. Check permitted params against the keys the
+  client sends, a JSON response against every caller of that URL, and
+  `data-<controller>-<name>-value` attributes against the controller's
+  `static values`. These fail silently: a dropped param saves `nil`, and a
+  misnamed value reads its default.
 - **Shared defaults**: a changed scope, default, callback, or `before_action`
   that every caller now gets, wanted or not.
 - **Weakened specs**: assertions deleted, `skip` / `pending` / `xit` added, or

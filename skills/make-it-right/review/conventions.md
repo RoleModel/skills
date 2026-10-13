@@ -27,6 +27,9 @@ memory. A project with no design system has no findings here.
 
 ## Not this principle
 
-Rules the linters enforce, and taste that isn't written down. If a missing
-rule keeps coming up, say so in one line at the end. It's a candidate for
-`docs/conventions/`.
+Rules the linters enforce, and taste that isn't written down. User-facing
+copy, button severity (danger vs. warning), and the product's own terms are
+taste unless a doc covers them, and they are most of what human reviewers
+add. If no doc covers them, say so in one line at the end and suggest
+`generate-conventions`. The same goes for any missing rule that keeps coming
+up.

@@ -73,6 +73,9 @@ Run the project's linters with autocorrect on, and the specs for the changed
 files. Use the project's documented check command if there is one. Keep what
 autocorrect changes. Reviewers never report what a linter catches. If specs
 fail before review starts, fix them first: a review of broken code is wasted.
+Rerun each failure alone, then on `BASE`. A spec that passes alone is flaky,
+and one that also fails on `BASE` was already broken. Note both in the report,
+and don't count them against the change.
 
 Leave Brakeman, `bundler-audit`, and other scanners to CI.
 
@@ -165,7 +168,9 @@ conventions, the same way as step 3. Fix what they find. Stop after round 2
 even if findings remain, and report them.
 
 **UI/UX.** If it applies, launch `test/ui-ux.md` now against the fixed code.
-It needs the running app, so give it everything step 1 collected. Its findings
+It needs the running app, so give it everything step 1 collected. Subagents
+often have no browser tools. If the agent can't drive a browser, walk the
+states yourself in this session, following the same file. Its findings
 go through steps 4 and 5 like the rest. After UI fixes, re-walk only the
 states those fixes touched.
 
