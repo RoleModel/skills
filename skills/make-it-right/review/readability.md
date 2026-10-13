@@ -3,6 +3,14 @@
 Find what makes the next reader slow down. The code should say what and how on
 its own.
 
+## Read each file whole first
+
+Before going line by line, read each new or heavily changed file once, top to
+bottom. Report it as a finding when you can't say what the file does in one
+sentence, or when it mixes kinds of logic a reader has to hold at once, such as
+job flow, retry policy, and view rendering in one class. Name what should move
+out and where.
+
 ## Look for
 
 - **Names**: names that say how instead of what, jokes or shorthand

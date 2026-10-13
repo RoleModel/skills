@@ -172,7 +172,9 @@ cover the final code.
 fix is a change, so pick the principles from the step 3 table by what each fix
 touches: always acceptance and conventions, plus blast radius for a fix that
 changes how existing code behaves and data patterns for one that changes how
-records are copied, saved, or migrated. Fix what they find. Stop after round 2
+records are copied, saved, or migrated. When the fixes add a lot of new code,
+such as a rewritten class or method, also run readability and maintainable on
+it. Fix what they find. Stop after round 2
 even if findings remain, and report them.
 
 **UI/UX.** If it applies, launch `test/ui-ux.md` now against the fixed code.

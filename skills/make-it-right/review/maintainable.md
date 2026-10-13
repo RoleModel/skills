@@ -69,6 +69,10 @@ searched in the evidence.
   services.
 - **Boundaries**: external services called without a seam, and framework
   objects (`params`, `request`, `current_user`) leaking into models.
+- **Workarounds for your own code**: a second declaration that exists only to
+  undo the first, such as a broad `rescue` or `retry_on StandardError` that
+  then needs another handler to give a framework's own error back. Narrow the
+  first one instead.
 
 Propose a new class, module, concern, or layer only when **at least two places
 in the code already need it**. One future caller you can imagine is not
