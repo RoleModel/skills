@@ -65,6 +65,11 @@ For each state, at **390×844** and **1440×900**:
   `<SKILL_DIR>/../ux-review/SKILL.md` if it's installed. Read only the
   heuristics and laws that match what you saw.
 
+Confirm each finding the way a user meets it: click, type, and submit, then
+look at what renders. A DOM property or a passing spec doesn't settle it either
+way. An input can report itself invalid on a form that submits fine, and a spec
+can pass while the error never reaches the screen.
+
 Take a screenshot as evidence for every finding.
 
 ## Severity

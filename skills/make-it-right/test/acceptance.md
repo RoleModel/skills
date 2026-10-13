@@ -14,7 +14,10 @@ evidence either way is not met.
 ## Look for
 
 - **Intent gaps**: part of the intent that isn't built, or behavior the intent
-  didn't ask for.
+  didn't ask for. Check the intent against the codebase, not only the diff:
+  search for every place the concept the intent names already lives, such as
+  a sibling class with the same constant or a second screen that shows the same
+  value. A place the diff skipped is a gap unless the intent excludes it.
 - **Unhandled inputs and states**: nil, empty collection, blank string, zero,
   negative, duplicate, a record that's gone, a time zone boundary, a role that
   sees less.

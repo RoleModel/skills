@@ -23,8 +23,9 @@ ones are real. You didn't write the code or the findings, so trust neither.
 
    A conventions finding whose rule isn't written where it claims scores 0.
 
-4. **Mark it `new` or `existing`.** It's `new` if its line falls inside a
-   range in `new_lines.txt`. Otherwise it's `existing`.
+4. **Mark it `new` or `existing` by cause.** It's `new` if its line falls
+   inside a range in `new_lines.txt`, or if the defect exists only because of
+   the change, wherever it surfaces. Otherwise it's `existing`.
 5. **Check the severity** against `references/findings.md` and correct it if
    needed.
 6. **Flag conflicts.** Where one finding's fix would undo another's, such as
@@ -34,6 +35,11 @@ ones are real. You didn't write the code or the findings, so trust neither.
 ## Output
 
 Return the findings that score **80 or above**, one per line, in the
-`findings.md` format, with `| <score> | new|existing` added at the end. Then
-give the dropped ones in a single line each, with the reason. The orchestrator
+`findings.md` format, with `| <score> | new|existing` added at the end.
+
+A finding that only the requester can settle, such as whether a field should be
+editable, is neither confirmed nor wrong. Don't score it; list it under
+**Open questions** with the evidence. The orchestrator puts these in the report.
+
+Then give the dropped ones in a single line each, with the reason. The orchestrator
 reports those as false positives if asked.

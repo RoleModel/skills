@@ -128,7 +128,8 @@ the user can make".
 Launch one subagent with `references/verifier.md`, all findings, the base, and
 `new_lines.txt`. It merges duplicates, checks each claim against the source,
 scores it, and marks it `new` or `existing`. Keep findings it scores **80 or
-above**.
+above**. Carry its open questions, the ones only the requester can settle, to
+"Look here" in the report.
 
 ## 5. Address
 
@@ -152,9 +153,13 @@ cover the final code.
 - After each principle's batch, run the linters and the specs for the touched
   files. If a fix breaks something and two attempts don't repair it, revert
   that fix and report it.
+- **Fix toward the intent.** When a finding has more than one fix, such as
+  removing a control that does nothing or making it work, pick the one that
+  makes the intent true, even when it's bigger.
 - **Conflicts.** A fix that adds code must pass the ladder in
   `review/maintainable.md` first. When adding structure and deleting it
-  disagree, deleting wins. Nothing removes validation, authorization, error
+  disagree, deleting wins. That covers structure, not behavior the intent asks
+  for. Nothing removes validation, authorization, error
   handling, accessibility, or specs. Only the coverage principle can delete a
   spec, and only a framework test or a duplicate.
 - **Push back.** A verified finding can still be wrong for this change, such as
@@ -163,8 +168,11 @@ cover the final code.
 
 ## 6. Round 2, then UI/UX
 
-**Round 2.** Check only the hunks your fixes changed, with acceptance and
-conventions, the same way as step 3. Fix what they find. Stop after round 2
+**Round 2.** Check only the hunks your fixes changed, the same way as step 3. A
+fix is a change, so pick the principles from the step 3 table by what each fix
+touches: always acceptance and conventions, plus blast radius for a fix that
+changes how existing code behaves and data patterns for one that changes how
+records are copied, saved, or migrated. Fix what they find. Stop after round 2
 even if findings remain, and report them.
 
 **UI/UX.** If it applies, launch `test/ui-ux.md` now against the fixed code.
