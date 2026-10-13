@@ -22,6 +22,9 @@ One finding per line:
   app/jobs/sync_job.rb:12 with nil`). A finding with neither is taste, so
   drop it.
 
+If you list what you checked and found fine, the verifier re-checks it like a
+finding, so give the same evidence.
+
 End with `<principle>: <n> findings` or `<principle>: nothing to report`.
 
 ## Severity

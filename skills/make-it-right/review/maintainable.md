@@ -54,6 +54,11 @@ searched in the evidence.
 - **Layering**: business rules in controllers, views, helpers, or Stimulus
   controllers, when they belong on the model or a PORO. Queries built in
   views. Persistence in presenters.
+- **Domain or display**: a new model method whose only callers are views and
+  that returns labels, formatted or rounded values, or the data shape a chart
+  or widget wants, belongs in a helper or the app's presenter. Grep its
+  callers before you accept it on the model. `thin-callers` means keep
+  domain rules out of views, not move display code into models.
 - **Request or domain**: logic that reads `params` or `request` stays in the
   controller, in a private method once it's more than a line. A choice the
   domain makes, such as which record or which default, belongs on the model,

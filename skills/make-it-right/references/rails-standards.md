@@ -29,6 +29,12 @@ read into a `Data.define` value object with `all` and `find`. Views read
 attributes off the object. They don't branch on the variant's key, and code
 doesn't keep a parallel hash constant.
 
+## Models return domain values; helpers present them
+
+Labels, rounding for display, and the data a chart or widget needs go in a
+helper or presenter, not on the model. A model method that only views call
+is the sign.
+
 ## `db/schema.rb` shows only the change's migrations
 
 The schema diff holds what this change's migrations add, and nothing else. A

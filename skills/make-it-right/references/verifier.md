@@ -23,12 +23,18 @@ ones are real. You didn't write the code or the findings, so trust neither.
 
    A conventions finding whose rule isn't written where it claims scores 0.
 
-4. **Mark it `new` or `existing` by cause.** It's `new` if its line falls
+4. **Check the fix's direction.** A real problem can come with a fix that
+   moves code to the wrong owner, such as display logic from a view into a
+   model. Score the problem, and rewrite the fix to the right owner.
+5. **Re-check "found fine" notes.** Agents' notes that code is in the right
+   place or follows a rule are claims too. Check each one, and turn a wrong
+   one into a finding.
+6. **Mark it `new` or `existing` by cause.** It's `new` if its line falls
    inside a range in `new_lines.txt`, or if the defect exists only because of
    the change, wherever it surfaces. Otherwise it's `existing`.
-5. **Check the severity** against `references/findings.md` and correct it if
+7. **Check the severity** against `references/findings.md` and correct it if
    needed.
-6. **Flag conflicts.** Where one finding's fix would undo another's, such as
+8. **Flag conflicts.** Where one finding's fix would undo another's, such as
    one adding a class that another deletes, mark both and say which should win
    under the rules in `SKILL.md` step 5.
 
