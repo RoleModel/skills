@@ -1,6 +1,6 @@
-# Using code-review-dev
+# Using feature-review
 
-`/code-review-dev` turns a diff into one HTML page you review in the browser,
+`/feature-review` turns a diff into one HTML page you review in the browser,
 in three steps:
 
 1. **Overview**: what the change does for the people using the product, a few
@@ -23,11 +23,11 @@ charging late fees on overdue loans.
 Ask Claude in plain words:
 
 ```
-/code-review-dev PR #123
-/code-review-dev SHELF-118
-/code-review-dev a1b2c3d
-/code-review-dev main..my-branch
-/code-review-dev re-review PR #123
+/feature-review PR #123
+/feature-review SHELF-118
+/feature-review a1b2c3d
+/feature-review main..my-branch
+/feature-review re-review PR #123
 ```
 
 Claude finds the diff and the PR, reads the change, writes the overview and a
@@ -37,9 +37,9 @@ your comments out.
 
 The first time you run it, Claude asks four questions about how you like to
 review (file order, where tests go, how much to auto-review, which comments to
-suggest). It saves your answers to `~/.claude/code-review-dev/preferences.md`;
+suggest). It saves your answers to `~/.claude/feature-review/preferences.md`;
 edit that file at any time. A repo can add its own rules in
-`.claude/code-review-dev.md`.
+`.claude/feature-review.md`.
 
 ## Step 1: Start with the overview
 

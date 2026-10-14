@@ -1,5 +1,5 @@
 ---
-name: code-review-dev
+name: feature-review
 description: >
   Render a git commit, range, branch, PR, or piped diff into a single self-contained HTML
   review page that reviews in three steps: an Overview of the feature and the shape of the
@@ -45,7 +45,7 @@ confirming it.
 ## Usage
 
 ```bash
-S=~/.claude/skills/code-review-dev/scripts
+S=~/.claude/skills/feature-review/scripts
 node $S/build-review.cjs <commit-ish>                 # this commit vs its parent
 node $S/build-review.cjs <base>..<head>               # or <base>...<head> from the merge base
 node $S/build-review.cjs --pr <N|url|owner/repo#N>    # the PR's diff; comments can post to it
@@ -71,8 +71,8 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
    gave you: PR, commit, range, branch, or ticket ID. Recipes for each are in
    `references/gathering.md`. Always look for a PR, because that decides
    whether the page can post comments.
-2. **Load preferences.** Read `~/.claude/code-review-dev/preferences.md`, then
-   `.claude/code-review-dev.md` in the repo if there is one. If the user-level file
+2. **Load preferences.** Read `~/.claude/feature-review/preferences.md`, then
+   `.claude/feature-review.md` in the repo if there is one. If the user-level file
    doesn't exist, this is their first use: ask them (below) before continuing.
 3. **Read the change** (`git show --stat`, the PR body or ticket, the diff, and
    the touched files at the head where the shape question needs them), then
@@ -104,7 +104,7 @@ read those, attachments included (their paths are in the Markdown).
 
 ## First use: ask how they review
 
-When `~/.claude/code-review-dev/preferences.md` is missing, ask with
+When `~/.claude/feature-review/preferences.md` is missing, ask with
 AskUserQuestion, one round, up to four questions:
 
 - **Grouping order**: follow the data flow (models, then callers, then UI);
@@ -115,7 +115,7 @@ AskUserQuestion, one round, up to four questions:
 - **Suggested comments**: bugs and risks only; also style and naming; or none.
 
 Write the answers into the template at `references/preferences-template.md`,
-save it to `~/.claude/code-review-dev/preferences.md`, and tell the user where it
+save it to `~/.claude/feature-review/preferences.md`, and tell the user where it
 is so they can edit it. Don't ask again once it exists. If they'd rather not
 answer, write the template with the defaults (data flow, tests with their code,
 conservative, bugs and risks only) and carry on.

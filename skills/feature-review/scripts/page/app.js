@@ -1095,7 +1095,7 @@
       (f.cb.checked ? ' <span class="svnote">(you also viewed it)</span>' : '') + '</li>').join('');
     $('svhelp').innerHTML = !PR ? '' : SERVER
       ? 'Submitting posts every comment and reply above as one review. Comments on lines GitHub cannot anchor to are added to the summary instead.'
-      : 'Submitting needs the local server: rebuild with <code>--serve</code>, or Copy JSON and have the agent run <code>pbpaste | node ~/.claude/skills/code-review-dev/scripts/submit-review.cjs -</code>.';
+      : 'Submitting needs the local server: rebuild with <code>--serve</code>, or Copy JSON and have the agent run <code>pbpaste | node ~/.claude/skills/feature-review/scripts/submit-review.cjs -</code>.';
     refreshSubmit();
     if (state.submitted) status('Last submitted ' + new Date(state.submitted.at).toLocaleString() + ': ' + state.submitted.url, 'ok');
   }

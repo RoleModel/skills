@@ -1,10 +1,10 @@
 # Review preferences
 
 <!--
-Read by the code-review-dev skill before it writes a reading guide. Plain prose
+Read by the feature-review skill before it writes a reading guide. Plain prose
 is fine; the skill reads this as guidance, not config. Edit it any time.
-Lives at ~/.claude/code-review-dev/preferences.md. A repo can add its own
-.claude/code-review-dev.md, which is read after this file and wins on conflicts.
+Lives at ~/.claude/feature-review/preferences.md. A repo can add its own
+.claude/feature-review.md, which is read after this file and wins on conflicts.
 -->
 
 ## Overview (step 1)
