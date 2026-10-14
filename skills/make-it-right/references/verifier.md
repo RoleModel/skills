@@ -22,19 +22,24 @@ ones are real. You didn't write the code or the findings, so trust neither.
 | 100 | Confirmed: you traced the trigger or found the written rule. |
 
    A conventions finding whose rule isn't written where it claims scores 0.
+   So does one whose rule names a tool the project doesn't have, such as a
+   gem or initializer: the rule was written for another codebase.
 
-4. **Check the fix's direction.** A real problem can come with a fix that
+4. **Check that the fix runs.** Read the code the fix calls. A fix that
+   reads an attribute or calls a method the object doesn't support fails on
+   contact, so score the problem and rewrite the fix, or drop it.
+5. **Check the fix's direction.** A real problem can come with a fix that
    moves code to the wrong owner, such as display logic from a view into a
    model. Score the problem, and rewrite the fix to the right owner.
-5. **Re-check "found fine" notes.** Agents' notes that code is in the right
+6. **Re-check "found fine" notes.** Agents' notes that code is in the right
    place or follows a rule are claims too. Check each one, and turn a wrong
    one into a finding.
-6. **Mark it `new` or `existing` by cause.** It's `new` if its line falls
+7. **Mark it `new` or `existing` by cause.** It's `new` if its line falls
    inside a range in `new_lines.txt`, or if the defect exists only because of
    the change, wherever it surfaces. Otherwise it's `existing`.
-7. **Check the severity** against `references/findings.md` and correct it if
+8. **Check the severity** against `references/findings.md` and correct it if
    needed.
-8. **Flag conflicts.** Where one finding's fix would undo another's, such as
+9. **Flag conflicts.** Where one finding's fix would undo another's, such as
    one adding a class that another deletes, mark both and say which should win
    under the rules in `SKILL.md` step 5.
 

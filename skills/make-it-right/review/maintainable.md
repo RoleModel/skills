@@ -22,6 +22,12 @@ a rung holds:
    and Stimulus values / outlets / classes. `native:`
 4. **Already in the project?** The app's own concerns, helpers, components,
    design-system classes, and factories, plus gems it already has. `reuse:`
+   Search by what the code does, not what it's called. For each new
+   mechanism (a cache key, a retry, a formatter, a permission check, a
+   background notice), grep for the tables, columns, and calls it uses, such
+   as `maximum(:updated_at)`, `cache_key`, or `broadcast_`. An existing module
+   that touches the same data may already solve the same problem. Read it
+   before writing a new one.
 5. **Can it be one line?** `shrink:`
 6. **Only then**: the smallest thing that works. An abstraction with one
    implementation, a config option nobody sets, or a parameter every caller
