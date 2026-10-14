@@ -41,7 +41,7 @@ a rung holds:
 | `reuse:` | Something that already exists in the repo. Name it with `path:line`. |
 | `yagni:` | Abstraction, indirection, or configuration with one user. |
 | `move:` | Right code, wrong owner. See below. |
-| `redesign:` | A different shape that removes a class of bugs. Reported, never fixed here. See below. |
+| `redesign:` | A different shape that removes a class of bugs. Handled before other fixes. See below. |
 
 Put the tag first in the finding's "what". For each `delete:`, `stdlib:`,
 `native:`, `reuse:`, or `yagni:` finding, add the lines it saves, as `(-N)`.
@@ -102,9 +102,10 @@ example, writing a new row per version needs no pending flag. Name the
 simpler shape, list the bugs and guards it would remove, and give what it
 would cost.
 
-A `redesign:` finding is for a human to judge. Never fix it in this run: it
-goes to "Look here", whatever its score. Raise one only when the simpler shape
-would remove at least two guards or known bugs, not to state a taste.
+Report it; never apply it yourself. The run asks the user or applies it before
+any other fix, per its `redesign=` argument. Raise one only when the
+simpler shape would remove at least two guards or known bugs, not to state a
+taste.
 
 ## Never cut
 

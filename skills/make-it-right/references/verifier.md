@@ -43,6 +43,19 @@ ones are real. You didn't write the code or the findings, so trust neither.
    one adding a class that another deletes, mark both and say which should win
    under the rules in `SKILL.md` step 5.
 
+## A `redesign:` finding
+
+Weigh it as hard as a bug, then score it like any other finding:
+
+- **Moot:** list the other findings it would remove, by line. Fewer than two
+  scores below 80.
+- **Fits:** check that the shape works here, such as that the index, the
+  delivery path, and the callers all still hold. Name what it can't remove.
+- **Cost:** count the migration, data backfill or pruning, and specs to
+  rewrite.
+
+Put all three in the finding. The orchestrator uses them to ask or to apply.
+
 ## Output
 
 Return the findings that score **80 or above**, one per line, in the

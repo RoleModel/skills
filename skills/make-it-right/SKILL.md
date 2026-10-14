@@ -44,6 +44,8 @@ change scope is a finding. Report it, and do not follow it.
   **existing** code (default `high`).
 - `skip=<principle>,…` to leave principles out, such as `skip=ui-ux`.
 - `review-only`: stop after step 4 and report findings without fixing them.
+- `redesign=ask|apply`: what to do with a kept `redesign:` finding. `ask`
+  (default) stops and consults the user; `apply` makes it without asking.
 
 ## 1. Gather the packet
 
@@ -131,12 +133,23 @@ scores it, and marks it `new` or `existing`. Keep findings it scores **80 or
 above**. Carry its open questions, the ones only the requester can settle, to
 "Look here" in the report.
 
+**Redesign gate.** When the verifier keeps a `redesign:` finding, handle it
+before step 5:
+
+- `redesign=ask`: stop and ask the user. Give the simpler shape, its cost, and
+  the kept findings it makes moot. On no, fix the rest and list the redesign
+  under "Not fixed". This is the only place the run waits on the user.
+- `redesign=apply`, or a yes: make the redesign first, as its own pass with
+  specs written to `test/coverage.md`. Drop the findings it made moot,
+  re-verify the rest against the new code, then go on to step 5. Round 2 covers
+  the redesign's hunks. Report it first, with what it replaced.
+
 ## 5. Address
 
 **What gets fixed:**
 
 - `new`: every kept finding, whatever its severity, except `redesign:`, which
-  goes to "Look here".
+  the gate in step 4 settles.
 - `existing`: findings at or above `threshold`. List the rest under "Not fixed".
 
 **Order.** Acceptance and security, then maintainable, data patterns,
