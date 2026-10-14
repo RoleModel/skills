@@ -135,7 +135,8 @@ above**. Carry its open questions, the ones only the requester can settle, to
 
 **What gets fixed:**
 
-- `new`: every kept finding, whatever its severity.
+- `new`: every kept finding, whatever its severity, except `redesign:`, which
+  goes to "Look here".
 - `existing`: findings at or above `threshold`. List the rest under "Not fixed".
 
 **Order.** Acceptance and security, then maintainable, data patterns,

@@ -41,6 +41,7 @@ a rung holds:
 | `reuse:` | Something that already exists in the repo. Name it with `path:line`. |
 | `yagni:` | Abstraction, indirection, or configuration with one user. |
 | `move:` | Right code, wrong owner. See below. |
+| `redesign:` | A different shape that removes a class of bugs. Reported, never fixed here. See below. |
 
 Put the tag first in the finding's "what". For each `delete:`, `stdlib:`,
 `native:`, `reuse:`, or `yagni:` finding, add the lines it saves, as `(-N)`.
@@ -89,6 +90,21 @@ Propose a new class, module, concern, or layer only when **at least two places
 in the code already need it**. One future caller you can imagine is not
 enough. Prefer moving code to the object that owns it over wrapping it in a
 new one.
+
+## A different shape (`redesign:`)
+
+After the ladder, step back from single lines. Ask whether another data model
+or flow would make a whole class of bugs impossible, instead of guarding
+against each one. Signs: a status column or flag that several methods keep in
+sync, conditional writes and locks that guard against races between versions,
+or a handshake that covers a timing gap the design itself creates. For
+example, writing a new row per version needs no pending flag. Name the
+simpler shape, list the bugs and guards it would remove, and give what it
+would cost.
+
+A `redesign:` finding is for a human to judge. Never fix it in this run: it
+goes to "Look here", whatever its score. Raise one only when the simpler shape
+would remove at least two guards or known bugs, not to state a taste.
 
 ## Never cut
 
