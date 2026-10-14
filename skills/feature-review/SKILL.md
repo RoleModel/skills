@@ -1,41 +1,33 @@
 ---
 name: feature-review
-description: >
-  Render a git commit, range, branch, PR, or piped diff into a single self-contained HTML
-  review page that reviews in three steps: an Overview of the feature and the shape of the
-  change (with diagrams of what the code does, feature checks to confirm, and before/after
-  file sizes), then the Code, then Submit. The code step has per-file sections, syntax highlighting, "viewed" checkboxes, percent of
-  changed lines reviewed, and a reading guide that groups files in the reviewer's preferred
-  order. Shows the PR's existing review threads inline (with replies), unified or split view,
-  a whitespace toggle, expandable context, keyboard navigation, and a re-review mode that
-  marks or shows only what changed since the reviewer's last review. Reviewers can leave
-  GitHub-style comments (Markdown, attachments, suggested changes, multi-line ranges,
-  whole-file comments), then finish on a submit page that posts them all as one PR review,
-  or copies them as Markdown when there is no PR. Small unrelated files can
-  be auto-reviewed with a one-line summary, and you can pre-suggest comments for the reviewer
-  to accept. Use when the user asks to "review this commit", "review PR #123", "review
-  KATT-123", "make a review page for <sha>", "let me review this diff in the browser", "build
-  an HTML diff for this PR", "re-review PR #123", "what changed since I reviewed", or wants
-  to read a large diff file-by-file and track progress.
-  Also use when a diff is too long to read comfortably in the terminal.
+description: >-
+  Build an HTML review page from a git commit, PR, or diff. Steps: (1) **Overview** — PR digest, feature behavior, shape of change; (2) **Code** — Recommendations view (groups with diagrams, screenshots, yes/no cards) or per-file diff (syntax highlighting, "viewed" checkboxes, percent-reviewed bar); (3) **Submit** — posts one PR review (or copies as Markdown). Features: inline PR threads, unified/split view, whitespace toggle, expandable context, keyboard navigation, re-review mode, GitHub-style commenting, auto-review for small files. Trigger: "review this commit/PR #<N>", "review the feature/shape of PR #<N>", or "re-review PR #<N>".
 allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '3.0'
+  version: '3.8'
 license: MIT
 ---
 
-# Commit Review Page
+# Feature Review
 
 Turns a diff into an offline HTML page that reviews a change in three steps,
 with comments that can be posted to the PR as one review:
 
-1. **Overview**: the feature (what it does for the user, and checks to confirm
-   it does it well) and the shape of the change (layers, objects, departures
+1. **Overview**: what the PR's author said (a digest, their screenshots, and
+   the full description folded away), the feature (what it does for the user,
+   and checks to confirm it does it well), the **feature overview** (the
+   flow end to end, each step pairing screenshots or recordings with what runs
+   underneath, the groups that do it, and its checks), and the shape of the change (layers, objects, departures
    from the architecture, and how the codebase's shape moved), with diagrams.
-2. **Code**: the diff, file by file, in reading-guide order, with diagrams
-   next to the complex groups.
+2. **Code**, in two modes switched in the header (or `r`):
+   - **Recommendations** (the default): each reading-guide group as a short
+     gist with its visuals (diagrams, screenshots, screen recordings) and the
+     recommendations to answer yes or no. Each one bundles the line comments
+     it stands for, so a large change can be reviewed at this height.
+   - **Code**: the diff, file by file, in reading-guide order, with diagrams
+     next to the complex groups.
 3. **Submit**: the summary, verdict, comments and feature concerns, posted as
    one review.
 
@@ -55,6 +47,8 @@ node $S/build-review.cjs <ref> --pr <N> --serve       # serve on localhost: Subm
 node $S/build-review.cjs --pr <N> --since last        # re-review: only what changed since your last review
 node $S/build-review.cjs --pr <N> --since <sha>       # ...or since any commit
 node $S/build-review.cjs --pr <N> --no-threads        # skip loading the PR's existing review threads
+node $S/build-review.cjs --pr <N> --no-description    # skip the PR description and its screenshots
+node $S/pr-media.cjs --pr <N>                         # download the description's screenshots, to reuse as visuals
 node $S/build-review.cjs <ref> -o path.html --title "..." --event approve
 git diff ... | node $S/build-review.cjs --stdin -o path.html
 ```
@@ -70,16 +64,40 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
 1. **Gather.** Work out the diff, the PR, and the intent from whatever the user
    gave you: PR, commit, range, branch, or ticket ID. Recipes for each are in
    `references/gathering.md`. Always look for a PR, because that decides
-   whether the page can post comments.
-2. **Load preferences.** Read `~/.claude/feature-review/preferences.md`, then
-   `.claude/feature-review.md` in the repo if there is one. If the user-level file
-   doesn't exist, this is their first use: ask them (below) before continuing.
+   whether the page can post comments. With a PR, read its description and run
+   `node $S/pr-media.cjs --pr <N>` to download its screenshots for reuse.
+2. **Load preferences and the project's review rules.** Read
+   `~/.claude/feature-review/preferences.md`. If it doesn't exist, this is
+   their first use: ask them (below) before continuing. Then run
+   `node $S/review-guides.cjs` in the repo: it finds `REVIEW.md` at the root,
+   fetches the shared guides it lists, and prints where each one is. Read
+   `REVIEW.md` and every guide it prints. They are what you review against:
+   recommendations should follow from them, and the project's rules win over
+   the user's preferences on conflicts. No `REVIEW.md` is fine; review on
+   general judgement. Format: `references/review-md.md`.
+   Then run `node $S/decision-patterns.cjs`. If it prints a `pattern:`
+   (something the reviewer declined in at least 70% of 5 or more
+   recommendations), ask them with AskUserQuestion whether to add a line about
+   it to their preferences file (offer: add it, as you phrase it from the
+   declined and kept titles; not now; never). Edit the file only on "add it",
+   under a `## Learned from your decisions` heading, with the date. Whatever
+   they answer, run `node $S/decision-patterns.cjs --ack <key>` so it isn't
+   asked again until five more decisions come in. Skip this step when
+   building a page for someone else's review.
 3. **Read the change** (`git show --stat`, the PR body or ticket, the diff, and
    the touched files at the head where the shape question needs them), then
    write `tmp/review/<slug>.groups.json`, in this order:
-   - the **overview** first (feature, checks, shape, diagrams): read
-     `references/overview.md` for the format and what each part is for;
-   - then the **reading guide**, with auto-reviews and suggested comments.
+   - the **overview** first (author digest, feature, checks, feature
+     overview, shape, diagrams): read `references/overview.md` for the
+     format and what each part is for;
+   - then the **reading guide**, with auto-reviews, a gist for each group
+     (`summary`, `points`), and the **recommendations** that carry your
+     comments: read `references/recommendations.md` for the format and how to
+     fold comments into recommendations;
+   - then **visuals**: diagrams for the complex groups, and screenshots or
+     short screen recordings of any UI change, captured with Playwright or the
+     Chrome extension (recipes in `references/recommendations.md`). Skip
+     captures when the app can't run, and say so in the report.
 4. **Build** with `--groups` (and `--pr`). Skip the overview and guide only for
    a diff small enough to read top-to-bottom, or if the user declines them. With `--pr` the
    build looks up the user's last submitted review on the PR (see
@@ -89,18 +107,23 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
      `run_in_background`), then `open` the URL it prints. The server exits after
      a successful submit, which notifies you; report the review URL and any notes
      it printed. The page itself moves on to a "Review submitted" screen.
-   - Without a PR: `open <path>`; the submit page offers Copy as Markdown. Serve
-     it the same way if the user wants **Save for agent** to hand comments back,
-     or to expand context around hunks (which reads files through the server).
+   - Without a PR: `open <path>`; the submit page offers Copy as Markdown,
+     which the user pastes back to hand you their comments. Serve it the same
+     way if they want to expand context around hunks (which reads files
+     through the server).
 6. **Report** the self-check, groups and overview lines, a one-line summary of
    the feature and of the shape (plus any departures you flagged), the PR (or that there isn't one),
-   the `threads:` and `re-review:` lines, the commit's file/line totals, and the
+   the `review-guides:` line (or that there is no `REVIEW.md`), the `ci:`
+   line (say plainly if anything is failing), the
+   recommendations (titles, and how many comments each bundles), the
+   `media:` and `description:` lines, what you captured for the feature
+   overview (or why nothing), the `threads:` and `re-review:` lines, the commit's file/line totals, and the
    list of auto-reviewed files with their one-line summaries so the user knows
    what they are trusting you on.
 
-If the user hands back a review (pasted Markdown, or "I saved it for you"), the
-saved copy is `tmp/review/<slug>.review.md` and `.review.json` next to the page;
-read those, attachments included (their paths are in the Markdown).
+If the user hands back a review as pasted Markdown, act on it. A submitted
+review is also saved as `tmp/review/<slug>.review.md` and `.review.json` next
+to the page, attachments included (their paths are in the Markdown).
 
 ## First use: ask how they review
 
@@ -123,12 +146,20 @@ conservative, bugs and risks only) and carry on.
 ## The overview
 
 The page opens on the overview when there is one (and afterwards on whichever
-step the reviewer was last on). It has two parts, both written by you under
+step the reviewer was last on). It has four parts, written by you under
 `overview` in the groups file:
 
+- **From the PR description** (`author`): your digest of what the author said
+  and why, and where the code differs from it. The page adds the description's
+  screenshots and the full text, folded away.
 - **The feature**: what the change does, the behaviour before and after, and
   **feature checks**: behaviour for the reviewer to confirm, each marked Looks
   right or Concern. Concerns and their notes are added to the review summary.
+- **Feature overview** (`connection`): how it all comes together. A short
+  end-to-end summary, how it works technically, then the flow step by step:
+  each step pairs what the user sees (screenshots, recordings) with a short,
+  optional "Under the hood" note (folded by default), links the groups and
+  files that do it, and holds the checks that test it. Make it as visual as you can.
 - **The shape**: the shape of this change (layers, objects, new dependencies,
   departures from the architecture instructions) and how it moves the shape
   of the codebase as a whole. Under it the page adds two computed blocks, from
@@ -183,6 +214,39 @@ isn't in the diff. `side` defaults to `RIGHT` (the new file); use `LEFT` with
 old line numbers to comment on a deleted line. A multi-line range must stay
 inside one hunk.
 
+## Recommendations
+
+The code step opens on the Recommendations view, built from the guide: one
+card per group with its `summary`, up to four `points`, its pinned diagrams and
+media, and its files as chips (folded by default) that open the diff. Your
+review comments live here as **recommendations**: one action each, which the
+reviewer answers Yes (its comments go into the review, or a general one into
+the summary) or No. Each also has a few short sections (`context`,
+`problem`, `proposal`, `tradeoffs`), one sentence each and two at most, in
+plain words rather than code; its `kind` decides which. A recommendation can
+carry `visuals` (any diagram kind), `checks` (ids of feature checks it bears
+on, which then show on it with their Looks right / Concern buttons; a concern
+says yes to it), and a `principle` (the section of a shared guide it rests on,
+copied into the page for the reviewer to read).
+Inside a recommendation the reviewer can also accept, edit or dismiss each
+comment on its own, and click its path to open the diff at that line.
+Fold comments that ask for the same thing into one recommendation; it is not
+one to one. Keep every card light: if a group needs more than a couple of
+sentences, give it a diagram or a screenshot instead of more words.
+
+```json
+{ "groups": [{ "title": "...", "why": "...", "summary": "...", "points": ["..."], "files": ["..."] }],
+  "recommendations": [
+    { "group": "...", "kind": "risk", "title": "Keep the same-org check on the order page",
+      "context": "...", "problem": "...", "proposal": "...", "tradeoffs": "...",
+      "comments": [{ "path": "...", "line": 18, "body": "..." }, { "path": "...", "line": 5, "body": "..." }] },
+    { "kind": "question", "title": "Mention the label change in the release notes", "context": "...", "problem": "..." }
+  ] }
+```
+
+Full format, the media kinds (`image`, `video`) and how to capture them:
+`references/recommendations.md`.
+
 ## Auto-review
 
 Auto-reviewing a file means you read its whole diff, judged it fine, and are
@@ -212,6 +276,10 @@ groups line prints the ratio). If it's over about a quarter, you're hiding the
 review, not speeding it up: auto-review less. Honor "off" in the preferences.
 
 ## Suggested comments
+
+Prefer `recommendations` (above): their `comments` become suggested comments
+too, and the reviewer can accept a whole group of them at once. Bare
+`suggestions` still work, and each shows in the Recommendations view as its own.
 
 `suggestions` are comments you draft for the reviewer. They show inline, dashed,
 marked "Suggested", and are **not** part of the review until the reviewer
@@ -248,7 +316,10 @@ back unticked with a "changed since you viewed it" badge once it changes.
 ## Reading the page
 
 - **Steps.** The header's **Overview / Code / Submit** switch steps (keys `1`,
-  `2`, `3`; hashes `#overview`, `#code`, `#submit`). A file or group anchor
+  `2`, `3`; hashes `#overview`, `#code`, `#submit`). In the code step,
+  **Recommendations / Code** (key `r`) switches mode; the choice is remembered
+  per PR, and Recommendations is the default. Progress follows the mode:
+  recommendations decided in Recommendations, changed lines viewed in Code. A file or group anchor
   (`#f3`, `#g1`), like the links in the overview, opens the code at that spot,
   and returning to the code restores where you were. The sidebar shows the
   feature-check count.
@@ -273,7 +344,7 @@ back unticked with a "changed since you viewed it" badge once it changes.
   `--stdin` pages.
 - **Split view.** **View: unified / split** (unified by default, remembered).
   Comments, threads and range selection work the same in both.
-- **Keyboard.** `j`/`k` next/previous file, `v` toggle Viewed, `x` collapse,
+- **Keyboard.** `r` Recommendations or Code, `j`/`k` next/previous file, `v` toggle Viewed, `x` collapse,
   `n`/`p` next/previous comment or thread, `/` filter, `s` split, `w`
   whitespace, `?` help. The current file is the one whose header is pinned
   under the toolbar.
@@ -290,19 +361,34 @@ In the page:
   **Suggest** (pre-fills a `suggestion` block from the selected new-side
   lines), and attachments: paste, drop, or Attach, up to 3 MB each, stored in
   the page.
-- **Finish review** opens the submit page (`#submit`): a summary editor, the
-  verdict (Comment / Approve / Request changes, only when there's a PR), the
-  feature checks (concerns are appended to the summary as a **Feature
-  concerns** list when posted or copied), every
-  comment and reply with its code (replies also quote what they answer),
-  pending suggestions to accept or dismiss, and the auto-reviewed files.
-  Comments can be edited or deleted from there.
-- **Copy as Markdown** and **Copy / Download JSON** always work. **Save for
-  agent** (served pages) writes `<slug>.review.md` / `.review.json` and the
-  attachments next to the page. **Submit review** (served pages with a PR) posts
-  everything as one review, clears the drafts so they can't double-post, and
-  moves to a "Review submitted" page (`#done`) with the verdict, counts, any
-  notes and a link to the review.
+- **Finish review** opens the submit page (`#submit`), which is for writing
+  the final message and sending it:
+  - a strip of what still needs the reviewer (CI, undecided recommendations,
+    unchecked feature checks, suggested comments not taken, stale comments),
+    each a link to where it is decided; only stale comments block submitting;
+  - the summary editor, whose **Preview the full review** tab shows the whole
+    body as it will post: the summary, then the **Recommendations** and
+    **Feature concerns** the page adds, then a line on the comments that ride
+    along. A line under it says what will be posted;
+  - one button per verdict, each of which submits: **Request changes**,
+    **Comment**, **Approve** and **Ship it** (an approval with `:shipit:` added
+    to the end of the summary). Comment and Request changes need something
+    written. On the reviewer's own PR only Comment is open (the build records
+    the viewer as `pr.viewer`). With CI failing, Approve and Ship it take a
+    second click on the same button, which says why. Without a PR the button
+    is **Copy review as Markdown**;
+  - the comments (with their code; replies quote what they answer, and
+    pending suggestions can be accepted or dismissed), recommendations, feature
+    checks and auto-reviewed files, each folded with its counts in the heading;
+  - an Export row: **Copy as Markdown** (to hand the review to an agent or
+    paste it anywhere) and **Copy as JSON** (for `submit-review.cjs`).
+
+  Submitting (served pages with a PR) posts everything as one review, clears
+  the drafts so they can't double-post, and moves to a "Review submitted"
+  page (`#done`, "Shipped it" with the squirrel for Ship it) with the verdict,
+  counts, any notes and a link to the review.
+- Every comment editor's **Preview** shows only what will be posted: the
+  formatting toolbar, hint and attachment chips hide until **Write**.
 
 Drafts and checkmarks live in `localStorage`, so a rebuilt page (a new guide)
 keeps them. `--serve` uses a fixed port (4823, or the next free one) so the
@@ -332,11 +418,16 @@ page is their approval step.
 ## Files
 
 - `scripts/build-review.cjs`: builds the page, runs the self-check and guide validation.
+- `scripts/decision-patterns.cjs`: what the reviewer keeps declining, from the decisions each served review logs (`lib/decisions.cjs`).
+- `scripts/review-guides.cjs`: reads the repo's `REVIEW.md`, fetches the shared guides it lists through `gh` and caches them (`lib/review-guides.cjs`, shared with the build for principles).
+- `scripts/pr-media.cjs`: downloads a PR description's screenshots and recordings (`lib/pr-media.cjs`, shared with the build).
 - `scripts/serve-review.cjs`: localhost server for Save, Submit and `/api/file` (also runs standalone on a built page).
 - `scripts/submit-review.cjs`: posts a review JSON through `gh`; `saveReview` writes the Markdown and JSON.
 - `scripts/lib/diff-parse.cjs`: the one diff parser, used by all three and inlined into the page.
 - `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `diagrams.js`, `app.js`, inlined into every page.
 - `references/overview.md`: the overview format (feature, checks, shape, diagrams) and how to write it.
+- `references/recommendations.md`: group gists, recommendations, screenshots and recordings, and how to capture them.
+- `references/review-md.md`: the `REVIEW.md` format for a project's review rules and shared guides.
 - `references/gathering.md`: how to get from a PR, commit, range, branch, or ticket ID to a build.
 - `references/preferences-template.md`: the per-user preferences file.
 - `usage.md` and `assets/screenshots/`: a guide for people using the page, with screenshots.
@@ -355,6 +446,11 @@ page is their approval step.
 - Sticky offsets are driven by a `--hh` custom property measured from the real
   toolbar height on load and resize, not a hardcoded pixel value that drifts
   when the toolbar wraps on a narrow window.
+- **Media is inlined, never linked.** `image`/`video` entries and the PR
+  description's images are read at build time into data URLs (description
+  images not hosted on GitHub stay plain links; the `gh` token is only sent to
+  github.com); the page renders only `data:image/` and `data:video/`
+  sources, so opening it never fetches from anywhere.
 - **The `localStorage` key is the PR** (`review:owner/repo#N`), or without one
   the title plus a hash of the sorted file names. Never key on render order:
   the guide reorders sections, and that would wipe checkmarks and drafts every
@@ -389,6 +485,15 @@ page is their approval step.
   `<script id="server-src" type="application/json">null</script>` placeholder.
   Keep that string identical in `build-review.cjs` and `serve-review.cjs`.
 
+- **Every drawn diagram has an expand button** in its corner (screenshots open
+  on click instead), so its text stays selectable. `DIAG.render` keeps the
+  diagram's data on the figure (`fig.diag`; each side of a `compare` carries
+  its own) and the page draws it again in the lightbox, since a raw diagram's
+  shadow root doesn't survive `cloneNode`. The lightbox fills the window: a
+  drawn diagram scales through its viewBox (the SVG gets the panel's width
+  and grows in height, with its legend in a column under it, never beside
+  it), and a hand-written one, which has no viewBox, is measured and given a
+  CSS `zoom` to fit (`fitBig`, rerun on resize).
 - **Diagram layout never measures the DOM.** `diagrams.js` sizes boxes from
   label length with fixed arithmetic, so it renders the same in every browser
   and in jsdom. Nodes in one row can differ in height (a `sub` line), so code
@@ -396,6 +501,9 @@ page is their approval step.
 - Raw `html`/`svg` diagrams render in a shadow root; the page's CSS variables
   inherit through it, nothing else does. `<script>` and `on*` attributes are
   stripped, since diagrams are pictures.
+- An editor opened from a recommendation (`editInRecs`) is the one `editing`
+  draft with `inRecs` set. `renderFile` leaves it alone, and `mountRecEditor`
+  puts it back in its card after every redraw of the Recommendations view.
 - The step views are body classes (`overviewing`, `submitting`, `done`) plus
   `body.dataset.view`; the code view is the absence of the others. The last
   step is remembered under `<KEY>:step`.

@@ -8,6 +8,8 @@
  *   sequence   actors with lifelines and the messages between them, in order
  *   compare    { before, after }: two diagrams side by side
  *   html, svg  hand-written markup, static only (scripts never run)
+ *   image, video  a screenshot, GIF or screen recording; the build inlines the
+ *              file named by `src` as a data URL in `data`, so the page stays offline
  *
  * Node, edge and message `status` is new | changed | removed | same.
  */
@@ -80,7 +82,34 @@ const DIAG = (function () {
     });
     const H = y - 70 + 16;
     const used = new Set();
-    let svg = '';
+    // Each edge leaves and enters a node's top or bottom side. Edges sharing a side spread across
+    // its middle, ordered by where their other end sits, so arrows don't pile onto one point.
+    const sideOf = (e, n) => {
+      const a = byId.get(e.from), b = byId.get(e.to);
+      if (a.row === b.row) return 'top';
+      return (n === a) === (a.y < b.y) ? 'bottom' : 'top';
+    };
+    const ports = new Map();
+    edges.forEach((e) => {
+      if (e.from === e.to) return;
+      [[byId.get(e.from), byId.get(e.to)], [byId.get(e.to), byId.get(e.from)]].forEach(([n, other]) => {
+        const k = n.id + ':' + sideOf(e, n);
+        if (!ports.has(k)) ports.set(k, []);
+        ports.get(k).push({ e, n, ox: other.x + other.w / 2 });
+      });
+    });
+    const portX = new Map();
+    ports.forEach((list) => {
+      list.sort((p, q) => p.ox - q.ox);
+      list.forEach((p, i) => {
+        const span = Math.min(p.n.w * 0.6, (list.length - 1) * 24);
+        portX.set(p.e, Object.assign(portX.get(p.e) || {}, {
+          [p.n === byId.get(p.e.from) ? 'a' : 'b']: p.n.x + p.n.w / 2 + (list.length > 1 ? -span / 2 + span * i / (list.length - 1) : 0),
+        }));
+      });
+    });
+    let svg = '', labels = '', tags = '';
+    const lbls = [];
     rows.forEach((row, ri) => {
       if (rowLayer[ri]) {
         svg += '<rect class="dband" x="4" y="' + (row.y - 8) + '" width="' + (W - 8) + '" height="' + (row.h + 16) + '" rx="6"/>' +
@@ -97,19 +126,35 @@ const DIAG = (function () {
         lx = x + 44; ly = y0;
       } else if (a.row === b.row) {
         // Same row: arc over the top so it doesn't run through the nodes in between.
-        const ax = a.x + a.w / 2, bx = b.x + b.w / 2, top = Math.min(a.y, b.y), lift = 26 + Math.abs(bx - ax) * 0.08;
+        const ax = portX.get(e).a, bx = portX.get(e).b, top = Math.min(a.y, b.y), lift = 26 + Math.abs(bx - ax) * 0.08;
         p = 'M' + ax + ',' + top + ' C' + ax + ',' + (top - lift) + ' ' + bx + ',' + (top - lift) + ' ' + bx + ',' + top;
         lx = (ax + bx) / 2; ly = top - lift * 0.75;
       } else {
         const down = a.y < b.y;
-        const ax = a.x + a.w / 2, ay = down ? a.y + a.h : a.y, bx = b.x + b.w / 2, by = down ? b.y : b.y + b.h;
+        const ax = portX.get(e).a, ay = down ? a.y + a.h : a.y, bx = portX.get(e).b, by = down ? b.y : b.y + b.h;
         const m = (ay + by) / 2;
         p = 'M' + ax + ',' + ay + ' C' + ax + ',' + m + ' ' + bx + ',' + m + ' ' + bx + ',' + by;
-        lx = (ax + bx) / 2; ly = m;
+        // An edge that skips a layer passes through it, so its middle can land on a box there. Label
+        // it in the gap just past its start instead, where the curve is still near ax.
+        const skips = Math.abs(rows.indexOf(a.row) - rows.indexOf(b.row)) > 1;
+        lx = skips ? ax : (ax + bx) / 2; ly = skips ? ay + (down ? 30 : -30) : m;
       }
       svg += '<path class="de ' + s + '" d="' + p + '" marker-end="url(#' + id + '-' + s + ')"><title>' +
-        esc((byId.get(e.from).label || e.from) + ' → ' + (byId.get(e.to).label || e.to) + (e.label ? ': ' + e.label : '')) + '</title></path>' +
-        label(lx, ly, e.label, s);
+        esc((byId.get(e.from).label || e.from) + ' → ' + (byId.get(e.to).label || e.to) + (e.label ? ': ' + e.label : '')) + '</title></path>';
+      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 10, text: e.label, s });
+    });
+    // Labels keep clear of the layer names, the boxes and each other: each takes the nearest of a few
+    // spots above or below where it wants to be that is free.
+    const boxes = nodes.map((n) => ({ l: n.x, r: n.x + n.w, t: n.y, b: n.y + n.h }));
+    const hit = (q, list) => list.some((o) => q.l < o.r && q.r > o.l && q.t < o.b && q.b > o.t);
+    const placedL = [];
+    lbls.forEach((L) => {
+      const x = Math.max(L.x, LBL + L.w / 2);
+      const at = (dy) => ({ l: x - L.w / 2, r: x + L.w / 2, t: L.y + dy - 9, b: L.y + dy + 7 });
+      const dy = [0, -16, 16, -32, 32].find((d) => !hit(at(d), boxes) && !hit(at(d), placedL));
+      const q = at(dy == null ? 0 : dy);
+      placedL.push(q);
+      labels += label(x, q.t + 9, L.text, L.s);
     });
     nodes.forEach((n) => {
       used.add(n.status);
@@ -118,11 +163,13 @@ const DIAG = (function () {
         '<rect x="' + n.x + '" y="' + n.y + '" width="' + n.w + '" height="' + n.h + '" rx="7"/>' +
         '<text x="' + cx + '" y="' + (n.y + (n.sub ? 20 : 22)) + '" text-anchor="middle">' + esc(n.label || n.id) + '</text>' +
         (n.sub ? '<text class="dsub" x="' + cx + '" y="' + (n.y + 38) + '" text-anchor="middle">' + esc(n.sub) + '</text>' : '') +
-        (n.status === 'new' || n.status === 'removed' || n.status === 'changed'
-          ? '<text class="dtag" x="' + (n.x + n.w - 4) + '" y="' + (n.y - 4) + '" text-anchor="end">' + n.status.toUpperCase() + '</text>' : '') +
         '</g>';
+      // Status tags sit just above the box, where arrows arrive; they go on top, with a halo, so a line can't hide one.
+      if (n.status === 'new' || n.status === 'removed' || n.status === 'changed')
+        tags += '<g class="dn ' + n.status + '"><text class="dtag" x="' + (n.x + n.w - 4) + '" y="' + (n.y - 4) + '" text-anchor="end">' + n.status.toUpperCase() + '</text></g>';
     });
-    return '<svg class="dsvg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + svg + '</svg>' + legend(used);
+    // Labels go on top: an edge that skips a layer can pass behind a node, and its label must stay readable.
+    return '<svg class="dsvg' + (rowLayer.some(Boolean) ? ' banded' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + svg + labels + tags + '</svg>' + legend(used);
   }
 
   // --- sequence: who calls whom, in order ---------------------------------
@@ -135,7 +182,10 @@ const DIAG = (function () {
     const longest = Math.max(...steps.map((m) => (m.divider ? 0 : tw(m.label, 11))), ...actors.map((a) => tw(a.label, 13)), 80);
     const COL = Math.min(320, Math.max(150, longest + 40)), PAD = 20;
     const xOf = (i) => PAD + COL / 2 + i * COL;
-    const W = PAD * 2 + COL * Math.max(actors.length, 1);
+    // A message to itself is labelled to the right of its loop, so leave room past the last actor.
+    const selfEnd = Math.max(0, ...steps.filter((m) => !m.divider && m.from === m.to && ix.has(m.from))
+      .map((m) => xOf(ix.get(m.from)) + 40 + tw(m.label, 11) + PAD));
+    const W = Math.max(PAD * 2 + COL * Math.max(actors.length, 1), selfEnd);
     const used = new Set();
     let y = 58, body = '';
     steps.forEach((m) => {
@@ -183,6 +233,8 @@ const DIAG = (function () {
     '.box.new,.new{border-color:var(--add-b)}.box.changed,.changed{border-color:#d29922}' +
     '.box.removed,.removed{border-color:var(--del-b);border-style:dashed;opacity:.85}.box.removed{text-decoration:line-through}' +
     '.arrow::before{content:"\\2192";color:var(--muted);font-size:18px}.down::before{content:"\\2193";color:var(--muted);font-size:18px}' +
+    // A flex column stretches its children, which would put an arrow's glyph at the left edge.
+    '.down{text-align:center}.col>.down,.col>.arrow{align-self:center}' +
     '.muted{color:var(--muted)}.small{font-size:12px}.title{font-weight:600;margin-bottom:4px}' +
     '.tag{font-size:10px;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);border-radius:20px;padding:0 6px;color:var(--muted)}' +
     '.add{color:var(--add-b)}.del{color:var(--del-b)}.accent{color:var(--accent)}' +
@@ -214,26 +266,45 @@ const DIAG = (function () {
       [['before', 'Before'], ['after', 'After']].forEach(([k, t]) => {
         const side = document.createElement('div');
         side.className = 'dside ' + k;
-        side.innerHTML = '<div class="dsidet">' + esc((d[k] && d[k].title) || t) + '</div>';
+        const label = (d[k] && d[k].title) || t;
+        side.innerHTML = '<div class="dsidet">' + esc(label) + '</div>';
+        // Each side expands on its own: one picture, larger, rather than the pair squeezed into the window.
+        if (d[k] && d[k].kind !== 'image') {
+          side.insertAdjacentHTML('afterbegin', '<button type="button" class="dexpand" title="Expand" aria-label="Expand ' + esc(label) + '">&#10530;</button>');
+          side.diag = Object.assign({}, d[k], { title: (d.title ? d.title + ': ' : '') + (d[k].title ? d[k].title : t) });
+        }
         if (d[k]) side.appendChild(body(d[k]));
         box.appendChild(side);
       });
     } else if (d.kind === 'html' || d.kind === 'svg') box.appendChild(raw(d.html || d.svg));
+    else if (d.kind === 'image' || d.kind === 'video') {
+      box.className = 'dbody dmedia';
+      // Only data URLs from the build: anything else would fetch from a host the page didn't choose.
+      if (!/^data:(?:image|video)\//.test(d.data || '')) box.innerHTML = '<p class="svnote">Missing ' + d.kind + ': ' + esc(d.src || '') + '</p>';
+      else if (d.kind === 'image') box.innerHTML = '<img src="' + esc(d.data) + '" alt="' + esc(d.alt || d.title || '') + '" title="Click to enlarge">';
+      else box.innerHTML = '<video src="' + esc(d.data) + '" controls muted loop playsinline preload="metadata"></video>';
+    }
     else box.innerHTML = '<p class="svnote">Unknown diagram kind: ' + esc(d.kind) + '</p>';
     return box;
   }
 
   // A titled figure with its caption rendered as Markdown.
-  function render(d, md) {
+  // A drawn diagram has an expand button in its corner rather than opening on any click, so its text
+  // stays selectable. A screenshot opens on click, as before. The page keeps `d` on the figure to
+  // draw it again, larger (a raw diagram's shadow root doesn't survive cloneNode).
+  function render(d, md, opts) {
     const fig = document.createElement('figure');
     fig.className = 'diagram';
+    fig.diag = d; fig.md = md;
+    if (d.kind !== 'image' && d.kind !== 'compare' && !(opts && opts.big))
+      fig.insertAdjacentHTML('beforeend', '<button type="button" class="dexpand" title="Expand" aria-label="Expand diagram">&#10530;</button>');
     if (d.title) fig.insertAdjacentHTML('beforeend', '<figcaption class="dtitle">' + esc(d.title) + '</figcaption>');
     fig.appendChild(body(d));
     if (d.caption) fig.insertAdjacentHTML('beforeend', '<div class="dcap md">' + (md ? md(d.caption) : esc(d.caption)) + '</div>');
     return fig;
   }
 
-  const KINDS = ['structure', 'sequence', 'compare', 'html', 'svg'];
+  const KINDS = ['structure', 'sequence', 'compare', 'html', 'svg', 'image', 'video'];
   // Problems the build reports before writing the page; [] when the diagram is drawable.
   function problems(d, where) {
     const out = [], at = where || (d && d.title) || 'diagram';
@@ -258,6 +329,8 @@ const DIAG = (function () {
     } else if (d.kind === 'compare') {
       if (!d.before || !d.after) out.push(at + ': compare needs both before and after');
       ['before', 'after'].forEach((k) => { if (d[k]) out.push(...problems(d[k], at + ' (' + k + ')')); });
+    } else if (d.kind === 'image' || d.kind === 'video') {
+      if (!(d.data || d.src)) out.push(at + ': ' + d.kind + ' needs a src file');
     } else if (!(d.html || d.svg)) out.push(at + ': ' + d.kind + ' diagram has no markup');
     return out;
   }

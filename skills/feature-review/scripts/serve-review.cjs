@@ -28,12 +28,19 @@ const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const { submitReview, saveReview } = require('./submit-review.cjs');
 const { parseDiff } = require('./lib/diff-parse.cjs');
+const { logDecisions } = require('./lib/decisions.cjs');
 
 const PLACEHOLDER = '<script id="server-src" type="application/json">null</script>';
 const island = (html, id) => {
   const m = html.match(new RegExp(`<script id="${id}" type="application/json">([\\s\\S]*?)</script>`));
   return m ? JSON.parse(m[1]) : null;
 };
+
+// The yes/no answers feed decision-patterns.cjs. Logging must never get in the way of a review.
+function logQuietly(review) {
+  try { const n = logDecisions(review); if (n) console.log(`decisions: logged ${n}`); }
+  catch (e) { console.error(`decisions: not logged (${e.message})`); }
+}
 
 function serve(htmlPath, { port = 4823, keepAlive = false } = {}) {
   const token = crypto.randomBytes(16).toString('hex');
@@ -88,12 +95,14 @@ function serve(htmlPath, { port = 4823, keepAlive = false } = {}) {
       if (action === 'save') {
         const saved = saveReview(review, outDir);
         console.log(`saved: ${saved.markdown}`);
+        logQuietly(review);
         return send(res, 200, saved);
       }
       if (action === 'check') return send(res, 200, submitReview(review, { dryRun: true, outDir }));
       if (action === 'submit') {
         saveReview(review, outDir);
         const result = submitReview(review, { outDir });
+        logQuietly(review);
         console.log(`submitted: ${result.url}`);
         result.notes.forEach((n) => console.log(`note: ${n}`));
         send(res, 200, result);

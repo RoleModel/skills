@@ -26,6 +26,19 @@ node build-review.cjs --pr https://github.com/org/repo/pull/640
 `--pr` with no ref fetches `pull/N/head` when the head commit isn't local. For a
 PR in another repo, run from a clone of that repo: `git diff` needs the objects.
 
+Read the description (`body`) closely: it is the author's own account of the
+change, and the overview's `author` digest comes from it. Then download its
+screenshots and recordings, so you can look at them and reuse them in the
+feature overview:
+
+```bash
+node pr-media.cjs --pr 640      # saves to tmp/review/pr-640/description/, prints file, heading, alt
+```
+
+Read the saved images (they are local files now) to see what the author showed.
+The build embeds the same files in the page; `--no-description` leaves the
+description out.
+
 ## Re-reviewing a PR you reviewed before
 
 ```bash

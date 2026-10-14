@@ -15,6 +15,7 @@
  *   node build-review.cjs --pr <N> --event approve      # default verdict on the submit page
  *   node build-review.cjs --pr <N> --since last         # only what changed since your last review
  *   node build-review.cjs --pr <N> --no-threads         # skip loading the PR's existing review threads
+ *   node build-review.cjs --pr <N> --no-description     # skip the PR description and its screenshots
  *
  * Output defaults to tmp/review/<slug>.html. Prints the written path on success
  * (or the served URL with --serve). Always runs a self-check: re-parses the
@@ -27,6 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { parseDiff, commentableLines, anchorProblem } = require('./lib/diff-parse.cjs');
+const prMedia = require('./lib/pr-media.cjs');
 
 const argv = process.argv.slice(2);
 const VALUED = ['-o', '--title', '--groups', '--pr', '--commit', '--port', '--event', '--since'];
@@ -50,7 +52,7 @@ const need = (sha, refs) => { if (!have(sha, refs)) die(`commit ${sha.slice(0, 1
 
 // --- pull request ---------------------------------------------------------
 // The page only offers "Submit" when it knows the PR; everything else works without one.
-let pr = null, lastReview = null;
+let pr = null, lastReview = null, prBody = '';
 if (opt('--pr')) {
   const spec = opt('--pr');
   const m = spec.match(/^([\w.-]+\/[\w.-]+)#(\d+)$/);
@@ -58,11 +60,12 @@ if (opt('--pr')) {
   let j;
   try {
     j = JSON.parse(run('gh', ['pr', 'view', ...args, '--json',
-      'number,url,title,headRefOid,baseRefOid,headRefName,baseRefName,author,state']));
+      'number,url,title,headRefOid,baseRefOid,headRefName,baseRefName,author,state,body']));
   } catch (e) { die(`cannot read PR ${spec} with gh: ${(e.stderr || e.message).toString().trim()}`); }
   const u = j.url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
   pr = { owner: u[1], repo: u[2], number: j.number, url: j.url, title: j.title, author: j.author && j.author.login,
     state: j.state, headSha: j.headRefOid, baseSha: j.baseRefOid, headRef: j.headRefName, baseRef: j.baseRefName };
+  prBody = (j.body || '').replace(/\r\n?/g, '\n');
   if (!target && !has('--stdin')) {
     // The PR's own diff is base...head. Fetch either end if this clone has never seen it.
     need(pr.headSha, [`pull/${pr.number}/head`, pr.headRef]);
@@ -73,6 +76,8 @@ if (opt('--pr')) {
   // changed since then, and --since last diffs from it.
   try {
     const me = run('gh', ['api', 'user', '--jq', '.login']).trim();
+    // GitHub won't let you approve or request changes on your own PR; the submit page needs to know.
+    pr.viewer = me;
     const mine = run('gh', ['api', '--paginate', `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/reviews`, '--jq',
       `.[] | select(.user.login == "${me}" and .submitted_at != null) | [.commit_id, .submitted_at, .state] | @tsv`])
       .trim().split('\n').filter(Boolean);
@@ -81,6 +86,23 @@ if (opt('--pr')) {
       lastReview = { sha, at, state };
     }
   } catch (e) { console.error(`re-review: could not read your past reviews (${(e.stderr || e.message).toString().trim()})`); }
+  // CI at the PR head: a reviewer should know the build is red before reading the code. gh exits 8
+  // while checks are pending, with the JSON still on stdout.
+  try {
+    let out;
+    try { out = run('gh', ['pr', 'checks', String(pr.number), '--repo', `${pr.owner}/${pr.repo}`, '--json', 'name,state,bucket,link,workflow']); }
+    catch (e) { out = e.stdout ? e.stdout.toString() : ''; if (!out.trim()) throw e; }
+    const list = JSON.parse(out).map((c) => ({ name: c.name, workflow: c.workflow || '', bucket: c.bucket, state: c.state, link: c.link || '' }));
+    pr.ci = { at: new Date().toISOString(), checks: list };
+    const n = (b) => list.filter((c) => c.bucket === b);
+    console.error('ci: ' + (list.length ? ['pass', 'fail', 'pending', 'cancel', 'skipping'].filter((b) => n(b).length)
+      .map((b) => n(b).length + ' ' + b + (b === 'fail' ? ' (' + n(b).map((c) => c.name).join(', ') + ')' : '')).join(', ') : 'no checks'));
+  } catch (e) {
+    const why = (e.stderr || e.message).toString().trim().split('\n')[0];
+    // gh says "no checks reported" with a non-zero exit when a PR has none.
+    if (/no checks/i.test(why)) { pr.ci = { at: new Date().toISOString(), checks: [] }; console.error('ci: no checks'); }
+    else console.error(`ci: could not read checks (${why})`);
+  }
 }
 
 // --- re-review: only what changed since a commit ---------------------------
@@ -250,7 +272,7 @@ if (pr && !has('--no-threads')) {
 //     suggestions: [{path, line?, side?, start_line?, start_side?, body}] }
 // with groups in relevance order, plus an optional `overview` (feature, shape,
 // diagrams) for the page's first step. Validated against the diff after the build.
-let guide = { groups: [], suggestions: [], overview: null };
+let guide = { groups: [], suggestions: [], recommendations: [], overview: null };
 const groupsPath = opt('--groups');
 if (groupsPath) {
   let g;
@@ -258,15 +280,108 @@ if (groupsPath) {
   catch (e) { die(`cannot read --groups ${groupsPath}: ${e.message}`); }
   if (Array.isArray(g)) g = { groups: g };
   if (!g || !Array.isArray(g.groups)) die('--groups must be an array of groups or {groups: [...], suggestions: [...]}');
+  // A recommendation bundles the line comments it stands for. They ride as ordinary suggestions
+  // tagged with the recommendation's id, so the code view still shows each one at its line.
+  const recommendations = (g.recommendations || []).map((r, i) => ({
+    id: String(r.id || 'r' + (i + 1)), title: r.title, why: r.why || '', kind: r.kind || '', group: r.group || null,
+    body: r.body || '', comments: r.comments || [],
+    context: r.context || '', problem: r.problem || '', proposal: r.proposal || '', tradeoffs: r.tradeoffs || '',
+    visuals: r.visuals || [], checks: r.checks || [], principle: r.principle || null,
+  }));
   guide = {
     groups: g.groups.map((grp) => ({
-      title: grp.title, why: grp.why || '', auto: !!grp.auto,
+      title: grp.title, why: grp.why || '', auto: !!grp.auto, summary: grp.summary || '', points: grp.points || [],
       files: (grp.files || []).map((e) => (typeof e === 'string' ? { path: e } : e)),
     })),
-    suggestions: g.suggestions || [],
+    suggestions: (g.suggestions || []).concat(recommendations.flatMap((r) => r.comments.map((c) => Object.assign({}, c, { rec: r.id })))),
+    recommendations: recommendations.map(({ comments, ...r }) => Object.assign(r, { comments: comments.length })),
     overview: g.overview || null,
   };
 }
+
+// --- screenshots and recordings -------------------------------------------
+// An image or video "diagram" names a file; it is read here and inlined as a data URL,
+// so the page still works from file:// and can be mailed around.
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+  mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4v: 'video/mp4' };
+const MEDIA_WARN = 8 << 20, MEDIA_MAX = 60 << 20;
+let mediaCount = 0, mediaBytes = 0;
+const inlineMedia = (d) => {
+  if (!d || typeof d !== 'object') return;
+  if (d.kind === 'compare') { inlineMedia(d.before); inlineMedia(d.after); return; }
+  if (!['image', 'video'].includes(d.kind) || !d.src || d.data) return;
+  const where = [d.src, groupsPath && path.resolve(path.dirname(groupsPath), d.src)].filter(Boolean).find((p) => fs.existsSync(p));
+  if (!where) die(`media: cannot find ${d.src} (paths are relative to the current directory or the --groups file)`);
+  const ext = path.extname(where).slice(1).toLowerCase(), type = MIME[ext];
+  if (!type) die(`media: ${d.src} is not a supported image or video (${Object.keys(MIME).join(', ')})`);
+  if (!type.startsWith(d.kind)) die(`media: ${d.src} is a ${type.split('/')[0]}, but the entry says kind "${d.kind}"`);
+  const buf = fs.readFileSync(where);
+  if (buf.length > MEDIA_WARN) console.error(`media: ${d.src} is ${(buf.length / 1048576).toFixed(1)} MB; a shorter clip or a smaller screenshot keeps the page quick`);
+  mediaCount++; mediaBytes += buf.length;
+  d.data = `data:${type};base64,${buf.toString('base64')}`;
+  d.src = path.basename(where);
+};
+if (guide.overview) {
+  (guide.overview.diagrams || []).forEach(inlineMedia);
+  ((guide.overview.connection && guide.overview.connection.steps) || []).forEach((st) => (st.visuals || []).forEach(inlineMedia));
+}
+guide.recommendations.forEach((r) => r.visuals.forEach(inlineMedia));
+
+// --- principles ----------------------------------------------------------------
+// A recommendation can name the guide section it rests on. The build copies that section into the
+// page, so the reviewer can read the standard next to the recommendation, offline. Guides come from
+// the cache review-guides.cjs filled (no network here); `guide` is a REVIEW.md-style spec or just a
+// file name from the guides REVIEW.md lists.
+const principleProblems = [];
+if (guide.recommendations.some((r) => r.principle)) {
+  const RG = require('./lib/review-guides.cjs');
+  let root = process.cwd();
+  try { root = git(['rev-parse', '--show-toplevel']).trim(); } catch (e) { /* not a repo */ }
+  const listed = (RG.collect(root, { offline: true }) || { guides: [] }).guides.filter((g) => g.body != null);
+  const find = (spec) => {
+    const name = String(spec || '').trim();
+    const hit = listed.find((g) => g.label === name || (g.entry.path || g.entry.local) === name ||
+      path.posix.basename(g.entry.path || g.entry.local) === name);
+    if (hit) return hit;
+    const e = RG.parseSpec(name);
+    const g = e && RG.load(e, { root, offline: true });
+    return g && g.body != null ? g : null;
+  };
+  guide.recommendations.forEach((r) => {
+    if (!r.principle) return;
+    const p = typeof r.principle === 'string' ? { guide: r.principle.split('#')[0], section: r.principle.split('#')[1] || '' } : r.principle;
+    const at = `recommendations: "${r.title}" principle`;
+    const g = p.guide && find(p.guide);
+    if (!g) { principleProblems.push(`${at}: no guide "${p.guide}" (list it in REVIEW.md and run review-guides.cjs)`); r.principle = { name: p.section || p.guide || '' }; return; }
+    const sec = p.section ? RG.section(g.body, p.section) : null;
+    if (p.section && !sec) principleProblems.push(`${at}: no section "${p.section}" in ${g.label}`);
+    r.principle = { guide: g.label, title: RG.titleOf(g.body) || path.basename(g.file), name: sec ? sec.heading : '',
+      text: sec ? (sec.text.length > 2400 ? sec.text.slice(0, 2400) + '…' : sec.text) : '' };
+  });
+}
+
+// --- the PR description ------------------------------------------------------
+// The author's own account of the change, with their screenshots. The overview shows the agent's
+// digest of it and keeps the full text one click away. Images are downloaded (see lib/pr-media.cjs)
+// and the body rewritten to point at them as attachment: links, which the page's Markdown inlines.
+let description = null;
+if (pr && prBody.trim() && !has('--no-description')) {
+  let body = prBody;
+  const images = {};
+  const got = prMedia.download(prMedia.findImages(prBody), prMedia.defaultDir(pr), (m) => console.error('description: ' + m));
+  got.forEach((g, i) => {
+    const buf = fs.readFileSync(g.file);
+    mediaBytes += buf.length;
+    const id = 'd' + (i + 1), video = g.type.startsWith('video/');
+    images[id] = `data:${g.type};base64,${buf.toString('base64')}`;
+    // A video can't render inside Markdown, so it becomes a link the page turns into a player.
+    body = body.split(g.match).join(video ? `[video: ${g.alt || 'recording'}](attachment:${id})` : `![${(g.alt || 'screenshot').replace(/[\[\]]/g, '')}](attachment:${id})`);
+  });
+  // Anything left (not on GitHub, or failed) stays a plain link: the page never fetches on its own.
+  body = body.replace(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi, '[image]($1)');
+  description = { author: pr.author, url: pr.url, body, images, files: got.map((g) => ({ id: 'd' + (got.indexOf(g) + 1), file: g.file, heading: g.heading, type: g.type })) };
+}
+if (mediaBytes > MEDIA_MAX) die(`media: ${(mediaBytes / 1048576).toFixed(1)} MB of screenshots and recordings is too much for one page; trim them`);
 
 const out = opt('-o') || path.join('tmp', 'review', `${slug}.html`);
 fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -294,19 +409,20 @@ ${asset('style.css')}
 </style></head><body>
 <header>
 <span class="steps" id="steps"><button data-step="overview"><b>1</b> Overview</button><button data-step="code"><b>2</b> Code</button><button data-step="submit"><b>3</b> Submit</button></span>
+<span class="steps modes diffonly" id="modes" title="Recommendations or code (r)"><button data-mode="recs">Recommendations</button><button data-mode="diff">Code</button></span>
 <h1>${esc(title)}</h1>
 <span class="stats" id="stats"></span>
-<button id="expand" class="diffonly">Expand all</button>
-<button id="collapse" class="diffonly">Collapse all</button>
-<button id="reset" class="diffonly">Reset viewed</button>
-<button id="hltoggle">Syntax: on</button>
-<button id="wstoggle" class="diffonly">Whitespace: shown</button>
-<button id="splittoggle" class="diffonly">View: unified</button>
+<button id="expand" class="diffonly codeonly">Expand all</button>
+<button id="collapse" class="diffonly codeonly">Collapse all</button>
+<button id="reset" class="diffonly codeonly">Reset viewed</button>
+<button id="hltoggle" class="diffonly codeonly">Syntax highlighting: on</button>
+<button id="wstoggle" class="diffonly codeonly">Whitespace: shown</button>
+<button id="splittoggle" class="diffonly codeonly">View: unified</button>
 <button id="keys" title="Keyboard shortcuts (?)">?</button>
-<input type="search" id="q" class="diffonly" placeholder="Filter files…">
+<input type="search" id="q" class="diffonly codeonly" placeholder="Filter files…">
 <button id="gosubmit" class="primary diffonly">Finish review</button>
 </header>
-<div class="layout"><nav><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><div id="filelist"></div></main></div>
+<div class="layout"><nav><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
 <section id="overviewview"></section>
 <section id="submitview"></section>
 <section id="doneview"></section>
@@ -315,6 +431,7 @@ ${island('ws-src', wsMap)}
 ${island('threads-src', threads)}
 ${island('guide-src', guide)}
 ${island('meta-src', meta)}
+${island('desc-src', description)}
 <script id="server-src" type="application/json">null</script>
 <script>
 ${js}
@@ -386,11 +503,49 @@ if (groupsPath) {
     (ov.diagrams || []).forEach((d, i) => {
       for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`)) { console.error(`overview: ${p}`); bad++; }
       if (d && d.group && !titles.has(d.group)) { console.error(`overview: diagram "${d.title || i + 1}" names an unknown group "${d.group}"`); bad++; }
-      if (d && d.section && !['feature', 'shape'].includes(d.section)) { console.error(`overview: diagram "${d.title || i + 1}" section must be feature or shape`); bad++; }
+      if (d && d.section && !['feature', 'connection', 'shape', 'recs'].includes(d.section)) { console.error(`overview: diagram "${d.title || i + 1}" section must be feature, connection, shape or recs`); bad++; }
     });
+    const cx = ov.connection;
+    if (cx) {
+      const ids = new Set(checks.map((c) => c && c.id).filter(Boolean));
+      (cx.steps || []).forEach((st, i) => {
+        const at = `connection step ${i + 1}${st && st.title ? ` "${st.title}"` : ''}`;
+        if (!st || !st.title) { console.error(`overview: ${at} has no title`); bad++; return; }
+        (st.groups || []).forEach((t) => { if (!titles.has(t)) { console.error(`overview: ${at} names an unknown group "${t}"`); bad++; } });
+        (st.files || []).forEach((f) => { if (!byName.has(f)) { console.error(`overview: ${at} names a file not in the diff: ${f}`); bad++; } });
+        (st.checks || []).forEach((k) => { if (!ids.has(k)) { console.error(`overview: ${at} names an unknown check id "${k}" (give the check an "id")`); bad++; } });
+        (st.visuals || []).forEach((d, j) => { for (const p of DIAG.problems(d, `${at} visual ${j + 1}`)) { console.error(`overview: ${p}`); bad++; } });
+      });
+    }
     const objs = (ov.shape && ov.shape.objects) || [];
     objs.forEach((o) => { if (o && o.path && !byName.has(o.path)) { console.error(`overview: shape object names a file not in the diff: ${o.path}`); bad++; } });
   }
+  const groupTitles = new Set(guide.groups.map((g) => g.title)), rids = new Set();
+  const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
+  const checkIds = new Set(((ov && ov.feature && ov.feature.checks) || []).map((c) => c && c.id).filter(Boolean));
+  // Keep in step with REC_PARTS in page/app.js.
+  const PARTS = ['context', 'problem', 'proposal', 'tradeoffs'];
+  const REC_PARTS = { bug: ['context', 'problem', 'proposal'], risk: PARTS, design: PARTS, tests: ['context', 'problem', 'proposal'],
+    style: ['context', 'proposal', 'tradeoffs'], question: ['context', 'problem', 'tradeoffs'] };
+  guide.recommendations.forEach((r, i) => {
+    const at = `recommendations: ${r.title ? `"${r.title}"` : i + 1}`;
+    if (!r.title) { console.error(`${at} has no title`); bad++; }
+    if (rids.has(r.id)) { console.error(`${at} repeats id ${r.id}`); bad++; }
+    rids.add(r.id);
+    if (r.group && !groupTitles.has(r.group)) { console.error(`${at} names an unknown group "${r.group}"`); bad++; }
+    if (r.kind && !REC_PARTS[r.kind]) { console.error(`${at} has unknown kind "${r.kind}" (bug, risk, design, tests, style or question); it shows every section`); }
+    // The kind decides which short sections a recommendation has; the page only shows those.
+    const extra = PARTS.filter((p) => r[p] && r.kind && REC_PARTS[r.kind] && !REC_PARTS[r.kind].includes(p));
+    if (extra.length) console.error(`${at}: a ${r.kind} recommendation doesn't show ${extra.join(', ')}; it will be hidden`);
+    // Sections are meant to be read at a glance: one sentence, two at most.
+    PARTS.forEach((p) => {
+      const n = String(r[p] || '').replace(/`[^`]*`/g, 'x').split(/[.!?](?:\s|$)/).filter((x) => x.trim()).length;
+      if (n > 2 || String(r[p] || '').length > 260) console.error(`${at}: ${p} is long (${n} sentences); keep it to one, two at most`);
+    });
+    r.visuals.forEach((d, j) => { for (const p of DIAG.problems(d, `${at} visual ${j + 1}`)) { console.error(p); bad++; } });
+    r.checks.forEach((k) => { if (!checkIds.has(k)) { console.error(`${at} names an unknown check id "${k}" (give the check an "id")`); bad++; } });
+  });
+  principleProblems.forEach((p) => console.error(p));
   if (bad) { console.error(`groups check FAILED (${bad} problem(s))`); process.exit(1); }
   const loose = byName.size - seen.size;
   const total = parsed.reduce((n, f) => n + f.add + f.del, 0);
@@ -398,16 +553,28 @@ if (groupsPath) {
     `groups ok: ${guide.groups.length} group(s) cover ${seen.size}/${byName.size} files` +
       (loose ? ` (${loose} in "Unsorted")` : '') +
       (auto ? `; ${auto} auto-reviewed (${autoLines}/${total} lines)` : '') +
-      (guide.suggestions.length ? `; ${guide.suggestions.length} suggested comment(s)` : '')
+      (guide.suggestions.length ? `; ${guide.suggestions.length} suggested comment(s)` : '') +
+      (guide.recommendations.length ? `; ${guide.recommendations.length} recommendation(s)` : '') +
+      (guide.groups.length ? `; ${guide.groups.filter((g) => g.summary || g.points.length).length}/${guide.groups.length} group(s) with a gist` : '')
   );
+  const unbundled = guide.suggestions.filter((s) => !s.rec).length;
+  if (unbundled && guide.recommendations.length) console.error(`recommendations: ${unbundled} suggested comment(s) belong to no recommendation; each shows as its own`);
+  if (mediaCount) console.error(`media: ${mediaCount} screenshot(s)/recording(s) inlined, ${(mediaBytes / 1048576).toFixed(1)} MB`);
   if (ov) {
     const ds = ov.diagrams || [];
+    const steps = (ov.connection && ov.connection.steps) || [];
+    const stepVisuals = steps.reduce((n, st) => n + (st.visuals || []).length, 0);
     console.error(`overview ok: feature${ov.feature ? '' : ' (missing)'}` +
-      `, ${(ov.feature && ov.feature.checks || []).length} check(s), shape${ov.shape ? '' : ' (missing)'}` +
+      `, ${(ov.feature && ov.feature.checks || []).length} check(s)` +
+      `, connection${ov.connection ? ` (${steps.length} step(s), ${stepVisuals} visual(s), ${steps.reduce((n, st) => n + (st.checks || []).length, 0)} check(s) placed)` : ' (missing)'}` +
+      `, author${ov.author ? '' : description ? ' (missing: the PR has a description)' : ' (none)'}` +
+      `, shape${ov.shape ? '' : ' (missing)'}` +
       `, ${ds.length} diagram(s)` + (ds.some((d) => d.group) ? ` (${ds.filter((d) => d.group).length} in groups)` : ''));
   } else console.error('overview: none (the page opens on the code; the Overview step shows only the computed shape)');
 }
 console.error(pr ? `pr: ${pr.owner}/${pr.repo}#${pr.number} at ${commitId.slice(0, 10)}` : 'pr: none (comments stay local)');
+if (description) console.error(`description: ${description.body.length} chars, ${Object.keys(description.images).length} image(s) from the PR` +
+  (description.files.length ? ` (saved in ${path.dirname(description.files[0].file)})` : ''));
 if (pr && !has('--no-threads')) {
   const here = threads.filter((t) => byName.has(t.path));
   const open = here.filter((t) => !t.resolved).length;

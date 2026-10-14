@@ -2,7 +2,9 @@
 
 The page reviews in three steps: **Overview**, **Code**, **Submit**. The
 overview comes first and is about the *feature* and the *shape* of the change,
-not lines of code. A reviewer who reads only the overview should know what the
+not lines of code. It reads top to bottom: what the PR's author said, the
+feature and its checks, the **feature overview** (how it all fits together,
+with visuals), then the shape. A reviewer who reads only the overview should know what the
 change does for the user, whether it does it well, and how it rearranges the
 code. The diff is the fallback: the place to confirm what the overview says.
 
@@ -15,14 +17,30 @@ about: an empty section is better than filler.
   "groups": [ ... ],
   "suggestions": [ ... ],
   "overview": {
+    "author": {
+      "summary": "Rhys says this fixes **distributor admins not seeing Order Tracking** and makes the tracker's states clearer.",
+      "points": ["Two specs marked obsolete, kept for later"],
+      "differs": "The description says the specs were *marked* obsolete; the diff deletes them."
+    },
     "feature": {
       "summary": "Rotating a **roof hatch** turns it about its centre instead of its corner.",
       "behavior": "Before: the hatch swung around its origin and left the roof outline. After: it turns in place.",
       "checks": [
-        { "text": "Rotating a hatch 90° keeps its centre in place",
+        { "id": "centre", "text": "Rotating a hatch 90° keeps its centre in place",
           "how": "Place a hatch, rotate it with the handle, compare the centre before and after.",
           "path": "app/javascript/shared/drawings2D/RoofHatchFigure.js" },
         "Undo after a rotation restores the original position"
+      ]
+    },
+    "connection": {
+      "summary": "The user drags the handle; the editor asks the figure for its handles, which now pivot on the centre.",
+      "technical": "`SayfaDrawingEditor` routes the drag to `RoofHatchFigure#handlesAt`, which ...",
+      "steps": [
+        { "title": "Drag the rotate handle", "user": "The hatch turns in place.",
+          "tech": "`handlesAt(options)` returns the centre as the pivot.",
+          "visuals": [{ "kind": "video", "src": "tmp/review/KATT-1/rotate.webm" }],
+          "groups": ["The hatch fix"], "files": ["app/javascript/shared/drawings2D/RoofHatchFigure.js"],
+          "checks": ["centre"] }
       ]
     },
     "shape": {
@@ -69,6 +87,76 @@ about: an empty section is better than filler.
   suggested-comments preference here too: no hypotheticals if they asked for
   none.
 
+## CI
+
+With `--pr`, the build reads the PR's checks (`gh pr checks`) and the page
+puts them at the top of the overview: failing and running checks listed with
+links, passing ones folded away. The sidebar shows the same in a word, and the
+submit page warns before approving a red build. The status is as of the build;
+rebuild to refresh it. You don't write anything for this, but when a check
+fails, say so in your report, and look at whether the failure is in the code
+under review before writing recommendations about it.
+
+## From the PR description
+
+With `--pr`, the build pulls in the PR's description and downloads its
+screenshots and recordings (GitHub attachments, with the `gh` token). The page
+shows them in a strip, and keeps the full description folded away under them.
+You write the digest above them under `author`:
+
+- **`summary`**: what the author says the change does and why, condensed to a
+  sentence or two. Keep their reasoning and any context the diff can't show:
+  the feedback that prompted it, what they tested, what they left for later.
+- **`points`**: up to four short bullets for the rest worth keeping (testing
+  notes, known gaps, follow-ups, deploy steps).
+- **`differs`**: where the code does something the description doesn't say,
+  or doesn't do something it says. Shown in a warning box, so only real ones.
+
+Run `scripts/pr-media.cjs --pr <N>` while gathering, before writing the
+overview: it saves the description's media to `tmp/review/pr-<N>/description/`
+and prints each file with the heading it sat under. Reuse those files as
+`image`/`video` visuals in the feature overview; the build reads the same
+cache. If the description is empty, there is nothing to digest: leave `author` out.
+
+## The feature overview
+
+(It goes under the `connection` key, its name before it was renamed.)
+
+The section that pulls it all together: how the feature works end to end, for
+the person using it and in the code, in one place. A reviewer who reads it
+should be able to say how the pieces connect, and the checks should read as
+part of that story rather than a separate list. Make it **as visual as you
+can**: a screenshot or short recording for each step a person can see, and a
+sequence or structure diagram for the steps they can't.
+
+- **`summary`**: the whole flow in one or two sentences, from the user's
+  action to the result.
+- **`technical`**: how it works underneath, at overview height: the entry
+  point, the objects that do the work, where the data lives, in a short
+  paragraph. Not a file list.
+- **`steps`**: the flow in order, usually 2 to 6. Each step has:
+  - `title`: the step, in the user's words where there is a user;
+  - `user`: what the person sees or does (Markdown);
+  - `tech` (optional): what runs, folded under "Under the hood" and closed by
+    default. One plain sentence naming the object or two that do the work, not
+    a walk through the code. Leave it out when the step's groups and files
+    already say enough;
+  - `visuals`: diagrams or media for this step (any diagram kind, including
+    `image` and `video`). Screenshots from the PR description are often the
+    right picture here. A step with no visuals takes the full width;
+  - `groups`: reading-guide group titles that implement it. They link to the
+    group's Recommendations card;
+  - `files`: files in the diff, linked to their diff;
+  - `checks`: ids of feature checks (give those checks an `id`). They show in
+    the step instead of under the feature.
+- Diagrams with `"section": "connection"` show above the steps: the place for
+  one end-to-end sequence diagram.
+
+Capture screenshots and recordings with Playwright or the Chrome extension
+(recipes in `references/recommendations.md`). When the app can't run, use the
+PR description's media and diagrams, and say in your report that nothing was
+captured.
+
 ## The shape
 
 The shape is the structure of the change and what it does to the code around
@@ -109,11 +197,22 @@ a state machine, a before/after. Prefer one or two good diagrams to many. Every
 diagram has `kind`, optional `title` and `caption` (Markdown), and where it
 shows:
 
-- `section`: `"feature"` or `"shape"`, in the overview. Default `"feature"`.
+- `section`: `"feature"`, `"connection"` or `"shape"`, in the overview, or `"recs"`, at the
+  top of the code step's Recommendations view. Default `"feature"`.
 - `group`: the exact `title` of a reading-guide group. The diagram is then shown
-  under that group's header in the code step, next to the code it explains.
-  This is the place for the complex parts of a change. With `group` and no
-  `section`, it appears only there; give both to show it in both places.
+  on that group's card in the Recommendations view and under its header in the
+  Code view, next to the code it explains. This is the place for the complex
+  parts of a change. With `group` and no `section`, it appears only there; give
+  both to show it in both places.
+
+Every drawn diagram gets an expand button in its corner that opens it to fill
+the window, with its text still selectable (each side of a `compare` expands
+on its own); screenshots open on click. A diagram can also
+sit on a recommendation, under its `visuals` (`references/recommendations.md`).
+
+Screenshots and screen recordings are diagrams too: `{"kind": "image" | "video",
+"src": "<file>"}`, inlined by the build. Use them for any UI change. Format,
+limits and how to capture them: `references/recommendations.md`.
 
 ### `structure`: objects in layers
 
@@ -187,12 +286,14 @@ like this beats any box diagram: show the actual before and after positions.
 
 ## Checking it
 
-The build validates the overview with the guide: every check has text, every
+The build validates the overview with the guide (and inlines any `image` or
+`video` files, printing a `media:` line): every connection step has a title and
+names real groups, files and check ids, every check has text, every
 `path` is in the diff, every diagram's kind is known and its edges and messages
 name real nodes and actors, and every `group` names a real group. It prints
 
 ```
-overview ok: feature, 4 check(s), shape, 3 diagram(s) (1 in groups)
+overview ok: feature, 4 check(s), connection (3 step(s), 4 visual(s), 2 check(s) placed), author, shape, 3 diagram(s) (1 in groups)
 ```
 
 or fails with the problem. It cannot tell whether a diagram is *readable*: a

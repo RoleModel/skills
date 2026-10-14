@@ -229,7 +229,7 @@ a.btn.primary{background:var(--add-b);border-color:var(--add-b);color:#fff;font-
 .steps button.on{background:var(--hunk);color:var(--accent)}
 .steps button.on b{background:var(--accent);color:#fff}
 /* --- overview ------------------------------------------------------------ */
-#overviewview{display:none;max-width:1100px;margin:0 auto;padding:20px 20px 80px}
+#overviewview{display:none;padding:20px 20px 80px}
 body.overviewing .layout,body.overviewing #submitview,body.overviewing #doneview{display:none}
 body.overviewing #overviewview{display:block}
 body.overviewing header .diffonly{display:none}
@@ -244,7 +244,8 @@ body.overviewing header .diffonly{display:none}
 .ovrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0;font-size:12px}
 .ovlbl{color:var(--muted);margin-right:4px}
 .ovtotal{font-size:13px;margin:0 0 8px}
-.ovwarn{border:1px solid #d29922;border-left-width:3px;border-radius:6px;padding:8px 12px;margin:12px 0;font-size:13px;background:var(--bg)}
+/* The page runs full width; a warning that wide is hard to read, so it keeps to about half. */
+.ovwarn{border:1px solid #d29922;border-left-width:3px;border-radius:6px;padding:8px 12px;margin:12px 0;font-size:13px;background:var(--bg);max-width:max(50%,560px)}
 .ovwarn ul{margin:6px 0 0;padding-left:18px}
 .ovblock table{font-family:inherit;font-size:12.5px;width:100%}
 .ovblock th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:4px 8px;border-bottom:1px solid var(--border)}
@@ -280,19 +281,25 @@ td.ovsize{width:28%}
 .chknote{grid-column:1 / span 2;width:100%;min-height:54px;resize:vertical;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 /* --- diagrams ------------------------------------------------------------ */
 .ovdiags{display:flex;flex-direction:column;gap:14px;margin:12px 0}
-.diagram{margin:0;border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:10px 12px}
+.diagram{margin:0;border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:10px 12px;position:relative}
+.dexpand{position:absolute;top:6px;right:6px;z-index:1;padding:0 6px;font-size:14px;line-height:20px;background:var(--bg);opacity:.7}
+.dexpand:hover{opacity:1}
+.diagram>.dtitle{padding-right:32px}
 .dtitle{font-size:12px;font-weight:600;margin-bottom:8px}
 .dbody{overflow-x:auto}
 .dcap{font-size:12.5px;color:var(--muted);margin-top:8px}
 .dcompare{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
-.dside{border:1px dashed var(--border);border-radius:6px;padding:8px}
+.dside{border:1px dashed var(--border);border-radius:6px;padding:8px;position:relative;min-width:0}
+.dside>.dsidet{padding-right:30px}
 .dside.before{opacity:.85}
 .dsidet{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;font-weight:600}
 .dside.after .dsidet{color:var(--accent)}
-.dsvg{display:block;height:auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+/* A drawn diagram keeps its natural width, so on a wide page it sits in the middle of its box. */
+.dsvg{display:block;height:auto;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .dsvg text{fill:var(--text);font-size:13px}
 .dsvg .dsub{fill:var(--muted);font-size:11px}
-.dsvg .dtag{font-size:8.5px;letter-spacing:.06em;fill:var(--muted)}
+.dsvg .dtag{font-size:8.5px;letter-spacing:.06em;fill:var(--muted);paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round}
+.dsvg.banded .dtag{stroke:var(--panel)}
 .dsvg .dlayer{fill:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
 .dsvg .dband{fill:var(--panel);stroke:none}
 .dsvg .dn rect{fill:var(--panel);stroke:var(--muted);stroke-width:1.2}
@@ -319,3 +326,206 @@ td.ovsize{width:28%}
 .gdiag{margin-top:8px}
 .gdiag summary{cursor:pointer;font-size:12px;color:var(--muted)}
 .gdiag .diagram{margin-top:6px}
+/* --- code step: recommendations or code ---------------------------------- */
+#recsview{display:none}
+body.recs #recsview{display:block}
+body.recs #filelist{display:none}
+body.recs header .codeonly{display:none}
+.rhead{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.rhead h2{font-size:18px;margin:2px 0 4px}
+.rcount{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
+.rcount b{display:block;font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
+.rgroup{border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel);padding:12px 16px;margin-bottom:14px}
+.rgroup.done{border-left-color:var(--add-b)}
+.rgroup.rgen{border-left-color:#d29922}
+.rghead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.rghead h3{margin:0;font-size:15px}
+.rgstat{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rgstat b{color:var(--text)}.rgroup.done .rgstat b{color:var(--add-b)}
+.progress>i.mixed{background:var(--accent)}.progress>i.no{background:var(--muted);opacity:.5}
+.rgroup .gwhy{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+.rgsum{margin-top:8px}
+.rgpoints{margin:8px 0 0;padding-left:18px;font-size:13px}
+.rgpoints li{margin:3px 0}
+.rgpoints code,.rectitle code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:0 4px}
+.rgvis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:12px;margin:12px 0}
+.rgfwrap{margin-top:10px}
+.rgfwrap>summary{cursor:pointer;font-size:12px;color:var(--muted)}
+.rgfwrap>summary:hover{color:var(--accent)}
+.rgfiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rfile{display:inline-flex;gap:5px;align-items:baseline;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-radius:20px;padding:1px 9px;color:var(--text);background:var(--bg);text-decoration:none}
+.rfile:hover{border-color:var(--accent);color:var(--accent)}
+.rfile .add,.rfile .del{font-size:11px}
+.rfile.added{border-color:var(--add-b)}.rfile.deleted{border-color:var(--del-b)}
+.rfile.auto{border-style:dashed;color:var(--muted)}
+.rfile.viewed{opacity:.55;text-decoration:line-through}
+.rgrecs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.rec{border:1px solid var(--border);border-left:3px solid #d29922;border-radius:6px;background:var(--bg);padding:8px 12px}
+.rec.yes{border-left-color:var(--add-b)}
+.rec.mixed{border-left-color:var(--accent)}
+.rec.no{border-left-color:var(--border);opacity:.6}
+.rec.no .rectitle{text-decoration:line-through;text-decoration-color:var(--muted)}
+.rectop{display:flex;gap:12px;align-items:flex-start}
+.rectitle{flex:1;font-weight:600;font-size:13.5px}
+.recbtns{display:flex;gap:6px;flex:0 0 auto}
+.recbtns button.on[data-rec=yes]{background:var(--add-b);border-color:var(--add-b);color:#fff}
+.recbtns button.on[data-rec=no]{background:var(--border);border-color:var(--muted);color:var(--text)}
+.recwhy{color:var(--muted);font-size:12.5px;margin-top:2px}
+.recmeta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;font-size:11.5px;color:var(--muted)}
+.rref{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);text-decoration:none;border:1px solid var(--border);border-radius:4px;padding:0 5px}
+.rref:hover{border-color:var(--accent)}
+.recmore summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:6px}
+.recc{border:1px solid var(--border);border-radius:6px;margin:6px 0;overflow:hidden}
+.recc .svfile{margin:0;padding:4px 10px;font-size:12px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center}
+.recc .svfile a{color:var(--accent);text-decoration:none;overflow-wrap:anywhere}
+.recc .svfile a:hover{text-decoration:underline}
+.recc .svfile .sp{flex:1}
+.recc .svfile button{padding:1px 8px;font:11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;white-space:nowrap}
+.recc .svfile .tag{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:500}
+.recc.yes{border-color:var(--add-b)}
+.recc.no>.md,.recc.no>.snippet{opacity:.5}
+.recedit .editor{margin:6px 10px;max-width:none}
+/* A recommendation's short sections: context, problem, proposal, tradeoffs (the kind picks which). */
+.recparts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:6px 16px;margin:6px 0 0}
+.recpart{min-width:0}
+.recpart dt{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.recpart dd{margin:1px 0 0;font-size:12.5px;overflow-wrap:anywhere}
+.recpart.problem dt{color:#d29922}
+.recpart.proposal dt{color:var(--add-b)}
+td.goflash{box-shadow:inset 0 0 0 999px #f5d90a44}
+.recvis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px;margin:8px 0 0}
+.recvis .diagram{background:var(--panel)}
+.recchecks{margin-top:8px}
+.recchecks .chk{background:var(--panel);margin:4px 0}
+.recc>.md{padding:8px 12px}
+.stag.bug,.stag.risk{border-color:var(--del-b);color:var(--del-b)}
+.stag.design,.stag.tests{border-color:#d29922;color:#d29922}
+.stag.question,.stag.style{border-color:var(--accent);color:var(--accent)}
+.svrecs li.no{color:var(--muted);text-decoration:line-through}
+.svrecs li.yes{color:var(--add-b)}
+.svrecs li.yes code,.svrecs li.no code{color:inherit}
+/* --- screenshots and recordings ------------------------------------------ */
+.dmedia img,.dmedia video{display:block;max-width:100%;max-height:440px;margin:0 auto;border:1px solid var(--border);border-radius:6px;background:var(--panel)}
+.dmedia img{cursor:zoom-in}
+#lightbox{position:fixed;inset:0;z-index:60;background:#000c;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+#lightbox.hidden{display:none}
+#lightbox img{max-width:100%;max-height:100%;border-radius:6px}
+#lightbox.lbdiag{cursor:default}
+.lbpanel{position:relative;width:96vw;height:94vh;display:flex;flex-direction:column;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px}
+/* The figure takes the panel's height; its body takes whatever the title, legend and caption leave. */
+.lbpanel .diagram{border:0;padding:0;background:transparent;flex:1;min-height:0;display:flex;flex-direction:column}
+/* A column: the drawing grows to fill, its legend sits under it. */
+.lbpanel .dbody{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto}
+.lbpanel .dlegend{flex:0 0 auto;align-self:flex-start}
+.lbpanel .draw{flex:0 0 auto}
+.lbpanel .dtitle{font-size:15px}
+/* Expanded, a drawn diagram fills the space; its viewBox keeps the proportions. */
+.lbpanel .dsvg{flex:1 1 0;min-height:0;width:100%;height:auto;max-width:none !important;max-height:none}
+.lbpanel .dmedia video{max-width:100%;max-height:100%}
+.lbclose{position:absolute;top:12px;right:12px;z-index:2;font-size:18px;line-height:20px;padding:2px 9px;background:var(--panel)}
+.lbpanel .dtitle{padding-right:44px}
+/* --- PR description ------------------------------------------------------ */
+.ovthumbs{display:flex;gap:10px;overflow-x:auto;margin:12px 0 4px;padding-bottom:4px}
+.ovthumbs .dmedia{margin:0;flex:0 0 auto}
+.ovthumbs .dmedia img,.ovthumbs .dmedia video{height:150px;width:auto;max-width:none;max-height:none}
+.ovdesc{border-left:3px solid var(--border);padding:4px 0 4px 12px;margin-top:6px}
+.ovdesc img{max-height:320px;cursor:zoom-in}
+/* --- feature connection -------------------------------------------------- */
+#ov-connection{border-left:3px solid var(--accent)}
+.cxsteps{list-style:none;margin:8px 0 0;padding:0;position:relative}
+.cxsteps::before{content:"";position:absolute;left:13px;top:14px;bottom:14px;border-left:2px solid var(--border)}
+.cxstep{position:relative;display:flex;gap:14px;margin:0 0 18px}
+.cxstep:last-child{margin-bottom:0}
+.cxnum{flex:0 0 28px;height:28px;border-radius:14px;background:var(--accent);color:#fff;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.cxbody{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.cxstep.novis .cxbody{grid-template-columns:1fr}
+@media(max-width:900px){.cxbody{grid-template-columns:1fr}}
+.cxvis{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cxvis .diagram{background:var(--panel)}
+.cxtext h4{margin:2px 0 6px;font-size:14px}
+.cxtext h4 code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.cxuser{margin-bottom:8px}
+.cxtech{border:1px dashed var(--border);border-radius:6px;padding:6px 10px;background:var(--panel);font-size:12.5px}
+.cxtech .md{font-size:12.5px}
+.cxlbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;margin-bottom:2px}
+details.cxtech{padding:4px 10px}
+details.cxtech>summary{cursor:pointer;margin:0;list-style:none}
+details.cxtech>summary::-webkit-details-marker{display:none}
+details.cxtech>summary::before{content:"\25B8";display:inline-block;width:12px;font-size:11px}
+details.cxtech[open]>summary::before{content:"\25BE"}
+details.cxtech>summary:hover{color:var(--accent)}
+details.cxtech[open]>summary{margin-bottom:4px}
+.cxlinks{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cxgroup{font-size:12px;border:1px solid var(--accent);border-radius:20px;padding:1px 9px;text-decoration:none}
+.cxlinks .rfile{font-size:11.5px}
+.cxchecks{margin-top:10px}
+.cxchecks .chk{background:var(--panel)}
+/* --- keeping long content inside its box --------------------------------- */
+/* A grid or flex child's minimum width is its content, so one long path or code span would widen
+   the column past its card. minmax(0, …) and min-width:0 let them shrink; long tokens break. */
+.chk{grid-template-columns:minmax(0,1fr) auto}
+.chkbtns button{white-space:nowrap}
+.chktext,.chkhow,.chkfile{min-width:0;overflow-wrap:anywhere}
+.cxtext,.cxtech,.cxuser{min-width:0;overflow-wrap:anywhere}
+.cxlinks>*{max-width:100%;overflow-wrap:anywhere}
+.cxlinks .rfile,.cxgroup{display:inline-block;max-width:100%}
+/* The step's text column is narrow, so a check there puts its buttons under the text. */
+.cxchecks .chk{grid-template-columns:minmax(0,1fr)}
+.cxchecks .chkbtns{grid-column:1;grid-row:4;margin-top:4px}
+.cxchecks .chknote{grid-column:1;grid-row:5}
+/* --- CI, principles, yes from a concern ---------------------------------- */
+.ovci{border:1px solid var(--border);border-left:3px solid var(--add-b);border-radius:8px;background:var(--panel);padding:8px 14px;margin-bottom:16px;font-size:13px}
+.ovci.fail{border-left-color:var(--del-b)}.ovci.pending{border-left-color:#d29922}
+.ovci.fail>b{color:var(--del-b)}.ovci.pending>b{color:#d29922}.ovci.pass>b{color:var(--add-b)}
+.ovci ul{margin:6px 0 0;padding-left:18px}.ovci li{margin:2px 0}
+.ovci a{color:var(--accent);text-decoration:none}.ovci a:hover{text-decoration:underline}
+.meta .row.ci-fail b a{color:var(--del-b)}
+.recprin{margin-top:6px;font-size:12.5px}
+.recprin>summary{cursor:pointer;list-style:none}
+.recprin>summary::-webkit-details-marker{display:none}
+.recprin>summary::before{content:"\25B8";display:inline-block;width:12px;font-size:11px;color:var(--muted)}
+.recprin[open]>summary::before{content:"\25BE"}
+.recprin .cxlbl{display:inline;margin-right:4px}
+.recprin>.md{border-left:3px solid var(--border);padding:4px 0 4px 10px;margin:6px 0 0 4px;font-size:12.5px}
+.recauto{margin-top:6px;font-size:12px;color:var(--accent)}
+/* --- the editor's preview: only what will be posted ----------------------- */
+.editor.previewing .etools,.editor.previewing .eatts,.editor.previewing .efoot .hint{display:none}
+.editor.inline.previewing .efoot{display:none}
+.editor.previewing .efoot{justify-content:flex-end}
+.svprevmore{margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:12.5px;color:var(--muted)}
+.svprevmore a{color:var(--accent)}
+/* --- submit: compose, then one button per verdict -------------------------- */
+.svhead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.svready{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.svchip{font-size:12px;border:1px solid var(--border);border-radius:20px;padding:2px 10px;background:var(--panel);color:var(--muted)}
+.svchip a{color:inherit;text-decoration:underline;text-decoration-color:var(--border)}
+.svchip.ok{color:var(--add-b);border-color:var(--add-b)}
+.svchip.warn{color:#d29922;border-color:#d29922}
+.svchip.bad{color:var(--del-b);border-color:var(--del-b);font-weight:600}
+.svcompose .editor{max-width:none;margin:0}
+.svcompose .editor textarea{min-height:160px}
+.svcompose .epreview{min-height:160px;padding:12px 16px}
+.svposts{font-size:12px;color:var(--muted);margin:8px 2px 0}
+.svverdicts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.svverdicts button{padding:7px 16px;font-size:13px;font-weight:600}
+.svverdicts button[data-verdict="2"]{margin-left:auto}
+.svverdicts button.danger{color:var(--del-b);border-color:var(--del-b)}
+.svverdicts button.danger:hover:not(:disabled){background:var(--del-b);color:#fff}
+.svverdicts button.primary.risky{background:transparent;color:var(--add-b)}
+.svverdicts button[data-confirm="1"]{background:#d29922;border-color:#d29922;color:#fff}
+.squirrel{font-size:1.15em;line-height:1;vertical-align:-1px}
+.donecheck .squirrel{font-size:52px}
+.svfold{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px 14px;margin-bottom:10px}
+.svfold>summary{cursor:pointer;font-size:13px;list-style:none}
+.svfold>summary::-webkit-details-marker{display:none}
+.svfold>summary::before{content:"\25B8";display:inline-block;width:14px;color:var(--muted)}
+.svfold[open]>summary::before{content:"\25BE"}
+.svfold[open]>summary{margin-bottom:8px}
+.svexport{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.svexlbl{font-size:12px;color:var(--muted);line-height:1}
+.svexport button{font-size:11.5px;padding:3px 9px}
+/* A check's file link reads as a file chip, wherever the check shows (overview, step, recommendation). */
+.chkfile a{display:inline-block;max-width:100%;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);text-decoration:none;
+  border:1px solid var(--border);border-radius:20px;padding:1px 9px;background:var(--bg);overflow-wrap:anywhere}
+.chkfile a:hover{border-color:var(--accent)}
+.chkfile a code{font:inherit;background:none;border:0;padding:0;color:inherit}

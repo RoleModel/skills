@@ -38,8 +38,9 @@ your comments out.
 The first time you run it, Claude asks four questions about how you like to
 review (file order, where tests go, how much to auto-review, which comments to
 suggest). It saves your answers to `~/.claude/feature-review/preferences.md`;
-edit that file at any time. A repo can add its own rules in
-`.claude/feature-review.md`.
+edit that file at any time. A repo can add a `REVIEW.md` at its root with its
+own review rules and a list of shared team guides (see the skill's
+`references/review-md.md`); Claude reviews against both.
 
 ## Step 1: Start with the overview
 
@@ -47,6 +48,16 @@ The page opens on the overview. Read it before the code: it should tell you
 whether the feature is right and whether the change is well shaped, so the code
 becomes the place you confirm that. (Next time you open the page, it returns to
 whichever step you were on.)
+
+With a PR, the overview opens with its CI status: anything failing or still
+running is listed with a link.
+
+### From the PR description
+
+When there's a PR, the overview starts with what its author said: a short
+digest from Claude, a note wherever the code differs from the description,
+and the screenshots or recordings from the description (click one to enlarge
+it). The full description sits folded underneath.
 
 ### The feature
 
@@ -69,6 +80,16 @@ box for what's wrong.
 Concerns and their notes go into your review summary when you submit, so you
 don't have to rewrite them as comments.
 
+### Feature overview
+
+This section pulls the whole feature together. It opens with the flow end to
+end and a short note on how it works technically, then walks through it step
+by step. Each step shows what you'd see in the app (a screenshot, a recording
+or a diagram). Some steps also have an **Under the hood** note on the code
+behind them, folded away until you open it. It also links the reading-guide
+groups and files that do the work, and holds the feature checks for that part
+of the flow. Click a group to jump to its card in Recommendations.
+
 ### The shape of the change
 
 The shape covers the structure of the change: which layers and objects it
@@ -89,6 +110,48 @@ size, Claude's note above the table should say whether that's fine.
 Click **Start the code review** when you're done.
 
 ## Step 2: Review the code
+
+The code step opens on **Recommendations**. Switch to **Code** in the header,
+or press `r`, for the diff. The page remembers which one you last used on each
+PR.
+
+### Start with the recommendations
+
+Recommendations shows the whole change one reading-guide group at a time,
+without the code. Each card gives:
+
+- a sentence or two on what the group changes, and a few short points;
+- its diagrams, screenshots and screen recordings, where a picture says it
+  faster (click a screenshot to enlarge it);
+- its files as chips, folded under "N files" and crossed out once viewed. Click
+  one to open it in the diff, or **Read the code** for the whole group;
+- Claude's **recommendations** for it, each to answer **Yes** or **No**. Each
+  has a few one-line sections, such as **Context**, **Problem**, **Proposal**
+  and **Tradeoffs**; which ones depends on the kind (a question has no
+  proposal, a bug no tradeoffs).
+
+A recommendation is one thing Claude thinks you should ask for, such as "Keep
+the same-organization check on the order page". It usually stands for several
+line comments; **The comments** shows them with their code. Some show the
+**Principle** they rest on: open it to read that section of the team's guide.
+Some carry a feature check: marking it **Concern** says yes to the
+recommendation for you (the card says so); change it there if you meant
+otherwise. A yes puts them
+all in your review, and a no leaves them out. To pick among them, use each
+comment's own **Accept**, **Edit** or **Dismiss**; Edit opens the editor right
+there. Click a comment's file path to open the diff at its line. Press the lit button again to
+take the decision back. A recommendation with no comments, such as "Mention
+this in the release notes", goes into your summary when you say yes. Points
+that span the whole change sit first, under **Across the change**.
+
+Here your progress is how many recommendations you've decided, not how many
+lines you've read: the sidebar, the group counts and each card track that, and
+a group turns green once everything on it is decided. Switch to Code and the
+sidebar goes back to lines viewed. For a large change you can often
+review from here alone, then open the code only for the groups you want to
+check.
+
+### Then the code
 
 ![The code step: progress and reading guide on the left, the diff grouped by topic on the right](assets/screenshots/code-step.png)
 
@@ -158,7 +221,8 @@ Saved comments show the suggested change as a diff, as GitHub will.
 Claude can draft comments for you, by default only for real bugs and risks.
 They show with a dashed border and a **Suggested** badge, and stay out of your
 review until you click **Accept** (or **Edit**). **Dismiss** removes one for
-good.
+good. These are the same comments as the recommendations: deciding one in
+either place shows in the other.
 
 ![A suggested comment, marked "not in review yet", pointing out that returning a loan twice charges the member again](assets/screenshots/suggested-comment.png)
 
@@ -172,26 +236,37 @@ remembers your choice.
 
 ## Step 3: Finish and submit
 
-**Finish review** (or the **Submit** tab) opens the submit page. It lists every
-comment and reply with its code, any suggestions you haven't decided on, and
-the auto-reviewed files. Write a summary, pick Comment, Approve, or Request
-changes, and click **Submit review** to post it all to the PR as one review.
-When everything looks fine, pick Approve and submit with nothing written: that
-posts a plain approval. Comment and Request changes need a summary or at least
-one comment.
+**Finish review** (or the **Submit** tab) opens the submit page. It's for
+writing your final message and sending the review.
+
+- **At the top**, a row of reminders shows anything still open: CI, undecided
+  recommendations, unchecked feature checks, suggested comments you haven't
+  taken. Each one links to where you decide it. Only comments on code that has
+  changed since you wrote them stop you from submitting.
+- **Write your summary.** **Preview the full review** shows exactly what will
+  be posted, including the recommendations and feature concerns the page adds
+  to your summary.
+- **Pick a button to submit**: **Request changes**, **Comment**, **Approve**,
+  or **Ship it**, which approves and adds the `:shipit:` squirrel. Approve with
+  nothing written posts a plain approval; Comment and Request changes need a
+  summary or a comment. On your own PR only Comment is available, since GitHub
+  doesn't allow the others. If CI is failing, Approve and Ship it ask you to
+  click again to confirm.
+- **Below**, your comments, the recommendations, the feature checks and the
+  auto-reviewed files are folded away, with their counts showing. Open one to
+  check or edit what's in it.
 
 ![Submit page with a summary, the verdict, one comment, one reply, a pending suggestion, and the auto-reviewed files](assets/screenshots/submit-page.png)
 
-The page also shows where your feature checks stand. If any are still open, a
-link takes you back to the overview. Each concern and its note is added to the
-end of your summary as a **Feature concerns** list.
+Each feature-check concern and its note is added to the end of your summary
+as a **Feature concerns** list.
 
 ![Feature checks on the submit page: 3 of 5 checked, 2 still open, and the waive-a-fee concern that will be added to the summary](assets/screenshots/submit-checks.png)
 
 If GitHub can't attach a comment to its line, the comment moves into the review
 summary instead of making the whole review fail. Without a PR, **Copy as
-Markdown** gives you the review to paste anywhere. **Save for agent** writes
-it to disk so Claude can act on your comments.
+Markdown** gives you the review to paste anywhere, including back to Claude
+so it can act on your comments.
 
 GitHub has no API for uploading attachments. When you submit, the page saves
 them to disk and tells you which ones to drag into the review on GitHub.
@@ -213,6 +288,7 @@ file changes.
 | Key | Action |
 |-----|--------|
 | `1` / `2` / `3` | Overview / Code / Submit |
+| `r` | Recommendations / Code |
 | `j` / `k` | Next / previous file |
 | `v` | Toggle Viewed |
 | `x` | Collapse file |
