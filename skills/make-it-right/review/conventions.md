@@ -6,14 +6,14 @@ it isn't this principle's finding.
 
 ## Rule sources, in precedence order
 
-1. The project's `AGENTS.md` / `CLAUDE.md` and `docs/conventions/`.
-2. Skills the project has installed (in `.claude/skills/`, or next to this
-   one) whose description matches the files changed: a CSS methodology skill
-   for stylesheets, the project's design-system skill for views and CSS, a
-   Rails conventions skill for controllers, routes, and forms. Read only
-   those that match, and only the sections that apply.
-3. `<SKILL_DIR>/references/rails-standards.md`: RoleModel's defaults for
-   anything the first two don't cover.
+1. The project's own docs in the Rule sources you were given: `AGENTS.md` /
+   `CLAUDE.md` and `docs/conventions/`.
+2. The installed skills in the Rule sources whose description matches the
+   files changed: a CSS methodology skill for stylesheets, the design-system
+   skill for views and CSS, the stack's conventions skill for server code.
+   Read only the sections that apply.
+3. The stack map's "Org defaults", for anything the first two don't cover.
+   Cite it as the map says.
 
 When the project and a skill or default disagree, the project wins.
 
@@ -27,9 +27,8 @@ memory. A project with no design system has no findings here.
 
 ## Not this principle
 
-Rules the linters enforce, and taste that isn't written down. User-facing
-copy, button severity (danger vs. warning), and the product's own terms are
-taste unless a doc covers them, and they are most of what human reviewers
-add. If no doc covers them, say so in one line at the end and suggest
-`generate-conventions`. The same goes for any missing rule that keeps coming
-up.
+Taste that isn't written down. User-facing copy, button severity (danger vs.
+warning), and the product's own terms are taste unless a doc covers them, and
+they are most of what human reviewers add. If no doc covers them, say so in
+one line at the end and suggest `generate-conventions`. The same goes for any
+missing rule that keeps coming up.

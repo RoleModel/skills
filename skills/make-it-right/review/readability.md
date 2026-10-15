@@ -13,8 +13,8 @@ out and where.
 
 ## Look for
 
-- **Names**: names that say how instead of what, jokes or shorthand
-  (`_can_cant`), or names that no longer match the behavior after this change.
+- **Names**: names that say how instead of what, jokes or shorthand, or names
+  that no longer match the behavior after this change.
 - **Comments**: a comment earns its place only by saying what the code can't:
   why a non-obvious choice was made, a constraint from outside the code, or a
   link to the issue behind a workaround. Report as `low`:
@@ -25,16 +25,15 @@ out and where.
   - Section dividers and banners in short files.
 
   Report a comment that is **wrong** about the code as `medium`.
-- **Shape**: an empty branch (`- if !ai` with nothing under it, then
-  `- elsif`). Nest the rest under one positive `if`. Double negatives, and
+- **Shape**: an empty branch (`if !x` with nothing under it, then an
+  `else if`). Nest the rest under one positive `if`. Double negatives, and
   conditions that need a truth table to read.
-- **Logic in views**: a view that works out state (counters, flags, a
-  `[x, y].min`) before it renders. Move it to a helper or presenter that
-  returns what to show, and let the view loop over it.
+- **Logic in views**: a view that works out state (counters, flags, the
+  smaller of two values) before it renders. Move it to whatever the project
+  uses to prepare view data, so the view only loops and prints.
 - **Same thing, fewer lines**: a rewrite that keeps behavior and reads faster.
   Tag it `shrink:` with the lines saved.
 
 ## Not this principle
 
 Code that shouldn't exist, or belongs on another object, goes to maintainable.
-Style a linter enforces isn't a finding.

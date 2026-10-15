@@ -3,7 +3,8 @@
 Find where the change doesn't do what it was meant to, or does something
 nobody asked for. Read the change, then enough of each touched file and its
 callers to know what the code is handed and what it promises. Run specs or the
-app to confirm a suspicion when reading can't settle it.
+app to confirm a suspicion when reading can't settle it; the Commands file
+says how.
 
 ## Criteria
 
@@ -17,19 +18,17 @@ evidence either way is not met.
   didn't ask for. Check the intent against the codebase, not only the diff:
   search for every place the concept the intent names already lives, such as
   a sibling class with the same constant or a second screen that shows the same
-  value. A place the diff skipped is a gap unless the intent excludes it.
+  value. A place the diff skipped is a gap unless the intent excludes it. When
+  the intent mentions scale, ask when the data stops changing: computing a
+  value once at that point may meet the intent where caching can't.
 - **Unhandled inputs and states**: nil, empty collection, blank string, zero,
   negative, duplicate, a record that's gone, a time zone boundary, a role that
   sees less.
-- **Wrong conditions**: inverted or off-by-one checks, `&&` / `||` mix-ups,
-  `present?` where `nil?` was meant, a missing `else`.
-- **Silent failures**: a `save` / `update` whose `false` is ignored, a `rescue`
-  that swallows, a fallback that hides a bug, a `.catch` that only logs, a
-  Stimulus action that fails without telling the user.
-- **Work done at the wrong time**: an expensive value worked out on every
-  read when its inputs stop changing at a known point, such as a lock,
-  approval, or close. When the intent mentions scale, ask when the data stops
-  changing; computing it once then may meet the intent where caching can't.
+- **Wrong conditions**: inverted or off-by-one checks, `&&` / `||` mix-ups, a
+  blank check where a nil check was meant, a missing `else`.
+- **Silent failures**: a write whose failure return is ignored, an exception
+  swallowed, a fallback that hides a bug, a rejected promise that only logs,
+  a client-side action that fails without telling the user.
 - **Failure that looks like success**: an error path that still returns 200,
   such as a download that sends an empty file when its query fails.
 

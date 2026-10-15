@@ -30,24 +30,30 @@ machinery instead of copying it.
 
 Follow `RIGHT_DIR/SKILL.md` with these changes:
 
-- **Step 1** as written, including `RIGHT_DIR/scripts/new_lines.sh`.
+- In every borrowed step, `$SKILL_DIR` means `RIGHT_DIR`: its `scripts/`,
+  `references/` (stack maps, findings, verifier, redesign, report), the
+  sibling glob, `review/maintainable.md`, and `test/coverage.md`.
+- **Step 1** as written.
 - **Step 2** as written.
-- **Step 3** launches this table instead. Every agent is read-only except
-  that it may run specs, the app, and `bin/rails runner`.
+- **Step 3** launches this table instead, with the same packet except that
+  the principle file is `<this SKILL_DIR>/review/<principle>.md`. Every agent
+  is read-only except that it may run specs, the app, and the app's console
+  runner.
 
 | Principle | File | Run when the change touches |
 |---|---|---|
 | queries | `review/queries.md` | models, scopes, controllers, views, jobs, or migrations |
 | requests | `review/requests.md` | controllers, jobs, or anything that calls an external service |
 | test speed | `review/test-speed.md` | specs or factories, or when the suite is the complaint |
-| page responsiveness | `review/page-responsiveness.md` | views, components, Stimulus, CSS, or JS bundles |
+| page responsiveness | `review/page-responsiveness.md` | views, components, client-side code, CSS, or JS bundles |
 
 - **Steps 4 and 5** as written, with `RIGHT_DIR/references/findings.md` and
   `RIGHT_DIR/references/verifier.md`. Fix order: queries, requests, page
   responsiveness, test speed.
 - **Step 6**: round 2 re-measures, it doesn't re-review. Skip the UI/UX walk.
-- **Step 7** as written, with one more line in the report:
-  `Measured: <thing>: <before> → <after>` for each fix.
+- **Step 7** as written, without the `make-it-fast` offer. The report drops
+  the UI segment of Checked and the Criteria, Specs, Redesign, and Hand off
+  lines, and adds `Measured: <thing>: <before> → <after>` for each fix.
 
 ## Measure, don't guess
 
@@ -67,5 +73,5 @@ just more code.
 - Caching hides a slow path instead of fixing it, and adds a way to show stale
   data. Fix the query or the work first. Cache only what is still slow after
   that, and name what expires it.
-- The `make-it-right` rule still holds here: never cut validation,
-  authorization, error handling, accessibility, or specs to gain speed.
+- The `make-it-right` rule still holds here: never cut what
+  `RIGHT_DIR/review/maintainable.md` "Never cut" lists to gain speed.

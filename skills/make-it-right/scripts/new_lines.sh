@@ -4,9 +4,11 @@
 # Usage: new_lines.sh <base-ref>
 set -euo pipefail
 base="${1:?usage: new_lines.sh <base-ref>}"
+cd "$(git rev-parse --show-toplevel)"
 
-git diff -U0 --no-color --no-ext-diff "$base" -- | awk '
-  /^\+\+\+ / { path = ($2 == "/dev/null") ? "" : substr($2, 3); next }
+git -c core.quotePath=false diff -U0 --no-color --no-ext-diff --dst-prefix=b/ "$base" -- | awk '
+  /^\+\+\+ / { line = $0; sub(/^\+\+\+ /, "", line); sub(/\t$/, "", line)
+               path = (line == "/dev/null") ? "" : substr(line, 3); next }
   /^@@ / && path != "" {
     split($3, added, ",")
     start = substr(added[1], 2)
@@ -16,7 +18,6 @@ git diff -U0 --no-color --no-ext-diff "$base" -- | awk '
 '
 
 git ls-files --others --exclude-standard | while IFS= read -r path; do
-  lines=$(wc -l < "$path" | tr -d " ")
-  [ "$lines" -gt 0 ] && echo "$path:1-$lines"
+  lines=$(grep -c '' "$path" || true)
+  if [ "$lines" -gt 0 ]; then echo "$path:1-$lines"; fi
 done
-exit 0
