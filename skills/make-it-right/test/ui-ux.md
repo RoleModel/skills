@@ -70,6 +70,10 @@ look at what renders. A DOM property or a passing spec doesn't settle it either
 way. An input can report itself invalid on a form that submits fine, and a spec
 can pass while the error never reaches the screen.
 
+When behavior depends on something the test setup fakes, such as a job
+backend's concurrency or retries, mail delivery, or a cache store, trigger it
+in the running app and read its log.
+
 Take a screenshot as evidence for every finding.
 
 ## Severity

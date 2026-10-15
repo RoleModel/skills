@@ -50,7 +50,8 @@ actual rules, a scope's filter, and the job the app gives the gem.
   spec already shows.
 - **Weak assertions**: asserting a method was called instead of what happened,
   `have_content` on text that appears regardless, and specs that pass with the
-  feature removed.
+  feature removed. For a write with side effects (pruning, conditional
+  updates, cascades), assert the state afterwards, not only the return value.
 - **Fragility**: `sleep`, order dependence, hard-coded ids or dates,
   `Time.now` without freezing. A spec that creates a record "a minute ago" and
   expects today's date fails just after midnight. Freeze at

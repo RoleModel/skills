@@ -10,7 +10,9 @@ ones are real. You didn't write the code or the findings, so trust neither.
 2. **Check it against the source.** Open the file at the line. Follow the
    evidence: read the caller, the rule, or the spec it names. For a `delete:`,
    rerun the name search yourself; Rails code is often referenced only by a
-   string.
+   string. Before confirming that a value ignores or includes something, read
+   where it's defined, including any override: a key, scope, delegate, or
+   callback often does more than its call site shows.
 3. **Score it 0–100.**
 
 | Score | Means |
@@ -20,6 +22,10 @@ ones are real. You didn't write the code or the findings, so trust neither.
 | 50 | Real but trivial, or real only under conditions that can't occur here. |
 | 75 | Real and it matters, with one link in the chain you couldn't confirm. |
 | 100 | Confirmed: you traced the trigger or found the written rule. |
+
+   A bug whose finding names a concrete trigger, such as a double click
+   against a unique index, is confirmed once you trace the trigger through
+   the code. How often it happens doesn't lower the score.
 
    A conventions finding whose rule isn't written where it claims scores 0.
    So does one whose rule names a tool the project doesn't have, such as a
@@ -45,16 +51,18 @@ ones are real. You didn't write the code or the findings, so trust neither.
 
 ## A `redesign:` finding
 
-Weigh it as hard as a bug, then score it like any other finding:
+Don't score it, and don't send it to open questions because it needs a human
+call: the run's gate makes that call. Instead, check two things:
 
-- **Moot:** list the other findings it would remove, by line. Fewer than two
-  scores below 80.
+- **Moot:** list the other findings it would remove, by line, including ones
+  you dropped. For each, trace how the new shape behaves on that trigger, not
+  the old one: a failure the new shape can't reach counts as removed.
 - **Fits:** check that the shape works here, such as that the index, the
-  delivery path, and the callers all still hold. Name what it can't remove.
-- **Cost:** count the migration, data backfill or pruning, and specs to
-  rewrite.
+  delivery path, and the callers all still hold.
 
-Put all three in the finding. The orchestrator uses them to ask or to apply.
+It **passes** when at least two findings are moot and it fits. Return it under
+**Redesign** with the moot list, what it can't remove, and its cost (migration,
+pruning or backfill, specs to rewrite). Otherwise drop it with the reason.
 
 ## Output
 
