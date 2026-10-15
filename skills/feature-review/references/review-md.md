@@ -10,7 +10,7 @@ read it.
 
 ## Shared guides
 - rolemodel/review-guides: code-review-principles.md
-- rolemodel/review-guides: code-review-principles.md
+- rolemodel/review-guides: clean-code-principles.md
 - rolemodel/review-guides@v2: structure-guidelines.md — pinned while v3 settles
 - [Pricing review notes](docs/review/pricing.md)
 
