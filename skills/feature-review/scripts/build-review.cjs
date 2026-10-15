@@ -145,9 +145,10 @@ if (has('--stdin')) {
     baseRev = git(['merge-base', a || 'HEAD', b || 'HEAD']).trim();
   } else if (target.includes('..')) baseRev = git(['rev-parse', target.split('..')[0] || 'HEAD']).trim();
   else if (args[0] !== EMPTY_TREE) baseRev = git(['rev-parse', args[0]]).trim();
-  diff = git(['diff', ...args]);
-  numstat = git(['diff', '--numstat', '-z', ...args]);
-  wsDiff = git(['diff', '-w', ...args]);
+  const DIFF = ['--no-color', '--no-ext-diff', '--no-relative', '--src-prefix=a/', '--dst-prefix=b/'];
+  diff = git(['diff', ...DIFF, ...args]);
+  numstat = git(['diff', ...DIFF, '--numstat', '-z', ...args]);
+  wsDiff = git(['diff', ...DIFF, '-w', ...args]);
   headRev = git(['rev-parse', head]).trim();
   const subject = git(['log', '-1', '--format=%s', head]).trim();
   const short = git(['rev-parse', '--short', head]).trim();

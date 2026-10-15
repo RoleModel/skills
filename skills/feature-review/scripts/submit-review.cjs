@@ -97,7 +97,7 @@ function submitReview(review, opts = {}) {
 
   // The diff GitHub anchors comments to: the PR base merged with the reviewed commit.
   let prDiff;
-  try { prDiff = run('git', ['diff', `${live.baseRefOid}...${commitId}`]); }
+  try { prDiff = run('git', ['diff', '--no-color', '--no-ext-diff', '--no-relative', '--src-prefix=a/', '--dst-prefix=b/', `${live.baseRefOid}...${commitId}`]); }
   catch (e) {
     prDiff = gh(['pr', 'diff', String(pr.number), '--repo', repo, '--color', 'never']);
     if (commitId !== live.headRefOid) notes.push('Could not diff the reviewed commit locally; checked lines against the current PR diff instead.');
