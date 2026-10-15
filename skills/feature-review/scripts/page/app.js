@@ -1179,7 +1179,7 @@
     const linked = recs.filter((r) => (r.checks || []).includes(c.id));
     const said = [];
     linked.forEach((r) => {
-      if (on && recStatus(r) === 'open') { decide(r, 'yes'); state.autoYes[r.rid] = c.kid; said.push(r.title); }
+      if (on && recStatus(r) === 'open') { decide(r, 'yes'); if (recStatus(r) !== 'open') { state.autoYes[r.rid] = c.kid; said.push(r.title); } }
       else if (!on && state.autoYes[r.rid] === c.kid) {
         if (recStatus(r) === 'yes') decide(r, 'yes');
         delete state.autoYes[r.rid];
@@ -1332,10 +1332,10 @@
   function redrawRec(r) {
     const el = r && rv.querySelector('.rec[data-rid="' + r.rid + '"]');
     if (!el) return;
-    const open = el.querySelector('details[open]');
+    const open = Array.from(el.querySelectorAll('details[open]'), (x) => x.className);
     el.outerHTML = recHtml(r);
     const now = rv.querySelector('.rec[data-rid="' + r.rid + '"]');
-    if (open && now.querySelector('details')) now.querySelector('details').open = true;
+    open.forEach((cls) => { const x = now.querySelector('details.' + cls); if (x) x.open = true; });
     $('rcount').innerHTML = recsCount();
     const card = now.closest('.rgroup[data-g]');
     if (card) groupStat(card);
@@ -1653,11 +1653,14 @@
   }
 
   const status = (msg, kind) => { const el = $('svstatus'); el.textContent = msg; el.className = 'svstatus' + (kind ? ' ' + kind : ''); };
+  let flashTimer = null, statsHtml = null;
   function flash(msg, err) {
     if (document.body.classList.contains('submitting')) { status(msg, err ? 'err' : ''); return; }
-    const el = $('stats'), was = el.innerHTML;
+    const el = $('stats');
+    if (statsHtml == null) statsHtml = el.innerHTML;
+    clearTimeout(flashTimer);
     el.textContent = msg; el.style.color = err ? 'var(--del-b)' : 'var(--accent)';
-    setTimeout(() => { el.innerHTML = was; el.style.color = ''; }, 3500);
+    flashTimer = setTimeout(() => { el.innerHTML = statsHtml; statsHtml = null; el.style.color = ''; }, 3500);
   }
   async function copy(text, what) {
     try { await navigator.clipboard.writeText(text); }
@@ -1706,9 +1709,9 @@
       history.replaceState(null, '', location.pathname + location.search + '#done');
       setView();
     } catch (e) {
-      status(e.message, 'err');
       if (btn.dataset.label) btn.innerHTML = btn.dataset.label;
       refreshSubmit();
+      status(e.message, 'err');
     }
   }
   // With the server up, ask it what GitHub will do before the reviewer commits to it.
