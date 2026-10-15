@@ -1,7 +1,11 @@
 ---
 name: feature-review
 description: >-
-  Build an HTML review page from a git commit, PR, or diff. Steps: (1) **Overview** — PR digest, feature behavior, shape of change; (2) **Code** — Recommendations view (groups with diagrams, screenshots, yes/no cards) or per-file diff (syntax highlighting, "viewed" checkboxes, percent-reviewed bar); (3) **Submit** — posts one PR review (or copies as Markdown). Features: inline PR threads, unified/split view, whitespace toggle, expandable context, keyboard navigation, re-review mode, GitHub-style commenting, auto-review for small files. Trigger: "review this commit/PR #<N>", "review the feature/shape of PR #<N>", or "re-review PR #<N>".
+  Reviews a PR, commit, range, or branch as a feature first and code second, in a
+  local HTML page whose comments post back to the PR as one GitHub review. Use when
+  the user asks to review a PR or commit, review the feature or shape of a change,
+  or re-review a PR after new pushes: "review PR #123", "review this commit",
+  "review the feature in PR #123", "re-review PR #123".
 allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
@@ -56,7 +60,7 @@ git diff ... | node $S/build-review.cjs --stdin -o path.html
 The script prints the output path on stdout (with `--serve`, the URL). Output
 defaults to `tmp/review/<slug>.html` **relative to the current working
 directory**, where the slug is a ticket ID from the commit or PR title (e.g.
-`KATT-2143`), `pr-<N>`, or the short SHA. In a repo that doesn't gitignore
+`ABC-123`), `pr-<N>`, or the short SHA. In a repo that doesn't gitignore
 `tmp/`, pass `-o` rather than leaving untracked files behind.
 
 ## Workflow
@@ -173,46 +177,19 @@ the Overview step shows only the computed shape.
 
 ## The reading guide
 
-The script is plain Node with no model access, so the guide comes from you.
-It goes in the same `tmp/review/<slug>.groups.json`, next to `overview`:
+The groups of files in reading order, each with a one-line `why`, written next
+to `overview` in the groups file. Lead with the group that explains the change;
+mechanical fallout goes last. Shape the groups to the user's preferences file.
+Files you leave out still render, in a trailing "Unsorted" group.
 
-```json
-{
-  "groups": [
-    { "title": "The new split: Side and Section",
-      "why": "Start here: a bay no longer holds bracing state directly.",
-      "files": ["path/one.js", "path/two.js",
-        { "path": "path/three.js", "auto": true, "summary": "Same rename as two.js, applied to its callers." }] },
-    { "title": "Bracing UI", "why": "The panel now reads sections instead of bays.",
-      "files": ["app/x/panel.js", { "path": "app/x/typo.rb", "auto": true, "summary": "Fixes a typo in an error message." }] }
-  ],
-  "suggestions": [
-    { "path": "path/one.js", "line": 42, "body": "This can be null when ...\n```suggestion\n  return side ?? null\n```" },
-    { "path": "path/two.js", "start_line": 10, "line": 14, "body": "Same loop as `Section#walk`; reuse it?" },
-    { "path": "path/two.js", "body": "A whole-file comment: no line." }
-  ]
-}
-```
+**Auto-review** a file (collapse it with a one-line summary so the reviewer can
+skip it) only when it is small, incidental to the request, not a key file
+(config, migrations, routes, auth, policies, security, public API, deletions),
+and you found nothing wrong. Keep auto-reviewed lines well under a quarter of
+the diff, and honor "off" in the preferences.
 
-Auto-reviewed files go **in the group where they belong**, as
-`{ "path", "auto": true, "summary" }` entries next to the files they relate to,
-not gathered into a separate "Auto-reviewed" group at the end. The reviewer
-reads them in context, collapsed, as they pass that part of the change.
-(`"auto": true` on a whole group still works, but only use it when every file
-in a group that already makes sense on its own qualifies.)
-
-A bare array of groups (the 1.x format) still works. Array order is reading
-order, so lead with the group that explains the change and let the rest follow
-from it; mechanical fallout goes last. `why` is one line on why the group is
-read at that point, not a summary of the diff. Shape the groups to the user's
-preferences file; where it is silent, use the order above.
-
-Files you leave out still render, in a trailing "Unsorted" group, so nothing
-can silently vanish and make the percent-reviewed number a lie. The build fails
-on a file that isn't in the diff, a file named twice, or a suggestion whose line
-isn't in the diff. `side` defaults to `RIGHT` (the new file); use `LEFT` with
-old line numbers to comment on a deleted line. A multi-line range must stay
-inside one hunk.
+Format, the auto-review rules in full, and bare `suggestions`:
+`references/reading-guide.md`.
 
 ## Recommendations
 
@@ -234,60 +211,8 @@ Fold comments that ask for the same thing into one recommendation; it is not
 one to one. Keep every card light: if a group needs more than a couple of
 sentences, give it a diagram or a screenshot instead of more words.
 
-```json
-{ "groups": [{ "title": "...", "why": "...", "summary": "...", "points": ["..."], "files": ["..."] }],
-  "recommendations": [
-    { "group": "...", "kind": "risk", "title": "Keep the same-org check on the order page",
-      "context": "...", "problem": "...", "proposal": "...", "tradeoffs": "...",
-      "comments": [{ "path": "...", "line": 18, "body": "..." }, { "path": "...", "line": 5, "body": "..." }] },
-    { "kind": "question", "title": "Mention the label change in the release notes", "context": "...", "problem": "..." }
-  ] }
-```
-
-Full format, the media kinds (`image`, `video`) and how to capture them:
+Format, the media kinds (`image`, `video`) and how to capture them:
 `references/recommendations.md`.
-
-## Auto-review
-
-Auto-reviewing a file means you read its whole diff, judged it fine, and are
-telling the reviewer they can skip it. It sits in its reading-guide group like
-any other file, but renders collapsed under a dashed border with your summary, counts toward the percent reviewed in a separate bar
-color, and is listed again on the submit page. The reviewer can expand it to
-double-check, or tick Viewed to sign it off themselves.
-
-A file qualifies only if **all** of these hold:
-
-- **Small**: at most the threshold in the preferences file, default 15 changed lines.
-- **Unrelated to the request**: incidental to what the PR or ticket is for.
-  Typo and copy fixes, formatting, import order, a rename's fallout, lint
-  autofixes, comment changes, a one-line signature change that matches the
-  others. Anything the PR body or ticket names is related by definition.
-- **Not a key file.** Never auto-review config or build files (`package.json`,
-  `Gemfile`, lockfiles, `*.yml`/`.yaml`, `.env*`, `Dockerfile`, CI config,
-  `config/**`, initializers), database migrations or schema, routes, auth,
-  permissions and policies, security-sensitive code, public API or contracts,
-  a deleted file, or a file you couldn't fully read (binary, truncated).
-- **You found nothing wrong.** If you'd comment on it, it isn't auto-reviewed:
-  leave it in a normal group and add the suggestion.
-
-Every auto-reviewed file needs a `summary`: one line saying what changed, not
-that it "looks fine". Keep auto-reviewed lines a small share of the diff (the
-groups line prints the ratio). If it's over about a quarter, you're hiding the
-review, not speeding it up: auto-review less. Honor "off" in the preferences.
-
-## Suggested comments
-
-Prefer `recommendations` (above): their `comments` become suggested comments
-too, and the reviewer can accept a whole group of them at once. Bare
-`suggestions` still work, and each shows in the Recommendations view as its own.
-
-`suggestions` are comments you draft for the reviewer. They show inline, dashed,
-marked "Suggested", and are **not** part of the review until the reviewer
-clicks Accept (or edits them). Dismissed ones stay dismissed across reloads.
-Only suggest what the preferences file asks for; by default, concrete bugs and
-risks. Write them the way the reviewer would post them, and use a
-```` ```suggestion ```` fence for a concrete replacement of `RIGHT`-side lines.
-No suggestions is a fine answer.
 
 ## Re-reviewing
 
@@ -308,112 +233,20 @@ When the user asks to re-review, or the `re-review:` line reports changes on a
 PR they reviewed before, offer the `--since last` page (or build it if that's
 what they asked for). Reuse the earlier guide where files overlap.
 
-Drafts are stored per PR, so the full page and a `--since` page share them.
-Viewed checkmarks are tied to each file's blob at the reviewed commit: one
-survives a rebuild or a `--since` page while the file is unchanged, and comes
-back unticked with a "changed since you viewed it" badge once it changes.
+## The page and submitting
 
-## Reading the page
-
-- **Steps.** The header's **Overview / Code / Submit** switch steps (keys `1`,
-  `2`, `3`; hashes `#overview`, `#code`, `#submit`). In the code step,
-  **Recommendations / Code** (key `r`) switches mode; the choice is remembered
-  per PR, and Recommendations is the default. Progress follows the mode:
-  recommendations decided in Recommendations, changed lines viewed in Code. A file or group anchor
-  (`#f3`, `#g1`), like the links in the overview, opens the code at that spot,
-  and returning to the code restores where you were. The sidebar shows the
-  feature-check count.
-- **Existing threads.** With `--pr`, the PR's review threads are loaded at build
-  time and shown inline at their lines, with author, date and a link to GitHub.
-  Resolved threads start collapsed. Outdated threads, or every thread when the
-  page isn't at the PR head, sit at the top of their file. **Reply** drafts a
-  reply that is posted as part of the review. Your own pending (unsubmitted)
-  GitHub comments are not shown. GitHub bodies render through the page's Markdown,
-  so raw HTML in them (like `<img>` tags) shows as text, and Markdown images
-  show as links (only pasted attachments render inline), so opening the page
-  never fetches from a host a commenter chose.
-- **Expanding context.** Unchanged lines between hunks fold into gap rows with
-  `↓ 20`, `↑ 20` and `All` buttons, as on GitHub. Files load lazily, one request
-  each, through the local server, so this needs `--serve`; from `file://` the gaps
-  just say how many lines they hide. Expanded lines are context, not diff:
-  GitHub can't anchor comments to them, so their gutters aren't clickable.
-- **Whitespace.** The **Whitespace** toggle swaps in `git diff -w` for the files
-  where it differs, and replaces whitespace-only files with a note. Counts and
-  progress always use the full diff. Comments on lines hidden this way are listed
-  at the top of their file until whitespace is shown again. Not available on
-  `--stdin` pages.
-- **Split view.** **View: unified / split** (unified by default, remembered).
-  Comments, threads and range selection work the same in both.
-- **Keyboard.** `r` Recommendations or Code, `j`/`k` next/previous file, `v` toggle Viewed, `x` collapse,
-  `n`/`p` next/previous comment or thread, `/` filter, `s` split, `w`
-  whitespace, `?` help. The current file is the one whose header is pinned
-  under the toolbar.
-
-## Comments and submitting
-
-In the page:
-
-- Click a line number to comment on that line, or press on one and drag to
-  another to comment on the range (it stops at the hunk edge, since GitHub
-  can't anchor a comment across hunks). Each file header has a **Comment**
-  button for a whole-file comment.
-- The editor supports Markdown with Write/Preview tabs and toolbar buttons,
-  **Suggest** (pre-fills a `suggestion` block from the selected new-side
-  lines), and attachments: paste, drop, or Attach, up to 3 MB each, stored in
-  the page.
-- **Finish review** opens the submit page (`#submit`), which is for writing
-  the final message and sending it:
-  - a strip of what still needs the reviewer (CI, undecided recommendations,
-    unchecked feature checks, suggested comments not taken, stale comments),
-    each a link to where it is decided; only stale comments block submitting;
-  - the summary editor, whose **Preview the full review** tab shows the whole
-    body as it will post: the summary, then the **Recommendations** and
-    **Feature concerns** the page adds, then a line on the comments that ride
-    along. A line under it says what will be posted;
-  - one button per verdict, each of which submits: **Request changes**,
-    **Comment**, **Approve** and **Ship it** (an approval with `:shipit:` added
-    to the end of the summary). Comment and Request changes need something
-    written. On the reviewer's own PR only Comment is open (the build records
-    the viewer as `pr.viewer`). With CI failing, Approve and Ship it take a
-    second click on the same button, which says why. Without a PR the button
-    is **Copy review as Markdown**;
-  - the comments (with their code; replies quote what they answer, and
-    pending suggestions can be accepted or dismissed), recommendations, feature
-    checks and auto-reviewed files, each folded with its counts in the heading;
-  - an Export row: **Copy as Markdown** (to hand the review to an agent or
-    paste it anywhere) and **Copy as JSON** (for `submit-review.cjs`).
-
-  Submitting (served pages with a PR) posts everything as one review, clears
-  the drafts so they can't double-post, and moves to a "Review submitted"
-  page (`#done`, "Shipped it" with the squirrel for Ship it) with the verdict,
-  counts, any notes and a link to the review.
-- Every comment editor's **Preview** shows only what will be posted: the
-  formatting toolbar, hint and attachment chips hide until **Write**.
-
-Drafts and checkmarks live in `localStorage`, so a rebuilt page (a new guide)
-keeps them. `--serve` uses a fixed port (4823, or the next free one) so the
-origin, and with it that storage, is stable across runs.
+The reviewer drives the page; `references/page.md` describes its steps, keys,
+existing threads, expanding context, the submit page, and what
+`submit-review.cjs` does with each comment. Read it when the reviewer asks how
+something on the page works, or before reporting what a submit posted.
 
 `submit-review.cjs` does the posting, and can be run by hand on a saved or
-copied JSON: `pbpaste | node $S/submit-review.cjs - [--dry-run]`. It:
+copied JSON: `pbpaste | node $S/submit-review.cjs - [--dry-run]`. Comments
+GitHub would reject are moved into the review summary rather than failing the
+whole review.
 
-- checks every comment against the diff GitHub anchors to (merge base to the
-  reviewed commit). Comments GitHub would reject are **moved into the review
-  summary** with their file and line, rather than failing the whole review;
-- posts line comments through REST, and whole-file comments and thread replies
-  over GraphQL (`addPullRequestReviewThread`, `addPullRequestReviewThreadReply`)
-  onto the same pending review, then submits it. A reply GitHub rejects is moved
-  into the summary like any other;
-- posts an Approve with no summary or comments as a plain approval; Comment
-  and Request changes need one or the other, since GitHub requires a body;
-- refuses Approve or Request changes on the user's own PR (GitHub doesn't
-  allow it) with a clear message;
-- **cannot upload attachments**: GitHub has no API for that. It saves them to
-  `tmp/review/<slug>-attachments/`, puts `[attachment: name]` where they were,
-  and says which to drag in on GitHub. Tell the user this when they attach files.
-
-Never submit on the user's behalf from the terminal unless they ask. The submit
-page is their approval step.
+**Never submit on the user's behalf from the terminal unless they ask.** The
+submit page is their approval step.
 
 ## Files
 
@@ -428,169 +261,28 @@ page is their approval step.
 - `references/overview.md`: the overview format (feature, checks, shape, diagrams) and how to write it.
 - `references/recommendations.md`: group gists, recommendations, screenshots and recordings, and how to capture them.
 - `references/review-md.md`: the `REVIEW.md` format for a project's review rules and shared guides.
+- `references/reading-guide.md`: groups, auto-review and suggested comments.
 - `references/gathering.md`: how to get from a PR, commit, range, branch, or ticket ID to a build.
 - `references/preferences-template.md`: the per-user preferences file.
+- `references/page.md`: the page's steps, keys, threads, submit page and posting rules.
+- `references/developing.md`: constraints, the highlighter, and how to verify a change to the page.
 
-## Constraints that matter
+## Gotchas
 
-- **The Node scripts must keep their `.cjs` extension.** Many repos set `"type":
-  "module"` in `package.json`, which makes a `.js` file an ES module and breaks
-  `require`. The `page/*.js` files are never required, only read as text.
-  The build needs `diagrams.js` to validate diagrams, so it evaluates that
-  file's text with `new Function` rather than `require`.
-- **Never put `overflow` on an ancestor of a sticky element.** An `overflow`
-  value other than `visible` on any ancestor silently kills `position: sticky`
-  on its descendants. This cost a round trip when `.file` had `overflow:hidden`
-  and the file headers looked sticky but never stuck.
-- Sticky offsets are driven by a `--hh` custom property measured from the real
-  toolbar height on load and resize, not a hardcoded pixel value that drifts
-  when the toolbar wraps on a narrow window.
-- **Media is inlined, never linked.** `image`/`video` entries and the PR
-  description's images are read at build time into data URLs (description
-  images not hosted on GitHub stay plain links; the `gh` token is only sent to
-  github.com); the page renders only `data:image/` and `data:video/`
-  sources, so opening it never fetches from anywhere.
-- **The `localStorage` key is the PR** (`review:owner/repo#N`), or without one
-  the title plus a hash of the sorted file names. Never key on render order:
-  the guide reorders sections, and that would wipe checkmarks and drafts every
-  time it was rewritten. Pages from before 2.1 used `diffviewed:<title>:...`
-  keys; the page copies those over on first load. Checkmarks store the file's
-  blob (`meta.blobs`, or a hash of its diff on `--stdin` pages), so they expire
-  when the file changes. Comments are stored by (side, line), not row index, so
-  they survive a rebuild, a whitespace toggle and expanded context. Each line
-  comment also stores its file's `sig`; when the file has changed since, the
-  comment is marked stale and Submit stays off until the reviewer re-saves or
-  deletes it, because the same line number may now point at different code.
-- **Split view sizes its gutters with a `<colgroup>`.** It uses
-  `table-layout: fixed`, which takes column widths from the first row, and that
-  row is a hunk header spanning all four columns: without the colgroup each
-  gutter gets a quarter of the table.
-- Rows are rebuilt (`buildTable`) on every view, whitespace or expand change,
-  so anything that points at a row (`f.trOf`, `f.cellsOf`, `f.numsOf`,
-  `f.rowAt`) must be looked up again afterwards, never cached across one.
-- `/api/file` only serves files named in the page's own diff, at `meta.headRev`,
-  and needs the page token like the POST endpoints. Keep it that narrow: the
-  token and the Host check are all that stop other pages in the browser from
-  reading the repo through it.
-- The diff, whitespace diff, threads, guide, and metadata ride in `<script type="application/json">`
-  islands with `<` escaped as `<`, which round-trips exactly (the old
-  `text/plain` escaping showed a stray backslash in any line containing
-  `</script`). Inlined JS has `</script` escaped. The page has no network
-  dependencies, so it works from `file://` and can be mailed around.
-- The diff parser only treats `---`/`+++`/`index` as headers **before a file's
-  first hunk**. Inside a hunk, a deleted `-- comment` line arrives as
-  `--- comment` and must count as a deletion.
-- The served page gets its token by replacing the exact
-  `<script id="server-src" type="application/json">null</script>` placeholder.
-  Keep that string identical in `build-review.cjs` and `serve-review.cjs`.
-
-- **Every drawn diagram has an expand button** in its corner (screenshots open
-  on click instead), so its text stays selectable. `DIAG.render` keeps the
-  diagram's data on the figure (`fig.diag`; each side of a `compare` carries
-  its own) and the page draws it again in the lightbox, since a raw diagram's
-  shadow root doesn't survive `cloneNode`. The lightbox fills the window: a
-  drawn diagram scales through its viewBox (the SVG gets the panel's width
-  and grows in height, with its legend in a column under it, never beside
-  it), and a hand-written one, which has no viewBox, is measured and given a
-  CSS `zoom` to fit (`fitBig`, rerun on resize).
-- **Diagram layout never measures the DOM.** `diagrams.js` sizes boxes from
-  label length with fixed arithmetic, so it renders the same in every browser
-  and in jsdom. Nodes in one row can differ in height (a `sub` line), so code
-  that asks "same row?" must compare `n.row`, not `y`.
-- Raw `html`/`svg` diagrams render in a shadow root; the page's CSS variables
-  inherit through it, nothing else does. `<script>` and `on*` attributes are
-  stripped, since diagrams are pictures.
-- An editor opened from a recommendation (`editInRecs`) is the one `editing`
-  draft with `inRecs` set. `renderFile` leaves it alone, and `mountRecEditor`
-  puts it back in its card after every redraw of the Recommendations view.
-- The step views are body classes (`overviewing`, `submitting`, `done`) plus
-  `body.dataset.view`; the code view is the absence of the others. The last
-  step is remembered under `<KEY>:step`.
-
-## Syntax highlighting
-
-`page/highlight.js` is ordinary browser source inlined into the page. Two rules
-when editing it:
-
-- **Sub-patterns must not contain capturing groups.** The rules are combined
-  into one alternation and the matched group index maps back to a class name
-  positionally, so a stray `(...)` shifts every class after it. Use `(?:...)`.
-- **Tokenise first, escape per token.** Never highlight already-escaped text,
-  or a rule will match inside `&amp;` and corrupt the line.
-
-Slim (`.slim`) has its own line-mode tokeniser (`slim` in `highlight.js`)
-rather than a rule list: it reads the line's leading indicator (`/` comment,
-`|`/`'` text, `-`/`=`/`==` Ruby, `filter:`, or a tag with `.class#id`
-shorthand) and highlights the rest as Ruby or attributes accordingly, recursing
-for inline `tag: tag` nesting. Its pieces still go through `tok`, so the
-no-capturing-groups rule applies to them too.
-
-It tokenises a line at a time, but `hl(text, lang, st)` carries a state object
-from line to line: block comments and template literals (`OPEN`), Ruby
-heredocs and `=begin`, YAML block scalars, and Slim's indented blocks
-(comments, text, and `javascript:`/`css:`/`ruby:` filters highlighted in their
-own language). The page keeps one state per side of the diff (context lines
-advance both) and restarts it after every gap, since hidden lines are unknown;
-expanding a gap fully joins the state up again. A leading `*` is still treated
-as a comment continuation, which covers JSDoc whose opening `/*` is in hidden
-lines.
-
-## Verifying a change to the page
-
-The build always self-checks: it re-parses the diff it embedded and compares
-per-file `+/-` counts against `git diff --numstat -z` (renames included),
-exiting non-zero on any mismatch. With `--groups` it also prints how many files
-the guide covers, how many are auto-reviewed, and how many suggestions there
-are, and exits non-zero on an unknown or duplicated file or an unanchorable
-suggestion. Trust both. `submit-review.cjs --dry-run` shows the exact payload
-without posting.
-
-For changes to the page's *behavior*, drive it in jsdom rather than guessing.
-This skill is global, so `jsdom` may not be resolvable from the current
-directory: check with `node -e "require('jsdom')"`, and otherwise require it
-by absolute path from a project that has it, or `npm i -g jsdom`:
-
-```js
-const { JSDOM } = require('jsdom');
-const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost/', pretendToBeVisual: true });
-const d = dom.window.document;
-const click = (el, o) => el.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, ...o }));
-const gutter = d.querySelector('tr.a[data-r] td.n');
-const mouse = (el, type) => el.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, button: 0 }));
-mouse(gutter, 'mousedown'); mouse(gutter, 'mouseup');  // opens a comment editor (mouseover another gutter in between for a range)
-const ta = d.querySelector('.editor textarea');
-ta.value = 'note'; ta.dispatchEvent(new dom.window.Event('input'));
-click(d.querySelector('.editor [data-ed=save]'));
-console.log(d.getElementById('meta').textContent);   // "Comments1"
-```
-
-To serve a page in jsdom as if from `--serve`, replace the `server-src`
-placeholder with `{"token":"t"}` before constructing it. jsdom doesn't
-implement `scrollIntoView` or `scrollTo`, so errors naming those are expected.
-
-That catches script errors and wrong arithmetic. It does **not** compute layout,
-so sticky positioning, visual stacking and diagram layout still need a human
-(or a screenshot) to confirm. Say so rather than claiming the layout is verified.
-jsdom sets `location.hash` without firing `hashchange` synchronously, so wait
-a tick before asserting which step is showing.
-
-For screenshots, Playwright can load the page straight from `file://` when a
-project has it installed (`require('playwright')`): `page.goto('file:///…/x.html#overview')`,
-then `page.screenshot`, in both `colorScheme: 'light'` and `'dark'`.
-
-For the highlighter specifically, assert *fidelity*: collect every
-`tr[data-r] td.c` textContent per file (unified view; in split view, the
-`tr.sp td.c:not(.re)` cells) and compare it to the raw diff lines, grouping by
-file rather than by document order, since the reading guide reorders the
-sections. Highlighting must never change a single character of what is
-displayed. Expanded lines are `tr.x` rows without `data-r`; check them against
-`git show <headRev>:<path>` by their line numbers, on both sides.
-
-To test expanding in jsdom, stub `window.fetch` in `beforeParse` to answer
-`/api/file?path=...` from `git show`. Stub `navigator.clipboard` there too if
-the test clicks a Copy button: jsdom has neither.
-
-Note that `file://` URLs are blocked for the Claude-in-Chrome browser tools, so
-screenshotting the page needs `--serve` (or another local HTTP server), and
-that may also be blocked by the sandbox. `open` in the user's own browser is the
-reliable route.
+- **The Node scripts must keep their `.cjs` extension.** Many repos set
+  `"type": "module"` in `package.json`, which makes a `.js` file an ES module
+  and breaks `require`.
+- **Output lands in the current repo's `tmp/review/`.** In a repo that doesn't
+  gitignore `tmp/`, pass `-o` rather than leaving untracked files behind.
+- **GitHub has no API for uploading attachments.** `submit-review.cjs` saves
+  them to `tmp/review/<slug>-attachments/`, puts `[attachment: name]` where
+  they were, and says which to drag in on GitHub. Tell the user when they
+  attach files.
+- **GitHub won't let the author approve or request changes on their own PR.**
+  The page only offers Comment there; don't try to work around it.
+- **`file://` URLs are blocked for the Claude-in-Chrome tools**, and the
+  sandbox may block `--serve` too. `open` in the user's own browser is the
+  reliable route.
+- **Changing the page?** Read `references/developing.md` first. jsdom catches
+  script errors but not layout, so say so rather than claiming the layout is
+  verified.

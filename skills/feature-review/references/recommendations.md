@@ -14,14 +14,14 @@ reads three things you write, plus the files and counts the page already has.
 ```json
 {
   "groups": [
-    { "title": "Who can see order tracking", "why": "Start here: the permission rule changed.",
-      "summary": "Distributor admins of a parent org now **bypass the feature flag**, like super admins.",
+    { "title": "Who can see orders", "why": "Start here: the permission rule changed.",
+      "summary": "Admins of a parent account now **bypass the feature flag**, like super admins.",
       "points": ["`view_order?` is gone; `show?` covers list and detail",
                  "The controller finds the order before it authorizes"],
-      "files": ["app/policies/order_tracking_policy.rb", "..."] }
+      "files": ["app/policies/order_policy.rb", "..."] }
   ],
   "recommendations": [
-    { "id": "auth", "group": "Who can see order tracking", "kind": "risk",
+    { "id": "auth", "group": "Who can see orders", "kind": "risk",
       "title": "Keep the same-organization check on the order page",
       "context": "The order page used to check that the order belongs to the user's organization.",
       "problem": "Now only the lookup keeps other organizations out, so a change to it would expose orders.",
@@ -32,16 +32,16 @@ reads three things you write, plus the files and counts the page already has.
         "before": { "kind": "structure", "nodes": [...], "edges": [...] },
         "after": { "kind": "structure", "nodes": [...], "edges": [...] } }],
       "comments": [
-        { "path": "app/controllers/organizations/order_tracking_controller.rb", "line": 18, "body": "..." },
-        { "path": "app/policies/order_tracking_policy.rb", "line": 5, "body": "..." }
+        { "path": "app/controllers/orders_controller.rb", "line": 18, "body": "..." },
+        { "path": "app/policies/order_policy.rb", "line": 5, "body": "..." }
       ] },
     { "title": "Mention the label change in the release notes", "kind": "question",
-      "context": "Customers will see new words on the tracker.",
+      "context": "Customers will see new words on the order page.",
       "problem": "Should the release notes call it out, or is it too small?" }
   ],
   "overview": { "diagrams": [
-    { "kind": "image", "src": "tmp/review/KATT-1/tracker.png", "title": "Tracker after", "group": "Tracker labels" },
-    { "kind": "video", "src": "tmp/review/KATT-1/open-order.webm", "title": "Opening an order", "section": "recs" }
+    { "kind": "image", "src": "tmp/review/ABC-123/statuses.png", "title": "Statuses after", "group": "Status labels" },
+    { "kind": "video", "src": "tmp/review/ABC-123/open-order.webm", "title": "Opening an order", "section": "recs" }
   ] }
 }
 ```

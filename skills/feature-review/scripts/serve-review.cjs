@@ -5,7 +5,7 @@
  * next to the page, and "Submit review" posts it to the PR.
  *
  * Usage:
- *   node serve-review.cjs tmp/review/KATT-123.html [--port 4823] [--keep-alive]
+ *   node serve-review.cjs tmp/review/ABC-123.html [--port 4823] [--keep-alive]
  *
  * GET /api/file?path=... returns a file's text at the reviewed commit, which
  * is how the page expands context around hunks. Only files in the page's own

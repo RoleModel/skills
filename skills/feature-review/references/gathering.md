@@ -83,12 +83,12 @@ node build-review.cjs "origin/$base...origin/<branch>" --pr <N>   # or omit --pr
 
 Prefer `origin/<branch>` over a local branch the user may not have pulled.
 
-## A ticket ID (Linear, Jira, ...), e.g. `KATT-2169`
+## A ticket ID (Linear, Jira, ...), e.g. `ABC-123`
 
 Teams put the ID in branch names, commit subjects, and PR titles, in either case.
 
 ```bash
-id=KATT-2169
+id=ABC-123
 gh pr list --state all --search "$id in:title,body" --json number,title,state,headRefName --limit 10
 git branch -a --list "*$(echo $id | tr A-Z a-z)*" "*$id*"
 git log --all --oneline -i --grep "$id"

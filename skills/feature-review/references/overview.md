@@ -18,47 +18,47 @@ about: an empty section is better than filler.
   "suggestions": [ ... ],
   "overview": {
     "author": {
-      "summary": "Rhys says this fixes **distributor admins not seeing Order Tracking** and makes the tracker's states clearer.",
+      "summary": "The author says this fixes **account admins not seeing their orders** and makes the order statuses clearer.",
       "points": ["Two specs marked obsolete, kept for later"],
       "differs": "The description says the specs were *marked* obsolete; the diff deletes them."
     },
     "feature": {
-      "summary": "Rotating a **roof hatch** turns it about its centre instead of its corner.",
-      "behavior": "Before: the hatch swung around its origin and left the roof outline. After: it turns in place.",
+      "summary": "Rotating a **shape** turns it about its centre instead of its corner.",
+      "behavior": "Before: the shape swung around its corner and left the canvas. After: it turns in place.",
       "checks": [
-        { "id": "centre", "text": "Rotating a hatch 90° keeps its centre in place",
-          "how": "Place a hatch, rotate it with the handle, compare the centre before and after.",
-          "path": "app/javascript/shared/drawings2D/RoofHatchFigure.js" },
+        { "id": "centre", "text": "Rotating a shape 90° keeps its centre in place",
+          "how": "Place a shape, rotate it with the handle, compare the centre before and after.",
+          "path": "app/javascript/drawing/RectangleFigure.js" },
         "Undo after a rotation restores the original position"
       ]
     },
     "connection": {
       "summary": "The user drags the handle; the editor asks the figure for its handles, which now pivot on the centre.",
-      "technical": "`SayfaDrawingEditor` routes the drag to `RoofHatchFigure#handlesAt`, which ...",
+      "technical": "`DrawingEditor` routes the drag to `RectangleFigure#handlesAt`, which ...",
       "steps": [
-        { "title": "Drag the rotate handle", "user": "The hatch turns in place.",
+        { "title": "Drag the rotate handle", "user": "The shape turns in place.",
           "tech": "`handlesAt(options)` returns the centre as the pivot.",
-          "visuals": [{ "kind": "video", "src": "tmp/review/KATT-1/rotate.webm" }],
-          "groups": ["The hatch fix"], "files": ["app/javascript/shared/drawings2D/RoofHatchFigure.js"],
+          "visuals": [{ "kind": "video", "src": "tmp/review/ABC-123/rotate.webm" }],
+          "groups": ["The rotation fix"], "files": ["app/javascript/drawing/RectangleFigure.js"],
           "checks": ["centre"] }
       ]
     },
     "shape": {
       "summary": "A one-line change repeated in four figures; no new objects.",
-      "layers": ["drawings2D"],
+      "layers": ["drawing"],
       "objects": [
-        { "name": "RoofHatchFigure#handlesAt", "status": "changed", "note": "takes options instead of a bare scale",
-          "path": "app/javascript/shared/drawings2D/RoofHatchFigure.js" }
+        { "name": "RectangleFigure#handlesAt", "status": "changed", "note": "takes options instead of a bare scale",
+          "path": "app/javascript/drawing/RectangleFigure.js" }
       ],
       "dependencies": [],
       "departures": ["The same signature change is copied into four figures; `CompositeFigure` could own it."],
       "codebase": "Nothing grows. The figures now agree with `CompositeFigure`'s signature, which removes a special case.",
-      "areas": [{ "label": "figures", "prefix": "app/javascript/shared/drawings2D/" }]
+      "areas": [{ "label": "figures", "prefix": "app/javascript/drawing/" }]
     },
     "diagrams": [
-      { "kind": "sequence", "title": "Rotating a hatch", "section": "feature", "actors": [...], "messages": [...] },
+      { "kind": "sequence", "title": "Rotating a shape", "section": "feature", "actors": [...], "messages": [...] },
       { "kind": "structure", "title": "Who calls handlesAt", "section": "shape", "layers": [...], "nodes": [...], "edges": [...] },
-      { "kind": "compare", "title": "Pivot point", "group": "The hatch fix", "before": {...}, "after": {...} }
+      { "kind": "compare", "title": "Pivot point", "group": "The rotation fix", "before": {...}, "after": {...} }
     ]
   }
 }
@@ -223,8 +223,8 @@ are boxes, edges are arrows. Keep it under about 15 nodes.
 { "kind": "structure", "title": "Where rotation lives now",
   "layers": ["editor", "figures", "model"],
   "nodes": [
-    { "id": "ed", "label": "SayfaDrawingEditor", "layer": "editor" },
-    { "id": "rh", "label": "RoofHatchFigure", "layer": "figures", "status": "changed", "sub": "handlesAt()", "note": "tooltip" },
+    { "id": "ed", "label": "DrawingEditor", "layer": "editor" },
+    { "id": "rh", "label": "RectangleFigure", "layer": "figures", "status": "changed", "sub": "handlesAt()", "note": "tooltip" },
     { "id": "rot", "label": "RotationHelper", "layer": "model", "status": "new" },
     { "id": "old", "label": "pivotAtCorner", "layer": "figures", "status": "removed" }
   ],
@@ -238,8 +238,8 @@ diagram is usually the clearest way to show a shape change.
 ### `sequence`: who calls whom, in order
 
 ```json
-{ "kind": "sequence", "title": "Rotating a hatch",
-  "actors": ["User", "Editor", { "id": "Fig", "label": "RoofHatchFigure", "status": "changed" }],
+{ "kind": "sequence", "title": "Rotating a shape",
+  "actors": ["User", "Editor", { "id": "Fig", "label": "RectangleFigure", "status": "changed" }],
   "messages": [
     ["User", "Editor", "drags the rotate handle"],
     ["Editor", "Fig", "rotate(angle, centre)", "changed"],
@@ -277,11 +277,11 @@ Ready-made classes:
   already themed. Give the `<svg>` a `viewBox` and it scales to fit.
 
 ```json
-{ "kind": "svg", "title": "Hatch rotated 90°", "group": "The hatch fix",
+{ "kind": "svg", "title": "Shape rotated 90°", "group": "The rotation fix",
   "svg": "<svg viewBox='0 0 220 120'><rect x='20' y='20' width='60' height='40' fill='none' class='s-old'/><rect x='110' y='30' width='40' height='60' class='f-new s-new'/><circle cx='130' cy='60' r='3' class='f-accent'/><text x='20' y='110' class='muted'>old pivot: corner · new pivot: centre</text></svg>" }
 ```
 
-For drawing domain geometry (a roof plan, a hatch, a line of anchors), an SVG
+For drawing domain geometry (a floor plan, a shape, a row of points), an SVG
 like this beats any box diagram: show the actual before and after positions.
 
 ## Checking it

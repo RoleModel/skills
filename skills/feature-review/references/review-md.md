@@ -10,12 +10,12 @@ read it.
 
 ## Shared guides
 - rolemodel/review-guides: code-review-principles.md
-- rolemodel/review-guides: lcad-code-review-principles.md
-- rolemodel/review-guides@v2: lcad-structure-guidelines.md — pinned while v3 settles
+- rolemodel/review-guides: code-review-principles.md
+- rolemodel/review-guides@v2: structure-guidelines.md — pinned while v3 settles
 - [Pricing review notes](docs/review/pricing.md)
 
 ## This project
-- Portal pushes changes to Builda and Roofs by webhook; flag anything that skips it.
+- Changes to synced models reach the client apps by webhook; flag anything that skips it.
 - Pricing changes need a spec under spec/services/pricing.
 ```
 

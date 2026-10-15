@@ -8,7 +8,7 @@
  * REVIEW.md sits at the repo root. Its "Shared guides" section lists guides as list items:
  *
  *   - rolemodel/review-guides: code-review-principles.md          (the repo's default branch)
- *   - rolemodel/review-guides@v2: lcad-code-review-principles.md  (a tag, branch or commit)
+ *   - rolemodel/review-guides@v2: code-review-principles.md  (a tag, branch or commit)
  *   - docs/review/pricing.md                                       (a file in this repo)
  *   - [Pricing](docs/review/pricing.md)                            (the same, as a Markdown link)
  *
