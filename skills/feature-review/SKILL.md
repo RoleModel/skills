@@ -430,7 +430,6 @@ page is their approval step.
 - `references/review-md.md`: the `REVIEW.md` format for a project's review rules and shared guides.
 - `references/gathering.md`: how to get from a PR, commit, range, branch, or ticket ID to a build.
 - `references/preferences-template.md`: the per-user preferences file.
-- `usage.md` and `assets/screenshots/`: a guide for people using the page, with screenshots.
 
 ## Constraints that matter
 
