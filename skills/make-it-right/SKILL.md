@@ -149,9 +149,9 @@ findings with it), data patterns, readability, conventions; specs last.
   deleting wins, but never over behavior the intent asks for. Nothing removes
   validation, authorization, error handling, accessibility, or specs; only
   coverage deletes a spec, and only a framework test or a duplicate.
-- **Precedence.** A written project rule outranks a general principle. A
-  round-2 finding that would undo a fix you made in this run is rejected:
-  name the fix it reverses.
+- **Precedence.** A written rule outranks a general principle; one example in
+  the codebase outranks neither. A round-2 finding that would undo a fix you
+  made in this run is rejected: name the fix it reverses.
 - **Push back.** A verified finding can still be wrong for this change, such as
   one that conflicts with the intent or a written project rule. Reject it with
   a one-line reason, and put the reason in the report.

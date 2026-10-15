@@ -44,6 +44,9 @@ hand.
 
 ## Migrations
 
+A data migration defines the models it uses inside the migration class, so a
+later change to the app's models can't break or change it.
+
 Never edit a migration that has been deployed. An unreleased migration may be
 replaced, but give the replacement a new version, so a database that ran the
 old one still runs the new one.

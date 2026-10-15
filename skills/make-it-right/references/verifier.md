@@ -27,6 +27,13 @@ ones are real. You didn't write the code or the findings, so trust neither.
    against a unique index, is confirmed once you trace the trigger through
    the code. How often it happens doesn't lower the score.
 
+   A finding that part of the intent isn't met keeps its score however big
+   the fix is. Send a large fix to the redesign step, not to open questions.
+
+   A `reuse:` finding is not taste when the existing code does the same job:
+   two mechanisms for one job is a cost. Score it on whether the jobs match,
+   not on how much code the change copied.
+
    A conventions finding whose rule isn't written where it claims scores 0.
    So does one whose rule names a tool the project doesn't have, such as a
    gem or initializer: the rule was written for another codebase.
@@ -71,7 +78,10 @@ Return the findings that score **80 or above**, one per line, in the
 
 A finding that only the requester can settle, such as whether a field should be
 editable, is neither confirmed nor wrong. Don't score it; list it under
-**Open questions** with the evidence. The orchestrator puts these in the report.
+**Open questions** with the evidence. So is a fix that takes away something
+existing users can do today, such as narrowing who can run an action, when the
+intent doesn't ask for that: keep the finding, and put the narrowing under
+open questions. The orchestrator puts these in the report.
 
 Then give the dropped ones in a single line each, with the reason. The orchestrator
 reports those as false positives if asked.

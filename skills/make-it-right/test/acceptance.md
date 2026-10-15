@@ -26,6 +26,10 @@ evidence either way is not met.
 - **Silent failures**: a `save` / `update` whose `false` is ignored, a `rescue`
   that swallows, a fallback that hides a bug, a `.catch` that only logs, a
   Stimulus action that fails without telling the user.
+- **Work done at the wrong time**: an expensive value worked out on every
+  read when its inputs stop changing at a known point, such as a lock,
+  approval, or close. When the intent mentions scale, ask when the data stops
+  changing; computing it once then may meet the intent where caching can't.
 - **Failure that looks like success**: an error path that still returns 200,
   such as a download that sends an empty file when its query fails.
 

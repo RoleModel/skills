@@ -18,7 +18,9 @@ enums, migrations, and per-variant data. Cite it as
 - **Migrations**: one that locks a big table, can't be reversed, or adds
   `null: false` without a default or backfill. An index missing for a new
   foreign key or uniqueness rule. An unreleased migration replaced under the
-  same version: any database that ran the old one skips the new one.
+  same version: any database that ran the old one skips the new one. A data
+  migration or backfill that writes rows it doesn't own, such as overwriting
+  values the app already set, or a `down` that undoes more than its `up` did.
 - **`db/schema.rb`**: changes beyond what this change's migrations add, such
   as reordered columns or tables from another branch.
 - **Status from history**: "connected", "active", or "set up" worked out from
