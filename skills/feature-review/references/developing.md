@@ -61,9 +61,9 @@ to run a review.
   it), and a hand-written one, which has no viewBox, is measured and given a
   CSS `zoom` to fit (`fitBig`, rerun on resize).
 - **Diagram layout never measures the DOM.** `diagrams.js` sizes boxes from
-  label length with fixed arithmetic, so it renders the same in every browser
-  and in jsdom. Nodes in one row can differ in height (a `sub` line), so code
-  that asks "same row?" must compare `n.row`, not `y`.
+  label length with fixed arithmetic, so it renders the same in every
+  browser. Nodes in one row can differ in height (a `sub` line), so code that
+  asks "same row?" must compare `n.row`, not `y`.
 - Raw `html`/`svg` diagrams render in a shadow root; the page's CSS variables
   inherit through it, nothing else does. `<script>` and `on*` attributes are
   stripped, since diagrams are pictures.
@@ -112,34 +112,12 @@ are, and exits non-zero on an unknown or duplicated file or an unanchorable
 suggestion. Trust both. `submit-review.cjs --dry-run` shows the exact payload
 without posting.
 
-For changes to the page's *behavior*, drive it in jsdom rather than guessing.
-This skill is global, so `jsdom` may not be resolvable from the current
-directory: check with `node -e "require('jsdom')"`, and otherwise require it
-by absolute path from a project that has it, or `npm i -g jsdom`:
-
-```js
-const { JSDOM } = require('jsdom');
-const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost/', pretendToBeVisual: true });
-const d = dom.window.document;
-const click = (el, o) => el.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, ...o }));
-const gutter = d.querySelector('tr.a[data-r] td.n');
-const mouse = (el, type) => el.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, button: 0 }));
-mouse(gutter, 'mousedown'); mouse(gutter, 'mouseup');  // opens a comment editor (mouseover another gutter in between for a range)
-const ta = d.querySelector('.editor textarea');
-ta.value = 'note'; ta.dispatchEvent(new dom.window.Event('input'));
-click(d.querySelector('.editor [data-ed=save]'));
-console.log(d.getElementById('meta').textContent);   // "Comments1"
-```
-
-To serve a page in jsdom as if from `--serve`, replace the `server-src`
-placeholder with `{"token":"t"}` before constructing it. jsdom doesn't
-implement `scrollIntoView` or `scrollTo`, so errors naming those are expected.
-
-That catches script errors and wrong arithmetic. It does **not** compute layout,
-so sticky positioning, visual stacking and diagram layout still need a human
-(or a screenshot) to confirm. Say so rather than claiming the layout is verified.
-jsdom sets `location.hash` without firing `hashchange` synchronously, so wait
-a tick before asserting which step is showing.
+For changes to the page's *behavior*, drive it in a real browser with
+Playwright when a project has it installed (`require('playwright')`). Serve
+the page with `--serve` so Submit, Save and expanding context work, click
+through the flow you changed, and fail on any `pageerror` or console error.
+Layout, sticky positioning and diagram layout still need a look at a
+screenshot to confirm; say so rather than claiming they are verified.
 
 For screenshots, Playwright can load the page straight from `file://` when a
 project has it installed (`require('playwright')`): `page.goto('file:///…/x.html#overview')`,
@@ -152,10 +130,6 @@ file rather than by document order, since the reading guide reorders the
 sections. Highlighting must never change a single character of what is
 displayed. Expanded lines are `tr.x` rows without `data-r`; check them against
 `git show <headRev>:<path>` by their line numbers, on both sides.
-
-To test expanding in jsdom, stub `window.fetch` in `beforeParse` to answer
-`/api/file?path=...` from `git show`. Stub `navigator.clipboard` there too if
-the test clicks a Copy button: jsdom has neither.
 
 Note that `file://` URLs are blocked for the Claude-in-Chrome browser tools, so
 screenshotting the page needs `--serve` (or another local HTTP server), and

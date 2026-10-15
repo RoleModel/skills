@@ -16,7 +16,7 @@
 const DIAG = (function () {
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // Rough text width at the sizes used below. Layout never measures the DOM, so
-  // it's the same in every browser and in jsdom; labels get generous padding.
+  // it's the same in every browser; labels get generous padding.
   const tw = (s, px) => String(s || '').length * (px || 12.5) * 0.6;
   const STATUS = ['new', 'changed', 'removed', 'same'];
   const st = (s) => (STATUS.includes(s) ? s : 'same');

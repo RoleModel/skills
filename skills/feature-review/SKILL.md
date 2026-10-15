@@ -283,6 +283,5 @@ submit page is their approval step.
 - **`file://` URLs are blocked for the Claude-in-Chrome tools**, and the
   sandbox may block `--serve` too. `open` in the user's own browser is the
   reliable route.
-- **Changing the page?** Read `references/developing.md` first. jsdom catches
-  script errors but not layout, so say so rather than claiming the layout is
-  verified.
+- **Changing the page?** Read `references/developing.md` first, and check
+  the change in a browser, not only by reading the code.
