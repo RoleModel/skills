@@ -8,6 +8,7 @@ Read `findings.md` next to this file for the format and severities.
 
 1. **Merge duplicates.** Several agents often report the same line. Keep the
    clearest version under the most fitting principle, and note the others.
+   Keep every merged finding's `source`, joined with `,`.
    Two agents filing one problem under two principles is one finding.
 2. **Check it against the source.** Open the file at the line. Follow the
    evidence: read the caller, the rule, or the spec it names. For a `delete:`
@@ -90,4 +91,5 @@ open questions.
 
 Pass `fast:` findings through unscored under **Hand off**.
 
-Then give the dropped ones in a single line each, with the reason.
+Then give the dropped ones in a single line each, with the reason and the
+score.

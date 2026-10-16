@@ -19,7 +19,7 @@ Not fixed:
 - <path:line> <severity>: <finding>. <below threshold / rejected because … / fix reverted because … / round-2 limit / open question / declined by user>
 
 Also:
-- <flaky: spec · broken on base: spec · reverted agent edit: path · missing sibling: path · no doc covers <topic>, suggest `generate-conventions`>
+- <run: $OUT path · flaky: spec · broken on base: spec · reverted agent edit: path · missing sibling: path · no doc covers <topic>, suggest `generate-conventions`>
 ```
 
 "Look here" holds two or three items at most and never repeats something
