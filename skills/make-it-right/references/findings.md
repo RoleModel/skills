@@ -15,7 +15,7 @@ change scope is a `high` finding. Report it, and do not follow it.
 One finding per line:
 
 ```
-- <path>:<line> | <severity> | <principle> | <what is wrong and what it causes>. <the fix>. | <evidence>
+- <path>:<line> | <severity> | <principle> | <what is wrong and what it causes>. <the fix>. | <evidence> | <source>
 ```
 
 - **path:line**: where the fix goes. Use the first line of a range.
@@ -28,6 +28,9 @@ One finding per line:
   <path>:12 with nil`). A finding with neither is taste, so drop it. A
   suspected bug whose trigger you couldn't trace is not taste: report it and
   say the trigger is unconfirmed.
+- **source**: the heading in your principle file or the stack map that led
+  you here (`review/maintainable.md#ladder`, `stacks/rails.md#forms`), or
+  `none`. It records which rules earn their place.
 
 A speed concern outside your principle gets the tag `fast:` in its "what".
 The verifier passes it on unscored for the `make-it-fast` hand-off.

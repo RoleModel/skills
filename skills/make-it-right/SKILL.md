@@ -50,7 +50,7 @@ headings the principle files cite. No map means the principles run as written.
 ```bash
 git fetch -q origin && git remote set-head origin -a >/dev/null 2>&1
 BASE=$(git merge-base HEAD "$(git symbolic-ref --short refs/remotes/origin/HEAD)")  # or the user's ref
-OUT=$(mktemp -d)
+OUT=$(mktemp -d "${TMPDIR:-/tmp}/make-it-right.XXXXXX"); echo "$BASE" > "$OUT/base.txt"
 git diff --stat "$BASE"; git status --short
 "$SKILL_DIR/scripts/new_lines.sh" "$BASE" > "$OUT/new_lines.txt"
 ```
@@ -61,7 +61,8 @@ because of the change (the verifier decides).
 
 Write the change's **intent** in one or two sentences. If a ticket is named,
 copy its acceptance criteria; otherwise use the conversation, PR description,
-or commits, or state the intent you're assuming.
+or commits, or state the intent you're assuming. Save it to
+`$OUT/intent.txt`.
 
 **Rule sources.** List in `$OUT/rules.txt`: `AGENTS.md` / `CLAUDE.md`,
 `docs/conventions/*.md`, and every installed skill (`.claude/skills/*/SKILL.md`,
@@ -131,14 +132,16 @@ can't see a second edit to a file the user already changed.
 
 ## 4. Track and verify
 
-Put every finding on a task list as it arrives. The run ends when the list is
+Put every finding on a task list as it arrives, and append each agent's
+return, unedited, to `$OUT/findings.md`. The run ends when the list is
 empty, every open item names its blocker, or round 2 is done. Don't end a turn
 by announcing the next step; take it.
 
 Launch one subagent with the packet, the principle file replaced by
 `<SKILL_DIR>/references/verifier.md`, the review agents' read-only line, and
 every finding. It merges, checks,
-scores, and marks each `new` or `existing`. Keep findings scored **75 or
+scores, and marks each `new` or `existing`. Save its return, unedited, to
+`$OUT/verified.md`. Keep findings scored **75 or
 above**. Its open questions go to "Look here", the three with the widest
 effect; the rest go under "Not fixed" as `open question`.
 
@@ -209,7 +212,8 @@ Offer `make-it-fast` when the change adds or alters queries, endpoints, jobs,
 or spec setup, markup that loads images, embeds, frames, fonts, or scripts,
 or any agent tagged a `fast:` finding; for other copy, markup, or style
 changes, say it's skipped. Report in one screen, in the shape
-`references/report.md` gives.
+`references/report.md` gives. Leave `$OUT` in place: `made-it-wrong-retro` replays
+agents and the verifier from it.
 
 ## Gotchas
 
