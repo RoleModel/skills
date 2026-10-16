@@ -41,7 +41,8 @@ headings the principle files cite. No map means the principles run as written.
 - `threshold=critical|high|medium|low`: the lowest severity fixed in
   **existing** code (default `high`).
 - `skip=<principle>,…` by file name: `skip=ui-ux,blast-radius`.
-- `report-only`: stop after step 4; a passed redesign goes under "Look here".
+- `report-only`: change no file. Run linters without autocorrect, fix no
+  failing spec, and stop after step 4; a passed redesign goes under "Look here".
 - `redesign=ask|apply` (default `ask`): see `references/redesign.md`.
 
 ## 1. Gather the packet
@@ -81,10 +82,11 @@ to `$OUT/commands.txt`.
 Run the linters with autocorrect on (keep what it changes), and the specs for
 the changed files. Reviewers never report what a linter catches. A failing
 spec means the change doesn't work yet: fix it when the fix is small, else
-stop and say so. Rerun each failure alone, then in a worktree at the base
-(`git worktree add "$OUT/base" "$BASE"`, if the project's setup runs there):
-one that passes alone is flaky, one that fails on the base was already broken.
-Report both; neither counts against the change. Leave the stack map's
+stop and say so. Rerun each failure with the same command and seed in a
+worktree at the base (`git worktree add "$OUT/base" "$BASE"`, if the project's
+setup runs there). One that fails there too was already broken; report it, it
+doesn't count against the change. One that passes there is the change's, even
+if it passes alone: a new spec can leak state into a later one. Leave the stack map's
 "Scanners left to CI" to CI.
 
 ## 3. Launch the agents
@@ -121,8 +123,11 @@ file." For **test** agents: "You may run specs and the app. Do not edit app
 code or specs; report what's missing." Never pass this session's history: an
 agent that knows why the author chose something stops questioning it.
 
-When they return, run `git status --short`. Revert any file an agent changed
-and note it in the report.
+Before launching, snapshot the tree: `PRE=$("$SKILL_DIR/scripts/snapshot.sh")`.
+When they return, compare: `git diff --stat "$PRE" "$("$SKILL_DIR/scripts/snapshot.sh")"`.
+Restore each file an agent changed with `git restore --source="$PRE" --worktree
+-- <path>`, delete any it created, and note them in the report. `git status`
+can't see a second edit to a file the user already changed.
 
 ## 4. Track and verify
 
@@ -137,8 +142,8 @@ scores, and marks each `new` or `existing`. Keep findings scored **75 or
 above**. Its open questions go to "Look here", the three with the widest
 effect; the rest go under "Not fixed" as `open question`.
 
-Then snapshot the tree, staged but uncommitted, before any fix:
-`git add -A && FIX_BASE=$(git write-tree)`. Round 2 diffs against it.
+Then snapshot the tree before any fix:
+`FIX_BASE=$("$SKILL_DIR/scripts/snapshot.sh")`. Round 2 diffs against it.
 
 **Redesign.** If the verifier passes a `redesign:` finding, follow
 `$SKILL_DIR/references/redesign.md` before step 5.
@@ -201,14 +206,15 @@ any fix hunk in server code or a template, as in round 2.
 Run the linters and the full spec suite once. Leave the changes uncommitted
 unless the user asked for commits. `create-pr` commits and opens the PR.
 Offer `make-it-fast` when the change adds or alters queries, endpoints, jobs,
-or spec setup, or any agent tagged a `fast:` finding; for copy, markup, or
-style-only changes, say it's skipped. Report in one screen, in the shape
+or spec setup, markup that loads images, embeds, frames, fonts, or scripts,
+or any agent tagged a `fast:` finding; for other copy, markup, or style
+changes, say it's skipped. Report in one screen, in the shape
 `references/report.md` gives.
 
 ## Gotchas
 
 - Review agents launched from a prompt file have every tool, including Edit.
-  The "read only" line is the only guard, which is why step 3 checks
-  `git status` afterward.
+  The "read only" line is the only guard, which is why step 3 compares
+  snapshots afterward.
 - Hooks resolve once, in step 1. Principle files that probed `../` on their
   own found a sibling in one run and not the next. The packet carries it all.

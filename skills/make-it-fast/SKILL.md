@@ -7,9 +7,9 @@ description: >-
   reports before-and-after numbers. Use when the user says "make it fast",
   "speed this up", "performance review", "why is this page slow", "check for
   N+1s", "the specs are slow", or "optimize this", or after `make-it-right`
-  when a change adds or alters queries, endpoints, jobs, or spec setup. Skip
-  it for changes to copy, markup, or styles only: they have nothing to
-  measure.
+  when a change adds or alters queries, endpoints, jobs, spec setup, or
+  markup that loads images, embeds, frames, fonts, or scripts. Skip it for
+  other copy, markup, or style changes: they have nothing to measure.
 metadata:
   author: rolemodel
   version: "1.0"
