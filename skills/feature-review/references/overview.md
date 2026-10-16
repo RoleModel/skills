@@ -183,6 +183,14 @@ and whether the code is better or worse arranged afterwards.
 - **`areas`**: optional `{label, prefix}` buckets for the "Where the change
   lands" bars. Without them, files are bucketed by their first three directories.
 
+**Always draw the shape.** Every overview gets one `structure` diagram with
+`"section": "shape"` that maps the change. Put the objects it touches in their
+layers and mark each one `new`, `changed` or `removed`. Add the untouched
+neighbours they talk to as `same` for context, and mark the edges the same way.
+It is the most useful picture on the page, because it shows at a glance what
+was added and what changed. Skip it only when the change touches no code
+structure at all (copy, config, a dependency bump), and say so in the report.
+
 The page adds two computed blocks under the shape, from git, that you don't
 write: **Where the change lands** (lines changed per area) and **How the
 codebase's shape moved** (each touched file's length before and after, sorted

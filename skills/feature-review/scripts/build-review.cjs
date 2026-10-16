@@ -520,6 +520,9 @@ if (groupsPath) {
     }
     const objs = (ov.shape && ov.shape.objects) || [];
     objs.forEach((o) => { if (o && o.path && !byName.has(o.path)) { console.error(`overview: shape object names a file not in the diff: ${o.path}`); bad++; } });
+    // A warning, not a failure: a copy- or config-only change has no structure to draw.
+    if (!(ov.diagrams || []).some((d) => d && d.kind === 'structure' && d.section === 'shape'))
+      console.error('overview: the shape has no structure diagram; add one with "section": "shape" marking what was added, changed and removed');
   }
   const groupTitles = new Set(guide.groups.map((g) => g.title)), rids = new Set();
   const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});

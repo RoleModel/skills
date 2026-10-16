@@ -166,8 +166,10 @@ step the reviewer was last on). It has four parts, written by you under
   files that do it, and holds the checks that test it. Make it as visual as you can.
 - **The shape**: the shape of this change (layers, objects, new dependencies,
   departures from the architecture instructions) and how it moves the shape
-  of the codebase as a whole. Under it the page adds two computed blocks, from
-  git: lines changed per area, and every touched file's length before and after.
+  of the codebase as a whole, always with a `structure` diagram that marks
+  what was added, changed and removed. Under it the page adds two computed
+  blocks, from git: lines changed per area, and every touched file's length
+  before and after.
 
 Diagrams (`structure`, `sequence`, `compare`, or hand-written `html`/`svg`) go
 in either part, and can also be pinned to a reading-guide group so they show
