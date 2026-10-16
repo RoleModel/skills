@@ -27,7 +27,13 @@ a rung holds:
    mechanism (a cache key, a retry, a formatter, a permission check, a
    background notice), grep for the tables, columns, and calls it uses. An
    existing module that touches the same data may already solve the same
-   problem. Read it before writing a new one.
+   problem. Read it before writing a new one. When you find one, ask whether
+   the whole change could be built on it, not just one piece borrowed from
+   it: a change that rebuilds a mechanism the project already uses elsewhere
+   (lazy loading, stored results, snapshots) is a `reuse:` finding even when
+   the new copy works. Don't drop it because reusing looks costlier, such as
+   more requests or a bigger diff: report the finding with that cost, and let
+   the verifier weigh it.
 5. **Only then**: the smallest thing that works. An abstraction with one
    implementation, a config option nobody sets, or a parameter every caller
    passes the same is `yagni:`.
