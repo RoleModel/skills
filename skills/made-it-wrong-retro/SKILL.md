@@ -1,5 +1,5 @@
 ---
-name: made-it-wrong
+name: made-it-wrong-retro
 description: >-
   Retro on a `make-it-right` run: finds where it missed a problem, kept a
   false alarm, made a bad fix, or skipped a step, proves each lesson with a
@@ -12,11 +12,11 @@ description: >-
 metadata:
   author: rolemodel
   version: "0.1"
-  triggers: "made it wrong, made-it-wrong, retro make-it-right, make-it-right missed, teach make-it-right, prune make-it-right, self-heal make-it-right"
+  triggers: "made it wrong, made-it-wrong-retro, retro make-it-right, make-it-right missed, teach make-it-right, prune make-it-right, self-heal make-it-right"
 license: MIT
 ---
 
-# Made It Wrong
+# Made It Wrong Retro
 
 `make-it-right` learns only from its misses. This skill turns a miss into an
 edit to it, and proves the edit with a test first. It proposes; the user
@@ -108,13 +108,13 @@ or code. Write the rule as the principle the miss revealed, not the miss.
 
 ## 5. Save the case
 
-Append to `~/.claude/made-it-wrong/cases.tsv`, one row per lesson:
+Append to `~/.claude/made-it-wrong-retro/cases.tsv`, one row per lesson:
 `date | target file | repo | base sha | run folder | pass condition`.
 Keep it outside this repo: it points at client code. Copy the run folder to
-`~/.claude/made-it-wrong/runs/` so the tmp cleaner doesn't take it.
+`~/.claude/made-it-wrong-retro/runs/` so the tmp cleaner doesn't take it.
 
 Also append each kept finding's `source` from `verified.md` to
-`~/.claude/made-it-wrong/fires.tsv` (`date | source`). Step 6 counts it.
+`~/.claude/made-it-wrong-retro/fires.tsv` (`date | source`). Step 6 counts it.
 
 ## 6. Prune (D)
 

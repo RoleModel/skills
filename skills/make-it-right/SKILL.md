@@ -212,7 +212,7 @@ Offer `make-it-fast` when the change adds or alters queries, endpoints, jobs,
 or spec setup, markup that loads images, embeds, frames, fonts, or scripts,
 or any agent tagged a `fast:` finding; for other copy, markup, or style
 changes, say it's skipped. Report in one screen, in the shape
-`references/report.md` gives. Leave `$OUT` in place: `made-it-wrong` replays
+`references/report.md` gives. Leave `$OUT` in place: `made-it-wrong-retro` replays
 agents and the verifier from it.
 
 ## Gotchas
