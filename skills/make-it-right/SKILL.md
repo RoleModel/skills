@@ -7,12 +7,11 @@ description: >-
   needs to look at. Use when the user says "make it right", "review and fix",
   "clean this up before the PR", "get this up to standard", "review my
   changes", "code review this branch", "is this ready for review", "simplify
-  this", "YAGNI review", or "QA this in the browser", or when a feature works
-  and is about to go to `create-pr`.
+  this", "YAGNI review", or "QA this in the browser".
 metadata:
   author: rolemodel
   version: "2.2"
-  triggers: "make it right, review and fix, code review, review my changes, review this branch, clean this up, get this up to standard, ready for review, simplify, yagni review, over-engineered, qa in the browser, before the pr"
+  triggers: "make it right, review and fix, code review, review my changes, review this branch, clean this up, get this up to standard, ready for review, simplify, yagni review, over-engineered, qa in the browser"
 license: MIT
 ---
 
