@@ -12,7 +12,8 @@ Optics is RoleModel's CSS design system, published as `@rolemodel/optics`. The i
 - Tokens: `node_modules/@rolemodel/optics/dist/tokens/tokens.json` (or the CSS under `dist/css/core/tokens/` in older versions)
 - Components: `node_modules/@rolemodel/optics/dist/css/components/*.css`
 - Version: the `@rolemodel/optics` entry in `package.json`
-- Docs: https://docs.optics.rolemodel.design/llms.txt (markdown index; component pages show the HTML for each variant). It covers the latest release, so check names against the installed package.
+- Docs: https://docs.optics.rolemodel.design
+- Docs for agents: https://docs.optics.rolemodel.design/llms.txt (markdown index; component pages show the HTML for each variant). It covers the latest release, so check names against the installed package.
 
 ## Before writing CSS
 
