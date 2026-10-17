@@ -13,6 +13,7 @@ Optics is RoleModel's CSS design system, published as `@rolemodel/optics`. The i
 - Components: `node_modules/@rolemodel/optics/dist/css/components/*.css`
 - Version: the `@rolemodel/optics` entry in `package.json`
 - Docs: https://docs.optics.rolemodel.design
+- Docs for agents: https://docs.optics.rolemodel.design/llms.txt (markdown index; component pages show the HTML for each variant). It covers the latest release, so check names against the installed package.
 
 ## Before writing CSS
 
@@ -20,7 +21,7 @@ Optics is RoleModel's CSS design system, published as `@rolemodel/optics`. The i
 2. **Reuse a project class** if one exists. Search `app/assets/stylesheets/`.
 3. **Write a new component** only when neither fits: one block per file in `app/assets/stylesheets/components/{block}.css`, named and nested per the `bem-structure` skill.
 
-To change how an Optics component looks across the app, override it in `app/assets/stylesheets/components/overrides/{component}.css`. Don't fork it into a new block.
+To change how an Optics component looks across the app, override it in `app/assets/stylesheets/components/optics-overrides/{component}.css`. Don't fork it into a new block.
 
 Optics also ships utility classes (`.flex`, `.gap-sm`, and the rest of `dist/css/core/utilities.css`). RoleModel strongly discourages them in views: style through a BEM block or element instead.
 
@@ -43,7 +44,7 @@ When no token fits, define a project token with the app's own prefix (`--ya-colo
 
 - **Malformed names fail silently.** `var(--op_color_primary_base)`, `var(--color-primary-base)`, and `var(--op-primary-color-base)` all resolve to nothing and the property falls back with no error. Check the name against `tokens.json`.
 - **Plus and minus flip in dark mode.** Each step is a `light-dark()` pair. In light mode `plus-*` is lighter and `minus-*` darker; in dark mode it reverses, so `plus-max` goes from the lightest step to the darkest. Pick a step by its role against the background, not by "lighter" or "darker", and check both values in `scale_color_tokens.css`.
-- **Optics has more components than you'd guess.** Besides `btn` and `card` it ships `avatar`, `badge`, `tag`, `alert`, `modal`, `table`, `tab`, `switch`, `spinner`, `sidebar`, `side-panel`, `text-pair`, `segmented-control`, and others. Look in `dist/css/components/` before writing any block, and don't hedge with "if your Optics version has it" when you can check. Writing your own block under an Optics name (a new `.avatar { … }`) doesn't create a separate component: it merges into Optics' rules and changes every avatar in the app. Use the Optics block, and put changes in `components/overrides/{component}.css` or a project modifier.
+- **Optics has more components than you'd guess.** Besides `btn` and `card` it ships `avatar`, `badge`, `tag`, `alert`, `modal`, `table`, `tab`, `switch`, `spinner`, `sidebar`, `side-panel`, `text-pair`, `segmented-control`, and others. Look in `dist/css/components/` before writing any block, and don't hedge with "if your Optics version has it" when you can check. Writing your own block under an Optics name (a new `.avatar { … }`) doesn't create a separate component: it merges into Optics' rules and changes every avatar in the app. Use the Optics block, and put changes in `components/optics-overrides/{component}.css` or a project modifier.
 - **Partial theme overrides break the scale.** See [references/theming.md](references/theming.md) before changing any `--op-color-*` value.
 
 ## Theming

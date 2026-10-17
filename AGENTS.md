@@ -75,6 +75,6 @@ Skills may also include a `references/` directory for supporting markdown files 
 - BEM, Optics, and UX Review are designed to work together — BEM provides CSS structure, Optics provides design tokens and components, and UX Review finds usability problems whose fixes use both.
 - The `agentation` skill is a fork of the upstream skill in [benjitaylor/agentation](https://github.com/benjitaylor/agentation), pinned in a note at the top of SKILL.md. The toolbar internals it depends on are private, so re-read upstream when bumping the `agentation` package. Keep the upstream commit in that note current.
 - Optics tokens use the `--op-` CSS custom property prefix. Project-specific tokens should use a project namespace prefix (e.g., `--ya-` for "Your App").
-- Optics component overrides go in `app/assets/stylesheets/components/overrides/{component.css}` (in consuming projects).
+- Optics component overrides go in `app/assets/stylesheets/components/optics-overrides/{component.css}` (in consuming projects).
 - Skill descriptions should be written to trigger aggressively — Claude tends to undertrigger skills, so descriptions should be explicit and include example phrases.
 - When creating a new skill with reference files, keep SKILL.md under ~200 lines and put large reference content in `references/` with clear pointers from SKILL.md on when to read each file.
