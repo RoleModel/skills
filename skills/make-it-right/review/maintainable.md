@@ -27,7 +27,12 @@ a rung holds:
    mechanism (a cache key, a retry, a formatter, a permission check, a
    background notice), grep for the tables, columns, and calls it uses. An
    existing module that touches the same data may already solve the same
-   problem. Read it before writing a new one. When you find one, ask whether
+   problem. Read it before writing a new one. Look sideways too, not only at
+   what the new code calls: find sibling code of the same kind (other tools,
+   endpoints, jobs, components) and check how they handle the same concern,
+   such as paging, params, errors, or response shape. When siblings share a
+   module for it, new code that hand-rolls that concern is `reuse:`, even if
+   the call underneath is new. When you find one, ask whether
    the whole change could be built on it, not just one piece borrowed from
    it: a change that rebuilds a mechanism the project already uses elsewhere
    (lazy loading, stored results, snapshots) is a `reuse:` finding even when
