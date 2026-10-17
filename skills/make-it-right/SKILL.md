@@ -10,7 +10,7 @@ description: >-
   this", "YAGNI review", or "QA this in the browser".
 metadata:
   author: rolemodel
-  version: "2.2"
+  version: "2.3"
   triggers: "make it right, review and fix, code review, review my changes, review this branch, clean this up, get this up to standard, ready for review, simplify, yagni review, over-engineered, qa in the browser"
 license: MIT
 ---
