@@ -40,7 +40,7 @@ class WidgetsController < ApplicationController
     @widget = authorize Widget.new(widget_params)
 
     if @widget.save
-      redirect_to @widget, notice: 'Widget created'
+      redirect_to @widget, notice: 'Successfully Created Widget'
     else
       render :new, status: :unprocessable_content, layout: 'modal'
     end
