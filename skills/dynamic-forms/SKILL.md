@@ -16,7 +16,7 @@ The gem's [README](https://github.com/OutlawAndy/turbo_form#readme) is the API d
 Check the `Gemfile` for `turbo_form`. If it is missing, add it and run `bin/rails generate turbo_form:install`, then draw the `:turbo_form` route concern on the resource:
 
 ```ruby
-resources :materials, concerns: :turbo_form
+resources :products, concerns: :turbo_form
 ```
 
 The engine defines the concern and the controller behavior. Do not define a `:turbo_form` or `:turbo_fetch` concern in `config/routes.rb`.
@@ -24,12 +24,12 @@ The engine defines the concern and the controller behavior. Do not define a `:tu
 ## Shape
 
 ```slim
-= simple_form_for @material, dynamic: true do |f|
-  = f.input :type, input_html: { dynamic_trigger: true }
-  = f.input :substance, collection: @material.substances
+= simple_form_for @product, dynamic: true do |f|
+  = f.association :category, input_html: { dynamic_trigger: true }
+  = f.association :subcategory, collection: @product.category&.subcategories || []
 ```
 
-The trigger re-renders the page through its own `new` or `edit` action with the submitted values assigned, so `@material.substances` answers for the type just picked. The options, conventions, `dynamic_action:` for custom Turbo Stream responses, and `expect_dynamic_form_request` for system tests are all in the README.
+The trigger re-renders the page through its own `new` or `edit` action with the submitted values assigned, so `@product.category` is the category just picked and its subcategories fill the second select. The options, conventions, `dynamic_action:` for custom Turbo Stream responses, and `expect_dynamic_form_request` for system tests are all in the README.
 
 ## Existing `turbo_fetch` code
 

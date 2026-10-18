@@ -45,9 +45,9 @@ with another developer's. Keep it a single label (`<app>--<username>`, not
 `<app>.<username>`) — a nested subdomain adds a DNS level that a one-level
 wildcard cert won't cover:
 
-- Tunnel name: `<username>` (e.g. `mhale`)
+- Tunnel name: `<username>` (e.g. `jdoe`)
 - Hostname per project: `<app>--<username>.<your-domain>`
-  (e.g. `my-app--mhale.rolemodel.dev`, `other-app--mhale.rolemodel.dev`)
+  (e.g. `my-app--jdoe.example.com`, `other-app--jdoe.example.com`)
 
 Substitute your real username, app slugs, and Cloudflare domain throughout.
 
@@ -123,7 +123,7 @@ covering the whole domain to `config/environments/development.rb` so every
 project's hostname is accepted without editing config per app:
 
 ```ruby
-config.hosts << /\A.*\.<your-domain-escaped>\z/   # e.g. /\A.*\.rolemodel\.dev\z/
+config.hosts << /\A.*\.<your-domain-escaped>\z/   # e.g. /\A.*\.example\.com\z/
 ```
 
 Other frameworks have an equivalent (Vite's `server.allowedHosts`, Next.js

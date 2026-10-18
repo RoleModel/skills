@@ -2,7 +2,7 @@
 set -euo pipefail
 # make-branch-names.sh — Produce validated branch / commit names for a Sentry fix.
 #
-# Required: --issue-id <ID>       (e.g. "PROJECT-123", "ALMANAC-1G", or "1G")
+# Required: --issue-id <ID>       (e.g. "PROJECT-123", "WIDGETS-1G", or "1G")
 #           --description <text>  (imperative short description)
 # Optional: --permalink <url>     (added to commit body when provided)
 #           --linear-branch <name> (override generated branch with Linear's branch name)

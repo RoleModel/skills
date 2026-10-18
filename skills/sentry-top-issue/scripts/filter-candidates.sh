@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Matches both `[SENTRY <suffix>]` (canonical space form) and `[SENTRY-<suffix>]`
 # (legacy hyphen form) in PR titles, where <suffix> is everything after the
-# first `-` in the issue ID (e.g. ALMANAC-1G → 1G). Bare alphanumeric IDs
+# first `-` in the issue ID (e.g. WIDGETS-1G → 1G). Bare alphanumeric IDs
 # (no prefix) are used as-is.
 #
 # Degrades gracefully: if gh is missing or unauthenticated, prints a one-line

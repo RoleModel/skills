@@ -18,8 +18,8 @@ This file describes how people interact with the **{{FEATURE_NAME}}** subsystem 
 <!--
 Audience overview is a short numbered list (2–5 bullets) of the distinct user roles or
 systems that touch this feature, with a one-sentence description of how each uses it.
-Examples of role labels: "Org admins", "End designers", "Developers (build time)",
-"Partner systems (S3 drops)", "Super admins". This sets up the workflow grouping below.
+Examples of role labels: "Admins", "Customers", "Support staff",
+"Developers", "External systems (webhooks)". This sets up the workflow grouping below.
 -->
 
 ---

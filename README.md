@@ -1,48 +1,44 @@
 # RoleModel Skills
 
-A collection of reusable AI agent skills for [RoleModel Software](https://rolemodelsoftware.com). Each skill is a `SKILL.md` instruction set that teaches AI coding agents (Claude Code, GitHub Copilot) how to apply specific methodologies, design systems, and development patterns.
+A collection of reusable AI agent skills for [RoleModel Software](https://rolemodelsoftware.com). Each skill is a folder with a `SKILL.md` that teaches AI coding agents (Claude Code, GitHub Copilot) a RoleModel workflow or convention.
 
 Skills follow the [Agent Skills](https://agentskills.io) open standard and work across multiple AI tools.
 
+## What makes a good skill
+
+A skill earns its place when an agent does the job worse without it. Before adding or changing one, check it against this list.
+
+1. **It changes what the agent does.** It carries a procedure, a decision RoleModel made, or a gotcha the agent can't learn from the code. It does not explain things the model already knows: Rails basics, Stimulus 101, how ActionCable works, Nielsen's heuristics. Every line loads into the context window and competes with the actual task.
+2. **It does one job.** A skill that straddles several jobs (reference, review, scaffolding, deploy) triggers at the wrong times and confuses the agent about which part applies.
+3. **The description is written for the model.** Third person, starting with what it does and when to use it, with the phrases a person would actually type. Don't summarize the steps in the description; agents follow the summary and skip the body.
+4. **It has a Gotchas section built from real failures.** The places an agent went wrong while using it are the most valuable lines in the file. Add one every time it misfires.
+5. **It's short.** Keep `SKILL.md` under about 200 lines (500 is the hard ceiling). Move detail into `references/` files linked directly from `SKILL.md`, and move deterministic steps into `scripts/`.
+6. **It states goals and constraints, not every keystroke.** Spell out exact commands only where one wrong step is expensive (rewriting history, deleting data, publishing).
+7. **It points at the source of truth instead of copying it.** Read the gem's README or the installed package rather than pasting a snapshot that goes stale. `dynamic-forms` and `optics-context` are the in-repo examples.
+8. **It's been tested.** Watch an agent fail at the task without the skill, write the skill to fix that, then confirm the agent succeeds with it. Keep at least three realistic prompts to re-run when you change it.
+9. **It contains no client data.** Examples use generic models (`Widget`, `Order`, `Article`), `example.com`, and placeholder names (`jdoe`). No client names, codenames, internal hostnames, people's handles, or code lifted from a client app.
+
+What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or `docs/conventions/`, via `scaffold-docs` and `generate-conventions`), textbook knowledge, one-off fixes, and rules a linter can enforce.
+
 ## Skills
 
-### CSS & Design System
+### CSS, Design System, & UX
 
 | Skill | Description |
 |-------|-------------|
 | **[bem-structure](skills/bem-structure)** | CSS guidance using BEM (Block Element Modifier) methodology. Naming conventions, nesting rules, and modifier patterns. |
-| **[optics-context](skills/optics-context)** | RoleModel's Optics design system — component classes, design tokens (`--op-` prefix), and styling guidelines. Includes `assets/components.json` and `assets/tokens.json`. |
-| **[theming-context](skills/theming-context)** | Implementing design system guidelines, theming, and color scales with Optics. |
+| **[optics-context](skills/optics-context)** | RoleModel's Optics design system: components, `--op-` design tokens, and theming. Reads tokens and components from the installed `@rolemodel/optics` package; `references/theming.md` covers brand colors, color scales, fonts, and dark mode. |
+| **[ux-review](skills/ux-review)** | Review UI code against Nielsen's 10 heuristics and the Laws of UX, reported as a severity-ranked issue log with file-and-line evidence and Optics-based fixes. |
 
-### UX Review
-
-| Skill | Description |
-|-------|-------------|
-| **[ai-ux-enhancements](skills/ai-ux-enhancements)** | Automatable UX review rules optimized for AI-driven design evaluations — efficiency, control, cognitive workload, learnability, and personalization. Complements `laws-of-ux`. |
-| **[laws-of-ux](skills/laws-of-ux)** | Review and guide UI implementations using the 21 Laws of UX (Fitts's Law, Hick's Law, Miller's Law, etc.). |
-| **[usability-heuristics](skills/usability-heuristics)** | Audit UIs against Nielsen's 10 Usability Heuristics. Structured issue logs with severity ratings and remediation guidance. |
-
-### Rails Frontend
+### Rails
 
 | Skill | Description |
 |-------|-------------|
-| **[action-cable](skills/action-cable)** | ActionCable for real-time features using WebSockets, broadcasting, and Turbo Streams over cable. |
-| **[dynamic-forms](skills/dynamic-forms)** | Forms that change as they are filled in (dependent dropdowns, conditional fields, dynamic option lists) with the `turbo_form` gem — RoleModel's mechanism for dynamic form interaction. Supersedes hand-wired `turbo_fetch`. |
-| **[dynamic-nested-attributes](skills/dynamic-nested-attributes)** | Rails nested attributes with dynamic add/remove using Turbo Streams and Simple Form. |
-| **[form-auto-save](skills/form-auto-save)** | Automatic form submission with debounce for seamless auto-save experiences. |
-| **[frontend-patterns](skills/frontend-patterns)** | Frontend patterns for Rails apps using Slim templates, Stimulus, and CSS with Optics utilities. |
-| **[stimulus-controllers](skills/stimulus-controllers)** | Create and register Stimulus controllers for interactive JavaScript features. |
+| **[rails-conventions](skills/rails-conventions)** | RoleModel's Rails conventions where they differ from what an agent writes by default: flash wording, `:unprocessable_content`, Simple Form for every form, `parent_resource.name.classify` in route concerns, and gotchas for `params.expect` with nested attributes and Lexxy change events. |
+| **[dynamic-forms](skills/dynamic-forms)** | Forms that change as they are filled in (dependent dropdowns, conditional fields, dynamic option lists) with the `turbo_form` gem, RoleModel's mechanism for dynamic form interaction. Supersedes hand-wired `turbo_fetch`. |
 | **[turbo-modals](skills/turbo-modals)** | RoleModel's Turbo Frame modal and panel pattern from `rolemodel_rails`: `modal_link_to`, `render layout: 'modal'`, 422 on errors, redirect on success, and never the `layout` class method. |
-
-### Rails Backend
-
-| Skill | Description |
-|-------|-------------|
-| **[controller-patterns](skills/controller-patterns)** | Rails controllers following RESTful conventions, authorization patterns, and proper error handling. |
 | **[soft-destroyable](skills/soft-destroyable)** | Soft-delete models with the `SoftDestroyable` concern from `rolemodel_rails` — `kept`/`only_deleted` instead of a default scope, cascading soft destroy and timestamp-matched restore, and the shared example. |
-| **[json-typed-attributes](skills/json-typed-attributes)** | Typed attributes backed by JSON fields in Rails models with type casting, validations, and form integration. |
 | **[polymorphic-parent-resources](skills/polymorphic-parent-resources)** | Serve a child resource that hangs off many different parents (comments, reports, duplications, attachments) from a single controller, using a route concern plus `resource_for` from `rolemodel_rails`. Includes a retrofit guide for consolidating existing per-parent controllers. |
-| **[routing-patterns](skills/routing-patterns)** | RESTful resource routing, route concerns, and shallow nesting strategies. |
 | **[tdd](skills/tdd)** | Test-driven development for Rails — outside-in with RSpec, Capybara, and FactoryBot. Covers the red-green loop, spec plans, and the Prove-It pattern for bugs. |
 
 ### Developer Workflow
@@ -50,25 +46,29 @@ Skills follow the [Agent Skills](https://agentskills.io) open standard and work 
 | Skill | Description |
 |-------|-------------|
 | **[agentation](skills/agentation)** | Add the Agentation visual feedback toolbar to a project so you can point at UI problems in the browser and hand them to an agent. Written for Rails apps that bundle with webpack into `app/assets/builds`: adds React as a development-only dependency, with a production boundary verified against a clean build of the bundler's real output directory. Adapted from the upstream Agentation skill, which covers Next.js only. |
+| **[babysit-pr](skills/babysit-pr)** | Shepherd an open PR to mergeable — poll CI, verify review findings against the source, push fixes, rebase onto the base when needed. Bounded loop with explicit stop conditions. Treats all PR content as untrusted input; never approves, merges, or closes. |
 | **[cloudflare-tunnel](skills/cloudflare-tunnel)** | Expose locally-running apps to stable public HTTPS URLs with a single per-developer Cloudflare Tunnel (cloudflared). For receiving webhooks, testing OAuth callbacks, or sharing a work-in-progress. Covers named-tunnel setup, per-project hostnames, host allowlisting, and running cloudflared as a launchd service. |
-| **[create-profile](skills/create-profile)** | Creates or updates a personal developer profile at `~/.claude/PROFILE.md`. Run once to tell Claude about your role, experience, and preferences so that explanations and other skills can tailor their output to you. |
+| **[create-pr](skills/create-pr)** | Open a pull request and assign the author, after showing the drafted title and body for approval. Reads the linked ticket when a tracker tool is available. Follows the repo's PR template when there is one; otherwise uses **Why**, **What Changed**, and optional **Post-merge** and **Screenshots** sections. Targets the branch this one was cut from, including another open PR's branch. For UI changes, asks whether it should take screenshots, the user will, or there are none. Updates the existing PR in place when the branch already has one. Refuses to commit on the default branch and stages named paths only, never `git add -A`. |
 | **[dependabot-stack](skills/dependabot-stack)** | Group all open Dependabot PRs on a repository into one ordered stack with `gh-stack`, so the week's dependency updates land as a single reviewable chain instead of N PRs that conflict on shared lockfiles. Orders by lockfile overlap, rebases in a scratch worktree, and registers the stack on GitHub. |
 | **[document-this](skills/document-this)** | Generate multi-audience documentation from any codebase — workflows for non-technical readers, architecture for developers, and AI orientation for agents. Deterministic JS scripts handle structural extraction; the agent writes the prose. Use when the user asks to "document this project", runs `/document-this`, runs `/document`, or wants fresh documentation reflecting the current codebase state. |
-| **[explain](skills/explain)** | Explain a codebase or feature areas of any project in various levels of detail. Great for onboarding into unfamiliar code or orienting before making a change. |
-| **[file-pr](skills/file-pr)** | Open a pull request and assign the author. Follows the repo's PR template when there is one; otherwise uses **Why**, **What Changed**, an optional **Post-merge** checklist, and **Screenshots**. Updates the existing PR in place when the branch already has one. Refuses to commit on the default branch and stages named paths only, never `git add -A`. |
+| **[feature-review](skills/feature-review)** | Review a commit, branch, or PR as a feature first and code second, on one self-contained HTML page. Opens on an overview of the feature (what it does, checks to confirm, screenshots and recordings of the flow) and the shape of the change (layers, objects, departures from the architecture). The code step leads with recommendations you answer yes or no, then the diff with a reading guide, viewed checkboxes, existing PR threads, and a re-review mode. Reviews against the guides a repo lists in `REVIEW.md`, and posts everything as one PR review. |
 | **[generate-conventions](skills/generate-conventions)** | Fill an empty `docs/conventions/` with rules worth writing — taste calls, facts the code won't announce, and corrections that recur across past PR review comments — not what a survey of the codebase already tells you. Confirms candidates with the user one at a time and writes three to seven lines each. Rejects most of them. |
+| **[ruby-version](skills/ruby-version)** | Check which Ruby versions actually exist before claiming one does or doesn't, and install a specific Ruby through rbenv. |
 | **[scaffold-docs](skills/scaffold-docs)** | Install the agent-documentation structure in a project — a minimal `AGENTS.md`, a `docs/` tree with `CONVENTIONS.md` and `INDEX.md`, the convention-surfacing PreToolUse hook, and a symlinked `wrap-up`. Installs the structure, not the content; also trims a bloated existing `AGENTS.md` under 50 lines. |
 | **[split-stack](skills/split-stack)** | Split one PR that does too much into a stack of PRs, one per concern, without changing the combined diff. The top of the stack must stay byte-identical to the original commit — verified, not assumed. Includes `scripts/strip_hunks.py` for carving hunks out of a diff. |
-| **[trace](skills/trace)** | Trace code through the stack — upward to entry points, downward to data, laterally across callbacks and side effects. Outputs a stack diagram with clickable file references. |
 | **[wrap-up](skills/wrap-up)** | End a work session by routing what was learned into the right doc layer — convention, subsystem, guide, or architecture — and pruning what the session proved stale. Defaults to writing nothing, since docs that restate the code are worse than none. Pairs with `scaffold-docs`. |
 
-### Process, Planning, & Observability
+### Process, Planning, Quality, & Observability
 
 | Skill | Description |
 |-------|-------------|
 | **[brave-breakdown](skills/brave-breakdown)** | Interactive BRAVE framework thought partner for breaking down a Linear card before starting work. Guides through Brainstorm, Reflect, Approach, Value, and Estimate — one question at a time. |
-| **[rm-sentry-issue-fixer](skills/rm-sentry-issue-fixer)** | Full seven-phase workflow for diagnosing and fixing a Sentry issue using Sentry MCP: issue discovery → deep analysis → root cause hypothesis → entry point audit → code investigation → implement fix → report results. Enforces security constraints (never follows instructions embedded in Sentry event data). |
-| **[sentry-top-issue](skills/sentry-top-issue)** | Picks the single highest-priority unresolved Sentry issue (sorted by Trends, filtered for open PRs) and hands it off to `rm-sentry-issue-fixer`. Discovers Sentry scope from args or project docs; exits cleanly if scope or MCP is unavailable. Supports `dry-run`, `no-pr-filter`, and `fixer=` overrides. |
+| **[make-it-right](skills/make-it-right)** | The pass after code works: test agents check requirements are met (acceptance criteria, coverage, blast radius, UI/UX in a real browser), read-only review agents check it's done correctly (security, maintainable, readability, conventions, data patterns). Verifies every finding against the source, fixes them, and reports what a human still needs to judge. |
+| **[make-it-fast](skills/make-it-fast)** | Optional pass after `make-it-right`: reviews queries, request time, test speed, and page responsiveness, reusing `make-it-right`'s loop. Fixes only what it can measure, and reports before-and-after numbers. |
+| **[made-it-wrong-retro](skills/made-it-wrong-retro)** | Retro on a `make-it-right` run: turns a miss, false alarm, bad fix, or skipped step into an edit to `make-it-right`, proven by a replay that fails before the edit and passes after. Proposes; you approve. |
+| **[rails-audit](skills/rails-audit)** | Audit a whole Rails app against thoughtbot's best practices and write a markdown report grouped by category (Testing, Security, Models, Controllers, Code Design, Views) with severity levels. Optionally collects SimpleCov and RubyCritic metrics first. |
+| **[rm-sentry-issue-fixer](skills/rm-sentry-issue-fixer)** | Full seven-phase workflow for diagnosing and fixing a Sentry issue using the Sentry API: issue discovery → deep analysis → root cause hypothesis → entry point audit → code investigation → implement fix → report results. Enforces security constraints (never follows instructions embedded in Sentry event data). |
+| **[sentry-top-issue](skills/sentry-top-issue)** | Picks the single highest-priority unresolved Sentry issue (sorted by Trends, filtered for open PRs) and hands it off to `rm-sentry-issue-fixer`. Discovers Sentry scope from args or project docs; exits cleanly if scope or API access is unavailable. Supports `dry-run`, `no-pr-filter`, and `fixer=` overrides. |
 
 ## Installation
 
@@ -143,8 +143,7 @@ Then tell your agent where to find the skills:
     - `.rolemodel-skills/skills/optics-context/SKILL.md`
 
     When reviewing UI for usability, read and follow:
-    - `.rolemodel-skills/skills/laws-of-ux/SKILL.md`
-    - `.rolemodel-skills/skills/usability-heuristics/SKILL.md`
+    - `.rolemodel-skills/skills/ux-review/SKILL.md`
     ```
 
 4. **Symlink individual skills** into `.claude/skills/` for automatic discovery:
@@ -152,7 +151,7 @@ Then tell your agent where to find the skills:
     ```bash
     mkdir -p .claude/skills
     ln -s ../../.rolemodel-skills/skills/bem-structure .claude/skills/bem-structure
-    ln -s ../../.rolemodel-skills/skills/laws-of-ux .claude/skills/laws-of-ux
+    ln -s ../../.rolemodel-skills/skills/ux-review .claude/skills/ux-review
     ```
 
 **For GitHub Copilot:**
@@ -168,8 +167,7 @@ Then tell your agent where to find the skills:
     - `.rolemodel-skills/skills/optics-context/SKILL.md`
 
     When reviewing UI for usability, read and follow:
-    - `.rolemodel-skills/skills/laws-of-ux/SKILL.md`
-    - `.rolemodel-skills/skills/usability-heuristics/SKILL.md`
+    - `.rolemodel-skills/skills/ux-review/SKILL.md`
     ```
 
 2. **Symlink individual skills** into `.github/skills/` for automatic discovery:
@@ -177,7 +175,7 @@ Then tell your agent where to find the skills:
     ```bash
     mkdir -p .github/skills
     ln -s ../../.rolemodel-skills/skills/bem-structure .github/skills/bem-structure
-    ln -s ../../.rolemodel-skills/skills/laws-of-ux .github/skills/laws-of-ux
+    ln -s ../../.rolemodel-skills/skills/ux-review .github/skills/ux-review
     ```
 
 To pull the latest skill updates:
@@ -185,6 +183,15 @@ To pull the latest skill updates:
 ```bash
 git submodule update --remote .rolemodel-skills
 ```
+
+After updating, check for symlinks or `CLAUDE.md` / `copilot-instructions.md` lines that point at a skill that no longer exists (`find .claude/skills .github/skills -xtype l` lists broken symlinks). Removed skills and where their guidance went:
+
+| Removed | Use instead |
+|---------|-------------|
+| `laws-of-ux`, `usability-heuristics`, `ai-ux-enhancements` | `ux-review` |
+| `theming-context` | `optics-context` (theming is in `references/theming.md`) |
+| `controller-patterns`, `routing-patterns`, `frontend-patterns` | `rails-conventions` |
+| `dynamic-nested-attributes`, `form-auto-save`, `action-cable`, `stimulus-controllers`, `json-typed-attributes`, `trace`, `explain`, `create-profile` | Nothing; the agent handles these without a skill. `form-auto-save`'s Lexxy gotcha moved to `rails-conventions`. |
 
 ### Option 3: Install via skills.sh (community directory)
 
@@ -202,7 +209,9 @@ This installs skills into the appropriate directory for your agent automatically
 skills/
   {skill-name}/
     SKILL.md          # Skill definition with YAML frontmatter + markdown instructions
-    assets/           # Optional supporting data (JSON token/component references)
+    references/       # Optional detail, loaded only when SKILL.md points to it
+    scripts/          # Optional deterministic helpers the agent runs instead of reading
+    templates/        # Optional files the skill copies or fills in
 ```
 
 Each `SKILL.md` has YAML frontmatter at the top:
@@ -224,17 +233,22 @@ Markdown instructions for the AI agent...
 
 ## How skills work together
 
-Several skills are designed to complement each other:
-
 - **BEM + Optics** — BEM provides CSS structure; Optics provides design tokens and components. Use both when writing or reviewing stylesheets.
-- **Laws of UX + Usability Heuristics + AI UX Enhancements** — Laws of UX provides theoretical principles; Usability Heuristics provides a structured audit methodology; AI UX Enhancements adds automatable review rules. Use together for comprehensive UI reviews.
-- **Frontend Patterns + Stimulus + Dynamic Forms + Action Cable** — These cover the full Rails frontend stack using Hotwire and real-time features.
-- **Routing Patterns + Controller Patterns + Polymorphic Parent Resources** — Routing Patterns covers the route concern that passes the parent type; Controller Patterns covers the controller conventions; Polymorphic Parent Resources joins the two for child resources that hang off many parents. Reach for it at the second parent, when a nested controller would otherwise be copied.
+- **UX Review + Optics + BEM** — UX Review finds the usability problems; its fixes use Optics components and tokens with BEM class names.
+- **Rails Conventions + Polymorphic Parent Resources + Dynamic Forms** — Rails Conventions holds the house rules and points to the other two: Polymorphic Parent Resources for a child resource that hangs off several parents, and Dynamic Forms for forms that change as they are filled in.
+- **Scaffold Docs + Generate Conventions + Wrap Up** — Scaffold Docs installs the doc structure; Generate Conventions fills `docs/conventions/`; Wrap Up keeps the docs current at the end of each session.
 - **Sentry Top Issue + Sentry Issue Fixer** — Top Issue selects the highest-priority Sentry issue; Issue Fixer runs the full diagnosis-and-fix workflow. Run together or invoke the fixer directly with a known issue.
-- **Explain + Trace** — Explain orients you to a feature area or concept; Trace follows a specific code path through the stack. Use Explain first to build context, then Trace to dig into a specific flow.
-- **Explain + Document This** — Explain answers questions interactively; Document This generates persistent reference docs. Use Explain while exploring, Document This when you want to capture the results for the team.
-- **File PR + Split Stack** — File PR opens or updates a single PR. Split Stack is what you reach for when that PR turns out to cover more than one concern: it carves each concern into its own stacked PR, then File PR writes the description for each.
+- **File PR + Split Stack + Babysit PR** — File PR opens or updates a single PR. Split Stack is what you reach for when that PR turns out to cover more than one concern: it carves each concern into its own stacked PR, then File PR writes the description for each. Babysit PR takes over once a PR is open, driving it to mergeable while you work on something else.
 
 ## License
 
 [MIT](LICENSE)
+
+## Sources
+
+The guidance in "What makes a good skill" draws on:
+
+- Anthropic, [Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+- Thariq Shihipar, Anthropic, [Lessons from building Claude Code: How we use skills](https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills)
+- Barry Zhang and Mahesh Murag, Anthropic, [Don't Build Agents, Build Skills Instead](https://www.ai.engineer/talks/CEvIs9y1uog-agent-skills)
+- Jesse Vincent, [`writing-skills`](https://github.com/obra/superpowers/blob/main/skills/writing-skills/SKILL.md) from obra/superpowers

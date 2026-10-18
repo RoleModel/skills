@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // front_matter.mjs
-// Emits deterministic front-matter data for documentation.md.
+// Emits deterministic front-matter data for generated-docs/*.md.
 // JSON only — the agent composes the markdown banner from these fields.
 //
 // Usage: node front_matter.mjs [project-root]
