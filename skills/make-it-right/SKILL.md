@@ -10,7 +10,7 @@ description: >-
   this", "YAGNI review", or "QA this in the browser".
 metadata:
   author: rolemodel
-  version: "2.2"
+  version: "2.3"
   triggers: "make it right, review and fix, code review, review my changes, review this branch, clean this up, get this up to standard, ready for review, simplify, yagni review, over-engineered, qa in the browser"
 license: MIT
 ---
@@ -109,8 +109,11 @@ against each principle file that applies, then do the verifier's checks from
 `references/verifier.md`, score and `new` / `existing` mark included.
 
 **Otherwise**, launch every principle that applies except `ui-ux` (step 6) in
-**one message**, as parallel general-purpose subagents, giving each only the
-**packet**:
+**one message**, giving each only the **packet**. Launch review principles as
+`rolemodel-skills:make-it-right:reviewer` and test principles as
+`rolemodel-skills:make-it-right:tester` when those types are listed. Otherwise,
+such as when this skill was copied in rather than installed as a plugin,
+or the host isn’t Claude Code, use parallel general-purpose subagents.
 
 > SKILL_DIR is `<SKILL_DIR>`. Read `<SKILL_DIR>/<group>/<principle>.md` and
 > `<SKILL_DIR>/references/findings.md`, then check the change.
@@ -137,7 +140,8 @@ return, unedited, to `$OUT/findings.md`. The run ends when the list is
 empty, every open item names its blocker, or round 2 is done. Don't end a turn
 by announcing the next step; take it.
 
-Launch one subagent with the packet, the principle file replaced by
+Launch one subagent, as `rolemodel-skills:make-it-right:verifier` when
+that type is listed, with the packet, the principle file replaced by
 `<SKILL_DIR>/references/verifier.md`, the review agents' read-only line, and
 every finding. It merges, checks,
 scores, and marks each `new` or `existing`. Save its return, unedited, to
@@ -198,8 +202,9 @@ class or method is rewritten. Findings go through step 4; one that would undo
 a fix from this run is rejected, naming the fix. Fix what survives, then stop,
 even if findings remain, and list them as `round-2 limit`.
 
-**UI/UX.** If it applies, launch `$SKILL_DIR/test/ui-ux.md` with the packet against the
-fixed code. Subagents often lack browser tools; then walk the states yourself
+**UI/UX.** If it applies, launch $SKILL_DIR/test/ui-ux.md with the packet,
+as the tester type when it’s listed, against the fixed code.
+Subagents often lack browser tools; then walk the states yourself
 from the same file. Its findings go through steps 4 and 5. After UI fixes,
 re-walk only the states they touched, and run acceptance and conventions on
 any fix hunk in server code or a template, as in round 2.
@@ -217,8 +222,11 @@ agents and the verifier from it.
 
 ## Gotchas
 
-- Review agents launched from a prompt file have every tool, including Edit.
-  The "read only" line is the only guard, which is why step 3 compares
-  snapshots afterward.
+- The reviewer agent has no Edit or Write, but Bash can still change files,
+  and the general-purpose fallback has every tool. Keep the snapshot
+  comparison in step 3 either way.
+- Don't give the tester `isolation: worktree`. The worktree branches from the
+  default branch, not this working tree, so it would test code without the
+  change in it.
 - Hooks resolve once, in step 1. Principle files that probed `../` on their
   own found a sibling in one run and not the next. The packet carries it all.
