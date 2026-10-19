@@ -36,9 +36,10 @@ Follow `RIGHT_DIR/SKILL.md` with these changes:
 - **Step 1** as written.
 - **Step 2** as written.
 - **Step 3** launches this table instead, with the same packet except that
-  the principle file is `<this SKILL_DIR>/review/<principle>.md`. Every agent
-  is read-only except that it may run specs, the app, and the app's console
-  runner.
+  the principle file is `<this SKILL_DIR>/review/<principle>.md`. These
+  principles measure, so launch each as `rolemodel-skills:make-it-right:tester`
+  when that type is listed, and give it the test-agent line, not the
+  review-agent one. It may also run the app's console runner.
 
 | Principle | File | Run when the change touches |
 |---|---|---|

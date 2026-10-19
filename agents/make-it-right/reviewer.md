@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only principle reviewer for make-it-right and make-it-fast. Use only when one of those skills launches a review/ principle.
+description: Read-only principle reviewer for make-it-right. Use only when make-it-right launches a review/ principle.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 effort: high
