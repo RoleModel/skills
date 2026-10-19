@@ -54,6 +54,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[ruby-version](skills/ruby-version)** | Check which Ruby versions actually exist before claiming one does or doesn't, and install a specific Ruby through rbenv. |
 | **[scaffold-docs](skills/scaffold-docs)** | Install the agent-documentation structure in a project — a minimal `AGENTS.md`, a `docs/` tree with `CONVENTIONS.md` and `INDEX.md`, the convention-surfacing PreToolUse hook, and a symlinked `wrap-up`. Installs the structure, not the content; also trims a bloated existing `AGENTS.md` under 50 lines. |
 | **[split-stack](skills/split-stack)** | Split one PR that does too much into a stack of PRs, one per concern, without changing the combined diff. The top of the stack must stay byte-identical to the original commit — verified, not assumed. Includes `scripts/strip_hunks.py` for carving hunks out of a diff. |
+| **[trace](skills/trace)** | Trace a method, class, route, file, or snippet up to every real entry point and down to the data it touches, including calls made from inside installed packages. Reports a stack diagram, one `path:line` per hop, and where it looked for callers. Reads the project's `AGENTS.md` for project-specific boundaries. |
 | **[wrap-up](skills/wrap-up)** | End a work session by routing what was learned into the right doc layer — convention, subsystem, guide, or architecture — and pruning what the session proved stale. Defaults to writing nothing, since docs that restate the code are worse than none. Pairs with `scaffold-docs`. |
 
 ### Process, Planning, Quality, & Observability
@@ -189,7 +190,7 @@ After updating, check for symlinks or `CLAUDE.md` / `copilot-instructions.md` li
 | `laws-of-ux`, `usability-heuristics`, `ai-ux-enhancements` | `ux-review` |
 | `theming-context` | `optics-context` (theming is in `references/theming.md`) |
 | `controller-patterns`, `routing-patterns`, `frontend-patterns` | `rails-conventions` |
-| `dynamic-nested-attributes`, `form-auto-save`, `action-cable`, `stimulus-controllers`, `json-typed-attributes`, `trace`, `explain`, `create-profile` | Nothing; the agent handles these without a skill. `form-auto-save`'s Lexxy gotcha moved to `rails-conventions`. |
+| `dynamic-nested-attributes`, `form-auto-save`, `action-cable`, `stimulus-controllers`, `json-typed-attributes`, `explain`, `create-profile` | Nothing; the agent handles these without a skill. `form-auto-save`'s Lexxy gotcha moved to `rails-conventions`. |
 
 ### Option 3: Install via skills.sh (community directory)
 

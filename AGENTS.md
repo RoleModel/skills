@@ -66,6 +66,7 @@ Skills may also include a `references/` directory for supporting markdown files 
 
 ### Utilities
 - **ruby-version**: Verifies which Ruby versions exist (via local ruby-build) before the agent claims one does or doesn't, and installs a specific Ruby through rbenv.
+- **trace**: Traces a method, class, route, file, or snippet up to every real entry point (user action, route, job, scheduled or command-line task, another app's API call), down to where it reads or writes data, and sideways to callbacks, authorization, events, and async handoffs. Its main gotcha is installed packages calling app code by conventional name, so it searches package source (compiled code for closed-source packages) and reads it rather than inferring. Reads the target project's `AGENTS.md` or `CLAUDE.md` for project-specific boundaries. Reports a stack diagram, one `path:line` per hop, a short walkthrough, gaps with where it looked for callers, and follow-ups.
 
 ## Key Conventions
 
