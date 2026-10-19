@@ -1,0 +1,9 @@
+{
+  "name": "rolemodel-skills",
+  "description": "RoleModel Software's agent skills, with named subagents for skills that need them",
+  "version": "1.0.0",
+  "author": {
+    "name": "RoleModel Software"
+  },
+  "license": "MIT"
+}

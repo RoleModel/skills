@@ -83,8 +83,8 @@ with a pinned model: `claude -p --model <id>`.
 
 | Target | Replay |
 |---|---|
-| `verifier.md` | One verifier subagent, given the run's `findings.md` and packet. Pass: the lesson's finding lands on the right side of 75, and no other verdict flips |
-| A principle file or stack heading | One subagent: that file plus the packet, rebuilt at the PR's base in a worktree (`base.txt`, `intent.txt`, `rules.txt`, `commands.txt`, `new_lines.txt`). Pass: the miss shows up, or the false alarm doesn't |
+| `verifier.md` | One verifier subagent (the plugin’s verifier type when listed), given the run's `findings.md` and packet. Pass: the lesson's finding lands on the right side of 75, and no other verdict flips |
+| A principle file or stack heading | One subagent of the type a real run would use: that file plus the packet, rebuilt at the PR's base in a worktree (`base.txt`, `intent.txt`, `rules.txt`, `commands.txt`, `new_lines.txt`). Pass: the miss shows up, or the false alarm doesn't |
 | `findings.md` / `report.md` | The verifier or report step alone, on the saved files |
 | `SKILL.md` | A full run. Only when nothing lower shows it |
 
@@ -159,3 +159,6 @@ matched the previous commit.
   `findings.md`; for those, only a full replay works.
 - Never let this skill edit make-it-right without the user's approval, even
   in a loop.
+- `claude -p --model <id>` doesn't pin plugin subagents: their frontmatter
+  `model` outranks the session's. To pin them in a replay, also set
+  `CLAUDE_CODE_SUBAGENT_MODEL=<id>` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`.

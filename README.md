@@ -73,6 +73,15 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 
 There are three ways to add these skills to your project. Choose the one that best fits your workflow.
 
+### Option 0: Claude Code plugin (recommended for Claude Code)
+
+    /plugin marketplace add RoleModel/claude-plugins
+    /plugin install rolemodel-skills@rolemodel
+
+Installs every skill plus the subagents `make-it-right` uses. Don't also copy
+or symlink these skills into `.claude/skills/`: you'd get each one twice, and
+the copied `make-it-right` can't see the plugin's subagents.
+
 ### Option 1: Copy individual skills (simplest)
 
 Copy the skill folders you need directly into your project's skills directory.
@@ -205,6 +214,10 @@ This installs skills into the appropriate directory for your agent automatically
 ## Structure
 
 ```
+.claude-plugin/plugin.json
+agents/
+  {skill-name}/
+    {agent-name}.md   # Subagent definition with YAML frontmatter + markdown
 skills/
   {skill-name}/
     SKILL.md          # Skill definition with YAML frontmatter + markdown instructions
@@ -229,6 +242,19 @@ Markdown instructions for the AI agent...
 - **`name`** — Identifier for the skill (becomes the `/slash-command` in Claude Code)
 - **`description`** — Tells the agent when to load this skill
 - **`metadata.triggers`** — Keywords that help the agent match the skill to your request
+
+Each agent has YAML frontmatter at the top:
+
+```yaml
+---
+name: agent-name
+description: description of what the sub-agent does.
+tools: Read, Grep, Glob, Bash
+model: sonnet|inherit
+effort: high
+maxTurns: 40
+---
+```
 
 ## How skills work together
 

@@ -9,6 +9,10 @@ This is a collection of **AI agent skills** for RoleModel Software. Skills are r
 ## Structure
 
 ```
+.claude-plugin/plugin.json
+agents/
+  {skill-name}/
+    {agent-name}.md       # Subagent definition with YAML frontmatter + markdown
 skills/
   {skill-name}/
     SKILL.md              # Skill definition with frontmatter (name, description, triggers)
@@ -20,6 +24,8 @@ skills/
 Each skill has YAML frontmatter defining `name`, `description`, and `metadata.triggers` (keywords that activate the skill).
 
 Skills may also include a `references/` directory for supporting markdown files that are loaded selectively during skill execution (rather than always being in context).
+
+Each agent has YAML frontmatter defining `name`, `description`, `tools`, `model`, `effort`, and `maxTurns`.
 
 ## Current Skills
 
@@ -59,7 +65,7 @@ Skills may also include a `references/` directory for supporting markdown files 
 - **agentation**: Add the Agentation visual feedback toolbar to a project. Targets Rails apps that bundle with webpack into `app/assets/builds` (the RoleModel default): adds React as a **development-only** dependency and mounts through a separate dev-only bundle entry. The pattern adapts to other server-rendered hosts, but the snippets are Rails and the skill says so — shakapacker needs `javascript_pack_tag` and its own dev gate. A host that already bundles React renders the component behind a dev-only dynamic import instead. Three layered guards keep React out of production: dev dependency, bundler-mode-gated entry, and a server-env-gated script tag — the bundler-mode check is the one that actually matters, and the skill verifies it with a production build. Notes the Turbo/htmx re-mount listeners the React portal needs, and points at `agentation-mcp` (port 4747) for syncing annotations to an agent.
 
 ### Code Quality & Auditing
-- **make-it-right**: The pass after code works, run before `create-pr`. Orchestrates two groups of subagents, one file per principle: `test/` agents (acceptance, coverage, blast-radius, ui-ux) may run specs and the app; `review/` agents (security, maintainable, readability, conventions, data-patterns) are told to stay read-only, and the orchestrator checks `git status` after they return, since prompt-file agents still have Edit. A verifier subagent scores findings (`references/verifier.md`, keep ≥ 75); the main session fixes all new-code findings and existing code at or above a threshold, then reports (`references/report.md`) and offers `make-it-fast`. Principle files deal in principles; stack and project knowledge enters only through two hooks step 1 resolves once: Rule sources (the project's docs and matching installed skills) and a stack map (`references/stacks/rails.md`), which holds every Rails spelling, RoleModel's org defaults, and the sibling skills it leans on.
+- **make-it-right**: The pass after code works, run before `create-pr`. Orchestrates two groups of subagents, one file per principle: `test/` agents (acceptance, coverage, blast-radius, ui-ux) may run specs and the app; `review/` agents (security, maintainable, readability, conventions, data-patterns) are told to stay read-only, as plugin subagents (`agents/make-it-right/`), review agents have no Edit or Write; the orchestrator still compares snapshots after they return, since Bash can write and the copied-skill fallback uses general-purpose agents.. A verifier subagent scores findings (`references/verifier.md`, keep ≥ 75); the main session fixes all new-code findings and existing code at or above a threshold, then reports (`references/report.md`) and offers `make-it-fast`. Principle files deal in principles; stack and project knowledge enters only through two hooks step 1 resolves once: Rule sources (the project's docs and matching installed skills) and a stack map (`references/stacks/rails.md`), which holds every Rails spelling, RoleModel's org defaults, and the sibling skills it leans on.
 - **made-it-wrong-retro**: Retro on a `make-it-right` run. Collects misses, false alarms, bad fixes, and process slips from the session and the PR's review comments, routes each lesson to one place (project docs, a stack map, the verifier, a principle file, or `SKILL.md`), and proves the edit TDD-style with a replay at the lowest level that shows it: one verifier subagent fed the run's saved findings, or one principle subagent on the rebuilt packet, before a full run. Green is two of three runs. Cases and rule-fire counts live in `~/.claude/made-it-wrong-retro/`, outside the repo. Suggests a prune when `SKILL.md` passes 180 lines, five lessons land, a rule never fires, or two rules overlap. Proposes; the user approves every edit.
 - **make-it-fast**: Optional pass after `make-it-right`. Same loop, borrowing `make-it-right`'s findings format, verifier, and `new_lines.sh`, with four `review/` principles: queries, requests, test-speed, page-responsiveness. Every finding needs a measurement, and a fix that doesn't move the number is reverted.
 - **rails-audit**: Whole-app Rails audit against thoughtbot best practices (Ruby Science, Testing Rails). Optionally collects SimpleCov and RubyCritic metrics through subagents, then writes a markdown report grouped by category (Testing, Security, Models, Controllers, Code Design, Views) with severity levels.
