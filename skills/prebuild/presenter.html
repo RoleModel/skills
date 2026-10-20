@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-build</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --inset: #0d1117; --border: #30363d; --border-strong: #484f58;
+    --text: #c9d1d9; --muted: #8b949e; --faint: #6e7681;
+    --accent: #58a6ff; --accent-soft: #1b2b40;
+    --good: #3fb950; --good-line: #238636; --good-soft: #12261e;
+    --warn: #d29922; --warn-soft: #2b2111;
+    --bad: #f85149; --bad-line: #da3633; --bad-soft: #2d1213;
+    --primary: #238636; --on-primary: #ffffff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --width: 920px;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --panel: #f6f8fa; --inset: #ffffff; --border: #d0d7de; --border-strong: #afb8c1;
+    --text: #1f2328; --muted: #636c76; --faint: #8c959f;
+    --accent: #0969da; --accent-soft: #ddf4ff;
+    --good: #1a7f37; --good-line: #2da44e; --good-soft: #e6ffec;
+    --warn: #9a6700; --warn-soft: #fff8c5;
+    --bad: #cf222e; --bad-line: #cf222e; --bad-soft: #ffebe9;
+    --primary: #1f883d; --on-primary: #ffffff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #ffffff; --panel: #f6f8fa; --inset: #ffffff; --border: #d0d7de; --border-strong: #afb8c1;
+      --text: #1f2328; --muted: #636c76; --faint: #8c959f;
+      --accent: #0969da; --accent-soft: #ddf4ff;
+      --good: #1a7f37; --good-line: #2da44e; --good-soft: #e6ffec;
+      --warn: #9a6700; --warn-soft: #fff8c5;
+      --bad: #cf222e; --bad-line: #cf222e; --bad-soft: #ffebe9;
+      --primary: #1f883d; --on-primary: #ffffff;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    background: var(--bg); color: var(--text); font: 14px/1.5 var(--font);
+    transition: background-color .2s, color .2s;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  code { font: 12px var(--mono); }
+
+  .pb-label { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+  .pb-header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 16px; padding: 12px 20px;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .pb-issue { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pb-progress { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .pb-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .pb-saved { font-size: 12px; color: var(--muted); transition: opacity .2s; }
+  .pb-saved.is-busy { opacity: .5; }
+
+  .pb-btn, .pb-theme, .pb-link {
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px;
+    transition: border-color .15s, color .15s, transform .15s var(--ease);
+  }
+  .pb-btn:hover:not(:disabled), .pb-theme:hover, .pb-link:hover { border-color: var(--accent); color: var(--accent); }
+  .pb-btn:active:not(:disabled) { transform: scale(.97); }
+  .pb-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+  .pb-btn.primary:hover:not(:disabled) { color: var(--on-primary); filter: brightness(1.1); }
+  .pb-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .pb-theme { padding: 4px 9px; font-size: 13px; }
+  .pb-link { padding: 3px 10px; font-size: 12px; }
+
+  .pb-footer {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+    padding: 10px 20px; background: var(--panel); border-top: 1px solid var(--border);
+  }
+  .pb-next { justify-self: end; }
+
+  .pb-main { flex: 1; width: 100%; max-width: var(--width); margin: 0 auto; padding: 24px 20px 48px; }
+  .pb-step { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+  .pb-question { margin: 0 0 20px; font-size: 22px; line-height: 1.3; font-weight: 600; text-wrap: balance; }
+
+  .pb-block { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); margin-bottom: 16px; }
+  .pb-block-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+  }
+  .pb-block-body { padding: 14px 16px; }
+
+  .pb-diagram { overflow-x: auto; background: var(--inset); border-radius: 0 0 8px 8px; }
+  .pb-diagram svg { display: block; margin: 0 auto; width: 100%; height: auto; max-height: 50vh; }
+  .pb-diagram .node rect, .pb-diagram .node polygon { rx: 6px; ry: 6px; }
+  .pb-diagram pre { margin: 0; font: 12px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; }
+  .pb-diagram pre.mermaid:not([data-processed]):not(.is-raw) { visibility: hidden; min-height: 120px; }
+  .pb-diagram pre[data-processed] svg { animation: pb-fade .3s ease both; }
+  .pb-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .pb-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .pb-legend i { width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid var(--muted); }
+  .pb-legend .good i { border-color: var(--good-line); background: var(--good-soft); }
+  .pb-legend .warn i { border-color: var(--warn); background: var(--warn-soft); }
+  .pb-legend .bad i { border-color: var(--bad-line); background: var(--bad-soft); border-style: dashed; }
+  .pb-legend .accent i { border-color: var(--accent); background: var(--accent-soft); }
+
+  .pb-fact-group { border-left: 3px solid var(--border-strong); }
+  .pb-fact-group[data-kind="gap"] { border-left-color: var(--warn); }
+  .pb-fact-group[data-kind="gap"] .pb-label { color: var(--warn); }
+  .pb-fact-group[data-kind="constraint"] { border-left-color: var(--accent); }
+  .pb-fact-group[data-kind="constraint"] .pb-label { color: var(--accent); }
+  .pb-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pb-facts { margin: 0; padding: 0; list-style: none; }
+  .pb-fact {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .pb-fact:last-child { border-bottom: 0; }
+  .pb-fact code { flex: none; max-width: 45%; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+  [data-kind="context"] .pb-fact { color: var(--muted); }
+  .pb-consider { margin-bottom: 16px; font-size: 13px; }
+  .pb-consider summary { cursor: pointer; color: var(--muted); }
+  .pb-consider p { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 6px 6px 0; }
+
+  .pb-board { margin-top: 24px; }
+  .pb-columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .pb-column .pb-label { margin-bottom: 8px; }
+  .pb-column[data-tone="good"] .pb-label { color: var(--good); }
+  .pb-column[data-tone="bad"] .pb-label { color: var(--bad); }
+
+  .pb-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: step; }
+  .pb-item {
+    display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 12px;
+    background: var(--inset); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 6px;
+    transition: border-color .15s;
+  }
+  .pb-item:hover, .pb-item:focus-within { border-color: var(--accent); }
+  .pb-item.is-draft { border-style: dashed; border-left-style: dashed; color: var(--muted); }
+  .pb-item.is-open, .pb-item.is-open:hover { border-color: var(--warn); }
+  .pb-column[data-tone="good"] .pb-item { border-left-color: var(--good-line); }
+  .pb-column[data-tone="bad"] .pb-item { border-left-color: var(--bad-line); }
+  .pb-steps .pb-item::before {
+    counter-increment: step; content: counter(step);
+    flex: none; min-width: 16px; height: 16px; line-height: 16px; border-radius: 8px; text-align: center;
+    background: var(--border); color: var(--text); font-size: 10px; font-weight: 600;
+  }
+  .pb-item input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 4px 0; outline: none; font-size: 14px; }
+  .pb-item.is-done input[type="text"] { text-decoration: line-through; color: var(--muted); }
+  .pb-item input[type="checkbox"] { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--good-line); }
+  .pb-item select { border: 1px solid var(--border); border-radius: 6px; background: var(--inset); color: var(--muted); font-size: 12px; padding: 2px 4px; }
+  .pb-pill { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border: 1px solid; border-radius: 20px; padding: 0 7px; }
+  .pb-pill.open { color: var(--warn); border-color: var(--warn); animation: pb-pop .2s var(--ease) both; }
+  .pb-pill.draft { color: var(--muted); border-color: var(--border-strong); }
+  .pb-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+  .pb-item:hover .pb-actions, .pb-item:focus-within .pb-actions { opacity: 1; }
+  .pb-icon {
+    width: 26px; height: 26px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer;
+    color: var(--muted); font-size: 13px; line-height: 1; transition: border-color .15s, color .15s;
+  }
+  .pb-icon:hover { border-color: var(--border); color: var(--accent); }
+  .pb-icon.on { color: var(--warn); }
+  .pb-add {
+    width: 100%; min-height: 40px; margin-top: 6px; padding: 8px 12px; border-radius: 6px;
+    border: 1px dashed var(--border-strong); background: transparent; font-size: 14px; transition: border-color .15s, background .15s;
+  }
+  .pb-add::placeholder { color: var(--faint); }
+  .pb-add:focus { outline: none; border-style: solid; border-color: var(--accent); background: var(--inset); }
+  .pb-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pb-photos img { height: 64px; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in; animation: pb-pop .25s var(--ease) both; }
+  .pb-photos img:hover { border-color: var(--accent); }
+
+  .pb-dots { display: flex; gap: 6px; align-items: center; justify-content: center; }
+  .pb-dot { width: 8px; height: 8px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; background: var(--border); transition: width .25s var(--ease), background .25s; }
+  .pb-dot.touched { background: var(--muted); }
+  .pb-dot.current { width: 22px; background: var(--accent); }
+
+  .pb-review ul { margin: 0; padding: 0; list-style: none; }
+  .pb-review li { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .pb-review li:last-child { border-bottom: 0; }
+  .pb-review li.is-open { box-shadow: inset 3px 0 0 var(--warn); }
+  .pb-empty { margin: 0; padding: 8px 14px; color: var(--muted); font-size: 13px; }
+  .pb-error { margin: 15vh auto; text-align: center; color: var(--muted); }
+
+  @keyframes pb-fade { from { opacity: 0; } }
+  @keyframes pb-rise { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes pb-in-next { from { opacity: 0; transform: translateX(16px); } }
+  @keyframes pb-in-back { from { opacity: 0; transform: translateX(-16px); } }
+  @keyframes pb-pop { from { opacity: 0; transform: scale(.95); } }
+  @keyframes pb-leave { to { opacity: 0; transform: translateX(8px); } }
+  .pb-main.is-entering > * { animation: pb-in-next .3s var(--ease) both; }
+  .pb-main.is-entering[data-dir="back"] > * { animation-name: pb-in-back; }
+  .pb-main.is-entering > :nth-child(2) { animation-delay: .04s; }
+  .pb-main.is-entering > :nth-child(3) { animation-delay: .08s; }
+  .pb-main.is-entering > :nth-child(4) { animation-delay: .12s; }
+  .pb-main.is-entering > :nth-child(n+5) { animation-delay: .16s; }
+  .pb-item.is-new { animation: pb-rise .2s var(--ease) both; }
+  .pb-item.is-leaving { animation: pb-leave .15s ease-in forwards; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
+  }
+
+  @media (max-width: 760px) {
+    .pb-main { padding: 16px 16px 32px; }
+    .pb-question { font-size: 19px; }
+    .pb-header, .pb-footer { padding: 10px 16px; }
+    .pb-progress { display: none; }
+    .pb-fact { flex-direction: column; gap: 2px; }
+    .pb-fact code { max-width: none; text-align: left; }
+    .pb-actions { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<header class="pb-header">
+  <h1 class="pb-issue" id="issue">Loading…</h1>
+  <span class="pb-progress" id="progress"></span>
+  <div class="pb-tools">
+    <span class="pb-saved" id="saved"></span>
+    <button class="pb-theme" id="theme" title="Switch theme"></button>
+  </div>
+</header>
+<main class="pb-main" id="main"></main>
+<footer class="pb-footer">
+  <span><button class="pb-btn" id="back">← Back</button></span>
+  <div class="pb-dots" id="dots"></div>
+  <button class="pb-btn primary pb-next" id="next">Next →</button>
+</footer>
+<input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+
+<script type="module">
+const LEVELS = ["", "L", "M", "H"];
+const FACT_KINDS = [["gap", "Gaps"], ["constraint", "Constraints"], ["context", "Context"]];
+let deck, board, mermaid, saveTimer, freshId;
+let index = 0;
+let direction = "next";
+
+const el = (tag, attrs = {}, ...children) => {
+  const node = Object.assign(document.createElement(tag), attrs);
+  node.append(...children.flat().filter(c => c !== null && c !== undefined && c !== false && c !== ""));
+  return node;
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const slideState = slide => board.slides[slide.id];
+const reviewIndex = () => deck.slides.length;
+
+function save() {
+  board.index = index;
+  const saved = document.getElementById("saved");
+  saved.textContent = "Saving…";
+  saved.classList.add("is-busy");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const res = await fetch("board.json", { method: "PUT", body: JSON.stringify(board, null, 2) });
+      saved.textContent = res.ok ? "All changes saved" : "Not saved";
+    } catch {
+      saved.textContent = "Not saved — is the server running?";
+    }
+    saved.classList.remove("is-busy");
+  }, 400);
+}
+
+async function loadMermaid() {
+  try {
+    ({ default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs"));
+    configureMermaid();
+  } catch {
+    mermaid = null;
+  }
+}
+
+function configureMermaid() {
+  mermaid?.initialize({
+      startOnLoad: false,
+      theme: "base",
+      flowchart: { curve: "basis", padding: 16, nodeSpacing: 36, rankSpacing: 52, htmlLabels: true },
+      themeVariables: {
+        fontFamily: css("--font"),
+        fontSize: "14px",
+        background: css("--inset"),
+        primaryColor: css("--panel"),
+        primaryBorderColor: css("--muted"),
+        primaryTextColor: css("--text"),
+        secondaryColor: css("--accent-soft"),
+        tertiaryColor: css("--panel"),
+        clusterBkg: css("--panel"),
+        clusterBorder: css("--border"),
+        lineColor: css("--muted"),
+        textColor: css("--text"),
+        edgeLabelBackground: css("--inset"),
+      },
+  });
+}
+
+const THEME_KEY = "prebuild:theme";
+const isDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+
+function showThemeButton() {
+  const button = document.getElementById("theme");
+  button.textContent = isDark() ? "☀" : "☾";
+  button.title = isDark() ? "Switch to light" : "Switch to dark";
+  button.ariaLabel = button.title;
+}
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  showThemeButton();
+  if (!deck) return;
+  configureMermaid();
+  render({ animate: false });
+}
+
+try {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) document.documentElement.dataset.theme = saved;
+} catch {}
+showThemeButton();
+document.getElementById("theme").addEventListener("click", () => setTheme(isDark() ? "light" : "dark"));
+
+function withGroupColours(source) {
+  if (!/^\s*(flowchart|graph)\b/.test(source)) return source;
+  const tone = (fill, stroke, text, extra = "") => `fill:${css(fill)},stroke:${css(stroke)},color:${css(text)},stroke-width:1.6px${extra}`;
+  return `${source}
+  classDef accent ${tone("--accent-soft", "--accent", "--text")}
+  classDef good ${tone("--good-soft", "--good-line", "--text")}
+  classDef warn ${tone("--warn-soft", "--warn", "--text")}
+  classDef bad ${tone("--bad-soft", "--bad-line", "--muted", ",stroke-dasharray:5 4")}
+  classDef muted ${tone("--inset", "--border", "--muted")}`;
+}
+
+async function load() {
+  try {
+    deck = await (await fetch("deck.json")).json();
+    board = await (await fetch("board.json")).json();
+  } catch {
+    document.getElementById("main").replaceChildren(el("p", { className: "pb-error",
+      textContent: "Couldn't load the deck. Open this through serve.py, not as a file." }));
+    return;
+  }
+  board.slides ||= {};
+  for (const slide of deck.slides) {
+    board.slides[slide.id] ||= {
+      notes: (slide.seed || []).map(n => ({ id: uid(), text: n.text, col: n.col ?? null, draft: true })),
+      photos: [],
+    };
+  }
+  index = Math.min(board.index || 0, reviewIndex());
+  document.getElementById("issue").textContent = `${deck.issue.id} · ${deck.issue.title}`;
+  document.title = `Pre-build · ${deck.issue.id}`;
+  await loadMermaid();
+  render();
+}
+
+const block = (heading, aside, ...body) =>
+  el("section", { className: "pb-block" }, el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: heading }), aside), ...body);
+
+const LEGEND = [["accent", "Changing"], ["good", "Yes"], ["warn", "To discuss"], ["bad", "No"]];
+
+function renderLegend(source) {
+  const used = LEGEND.filter(([cls]) => source.includes(`:::${cls}`));
+  if (!used.length) return null;
+  return el("div", { className: "pb-legend" }, used.map(([cls, text]) => el("span", { className: cls }, el("i"), text)));
+}
+
+function renderContext(slide) {
+  return [
+    slide.diagram && block("Diagram", renderLegend(slide.diagram),
+      el("div", { className: "pb-diagram pb-block-body" },
+        el("pre", { className: mermaid ? "mermaid" : "mermaid is-raw", textContent: mermaid ? withGroupColours(slide.diagram) : slide.diagram }))),
+    ...FACT_KINDS.map(([kind, heading]) => {
+      const facts = (slide.facts || []).filter(f => (FACT_KINDS.some(([k]) => k === f.kind) ? f.kind : "context") === kind);
+      if (!facts.length) return null;
+      const group = block(heading, el("span", { className: "pb-count", textContent: String(facts.length) }),
+        el("ul", { className: "pb-facts" }, facts.map(f =>
+          el("li", { className: "pb-fact" }, el("span", { textContent: f.text }), f.ref && el("code", { textContent: f.ref })))));
+      group.classList.add("pb-fact-group");
+      group.dataset.kind = kind;
+      return group;
+    }),
+    slide.consider && el("details", { className: "pb-consider" },
+      el("summary", { textContent: "Did you consider…" }), el("p", { textContent: slide.consider })),
+  ];
+}
+
+function removeItem(slide, note, li) {
+  const state = slideState(slide);
+  li.classList.add("is-leaving");
+  li.addEventListener("animationend", () => {
+    state.notes.splice(state.notes.indexOf(note), 1);
+    save(); renderDots(); renderBoard(slide);
+  }, { once: true });
+}
+
+function renderItem(slide, note) {
+  const state = slideState(slide);
+  const li = el("li", { className: ["pb-item", note.draft && "is-draft", note.open && "is-open", note.done && "is-done",
+    note.id === freshId && "is-new"].filter(Boolean).join(" ") });
+  const changed = () => { save(); renderDots(); };
+
+  if (slide.board === "checklist") {
+    const box = el("input", { type: "checkbox", checked: !!note.done, title: "Done" });
+    box.addEventListener("change", () => { note.done = box.checked; li.classList.toggle("is-done", note.done); changed(); });
+    li.append(box);
+  }
+
+  const text = el("input", { type: "text", value: note.text, ariaLabel: "Note" });
+  const draftPill = note.draft ? el("span", { className: "pb-pill draft", textContent: "Draft" }) : null;
+  text.addEventListener("input", () => {
+    note.text = text.value;
+    if (note.draft) { note.draft = false; li.classList.remove("is-draft"); draftPill?.remove(); }
+    changed();
+  });
+  li.append(text);
+  if (draftPill) li.append(draftPill);
+
+  if (slide.board === "risks") {
+    for (const [key, label] of [["likelihood", "Likelihood"], ["impact", "Impact"]]) {
+      const select = el("select", { title: label }, LEVELS.map(l => el("option", { value: l, textContent: `${label}: ${l || "?"}` })));
+      select.value = note[key] || "";
+      select.addEventListener("change", () => { note[key] = select.value; changed(); });
+      li.append(select);
+    }
+  }
+
+  const openPill = el("span", { className: "pb-pill open", textContent: "Open" });
+  if (note.open) li.append(openPill);
+
+  const actions = el("span", { className: "pb-actions" });
+  if (slide.board === "steps") {
+    for (const [label, delta, title] of [["↑", -1, "Move up"], ["↓", 1, "Move down"]]) {
+      const move = el("button", { className: "pb-icon", textContent: label, title });
+      move.addEventListener("click", () => {
+        const i = state.notes.indexOf(note), j = i + delta;
+        if (j < 0 || j >= state.notes.length) return;
+        [state.notes[i], state.notes[j]] = [state.notes[j], state.notes[i]];
+        freshId = note.id;
+        changed(); renderBoard(slide);
+      });
+      actions.append(move);
+    }
+  }
+  const open = el("button", { className: `pb-icon${note.open ? " on" : ""}`, textContent: "?", title: "Mark as open question" });
+  open.addEventListener("click", () => {
+    note.open = !note.open;
+    open.classList.toggle("on", note.open);
+    li.classList.toggle("is-open", note.open);
+    note.open ? li.insertBefore(openPill, actions) : openPill.remove();
+    changed();
+  });
+  const remove = el("button", { className: "pb-icon", textContent: "×", title: "Remove" });
+  remove.addEventListener("click", () => removeItem(slide, note, li));
+  actions.append(open, remove);
+  li.append(actions);
+  return li;
+}
+
+function renderColumn(slide, col, tone) {
+  const state = slideState(slide);
+  const list = el("ul", { className: "pb-items" }, state.notes.filter(n => (n.col ?? null) === col).map(n => renderItem(slide, n)));
+  const add = el("input", { className: "pb-add", type: "text", placeholder: col ? `Add to ${col}…` : "Add a note and press Enter" });
+  add.dataset.col = col ?? "";
+  add.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || !add.value.trim()) return;
+    const note = { id: uid(), text: add.value.trim(), col };
+    state.notes.push(note);
+    freshId = note.id;
+    save(); renderDots(); renderBoard(slide, col);
+  });
+  const column = el("div", { className: "pb-column" }, col && el("p", { className: "pb-label", textContent: col }), list, add);
+  if (tone) column.dataset.tone = tone;
+  return column;
+}
+
+function renderBoard(slide, focusCol) {
+  const target = document.getElementById("board");
+  const columns = slide.board === "columns" ? slide.columns || ["In", "Out"] : [null];
+  const tones = slide.tones || (slide.board === "columns" && columns.length === 2 ? ["good", "bad"] : []);
+  const addPhoto = el("button", { className: "pb-link", textContent: "+ Add photo" });
+  addPhoto.addEventListener("click", () => pickPhoto(slide));
+  const photos = slideState(slide).photos;
+  target.replaceChildren(
+    el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Notes" }), addPhoto),
+    el("div", { className: "pb-block-body" },
+      el("div", { className: `pb-columns pb-${slide.board || "stickies"}` }, columns.map((c, i) => renderColumn(slide, c, tones[i]))),
+      photos.length > 0 && el("div", { className: "pb-photos" }, photos.map(name => {
+        const img = el("img", { src: `photos/${name}`, alt: "Whiteboard photo" });
+        img.addEventListener("click", () => window.open(img.src, "_blank"));
+        return img;
+      }))),
+  );
+  freshId = null;
+  if (focusCol !== undefined) target.querySelector(`.pb-add[data-col="${focusCol ?? ""}"]`)?.focus();
+}
+
+function pickPhoto(slide) {
+  const input = document.getElementById("photo-input");
+  input.value = "";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = Object.assign(document.createElement("canvas"), { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) });
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
+    const name = `${slide.id}-${Date.now()}.jpg`;
+    const res = await fetch(`photos/${name}`, { method: "POST", body: blob });
+    if (!res.ok) { document.getElementById("saved").textContent = "Photo not saved"; return; }
+    slideState(slide).photos.push(name);
+    save(); renderDots(); renderBoard(slide);
+  };
+  input.click();
+}
+
+function renderSlide(slide) {
+  return [
+    el("p", { className: "pb-step", textContent: `Step ${index + 1} of ${deck.slides.length} · ${slide.topic}` }),
+    el("h2", { className: "pb-question", textContent: slide.question }),
+    ...renderContext(slide),
+    el("section", { className: "pb-block pb-board", id: "board" }),
+  ];
+}
+
+function describe(note) {
+  const rating = note.likelihood || note.impact ? ` · L:${note.likelihood || "?"} I:${note.impact || "?"}` : "";
+  return `${note.col ? `${note.col}: ` : ""}${note.done ? "✓ " : ""}${note.text}${rating}`;
+}
+
+function renderReview() {
+  const open = deck.slides.flatMap(s => slideState(s).notes.filter(n => n.open).map(n => `${s.topic}: ${n.text}`));
+  const sections = deck.slides.map(s => {
+    const { notes, photos } = slideState(s);
+    const kept = notes.filter(n => !n.draft);
+    return block(s.topic, photos.length > 0 && el("span", { className: "pb-count", textContent: `${photos.length} photo${photos.length > 1 ? "s" : ""}` }),
+      kept.length ? el("ul", {}, kept.map(n => el("li", { className: n.open ? "is-open" : "", textContent: describe(n) })))
+        : el("p", { className: "pb-empty", textContent: "Nothing captured" }));
+  });
+  const openBlock = block("Open questions", el("span", { className: "pb-count", textContent: String(open.length) }),
+    open.length ? el("ul", {}, open.map(t => el("li", { className: "is-open", textContent: t }))) : el("p", { className: "pb-empty", textContent: "None flagged" }));
+  openBlock.classList.add("pb-fact-group");
+  openBlock.dataset.kind = "gap";
+  return [
+    el("p", { className: "pb-step", textContent: "Wrap-up" }),
+    el("h2", { className: "pb-question", textContent: "Anything missing before Claude writes it up?" }),
+    el("div", { className: "pb-review" }, openBlock, sections),
+    el("p", { className: "pb-empty", textContent: "Everything is saved. Tell Claude you're done." }),
+  ];
+}
+
+function render({ animate = true } = {}) {
+  const main = document.getElementById("main");
+  const onReview = index === reviewIndex();
+  const slide = deck.slides[index];
+  main.replaceChildren(...(onReview ? renderReview() : renderSlide(slide)).filter(Boolean));
+  main.dataset.dir = direction;
+  main.classList.remove("is-entering");
+  if (animate) {
+    void main.offsetWidth;
+    main.classList.add("is-entering");
+  }
+  if (!onReview) renderBoard(slide);
+  document.getElementById("progress").textContent = deck.issue.tier || "";
+  document.getElementById("back").disabled = index === 0;
+  const next = document.getElementById("next");
+  next.disabled = onReview;
+  next.textContent = index === reviewIndex() - 1 ? "Wrap up →" : "Next →";
+  renderDots();
+  const nodes = main.querySelectorAll(".mermaid:not(.is-raw)");
+  if (mermaid && nodes.length) mermaid.run({ nodes }).catch(() => nodes.forEach(n => n.classList.add("is-raw")));
+}
+
+function renderDots() {
+  document.getElementById("dots").replaceChildren(...[...deck.slides, null].map((s, i) => {
+    const state = s && slideState(s);
+    const touched = state && (state.notes.some(n => !n.draft) || state.photos.length);
+    const dot = el("button", { className: ["pb-dot", i === index && "current", touched && "touched"].filter(Boolean).join(" "),
+      title: s?.topic || "Wrap-up", ariaLabel: s?.topic || "Wrap-up" });
+    dot.addEventListener("click", () => go(i));
+    return dot;
+  }));
+}
+
+function go(i) {
+  const target = Math.max(0, Math.min(reviewIndex(), i));
+  if (target === index) return;
+  direction = target > index ? "next" : "back";
+  index = target;
+  save();
+  render();
+}
+
+document.getElementById("back").addEventListener("click", () => go(index - 1));
+document.getElementById("next").addEventListener("click", () => go(index + 1));
+document.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+  if (e.key === "ArrowRight") go(index + 1);
+  if (e.key === "ArrowLeft") go(index - 1);
+});
+
+load();
+</script>
+</body>
+</html>
