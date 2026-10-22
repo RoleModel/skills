@@ -404,6 +404,7 @@ const meta = { title, slug, range, commitId, pr, event, headRev, baseRev, blobs,
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="darkreader-lock">
 <title>${esc(title)}</title>
 <style>
 ${asset('style.css')}
