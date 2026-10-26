@@ -4,6 +4,7 @@ import json
 import re
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 SKILL_DIR = Path(__file__).resolve().parent
 PHOTO_PATH = re.compile(r"/photos/([\w-]+\.jpg)")
@@ -15,6 +16,7 @@ def build_handler(session):
             super().__init__(*args, directory=str(session), **kwargs)
 
         def do_GET(self):
+            self.path = urlsplit(self.path).path
             if self.path in ("/", "/index.html"):
                 return self.reply(200, "text/html; charset=utf-8", (SKILL_DIR / "presenter.html").read_bytes())
             if self.path == "/board.json" and not (session / "board.json").exists():

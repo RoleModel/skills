@@ -26,8 +26,9 @@ text short and prefer diagrams. Never hand the team a document to read.
 
 Usage: `/prebuild <ISSUE-ID> [--assist interviewer|nudge|strawman] [--async]`
 
-Phases: **Prep** (owner and Claude, in chat) → **Session** (owner and teammate,
-in the presenter) → **Wrap-up** (Claude) → **Share**.
+Phases: **Prep** (owner and Claude, in chat) → **Owner pass** (owner alone, in
+the presenter) → **Live session** on what's still Open (owner and teammate, only
+if needed) → **Wrap-up** (Claude) → **Share**.
 
 ## 1. Prep (owner and Claude, about 15 minutes)
 
@@ -37,9 +38,26 @@ parent, the other cards in its project, and any blocking cards. Then look at
 the code the card touches: models, controllers, jobs, specs, and anything else
 that uses them.
 
-If the owner already ran the `brave-breakdown` skill on this card, ask for that
-breakdown and build on it rather than asking those questions again. If they
-haven't and the card is 8 points or more, offer to run it first. Don't insist.
+### Look for a breakdown
+Check whether the owner already ran `brave-breakdown` on this card. Don't ask:
+look for a "BRAVE Breakdown" heading in this conversation first, then in the
+card's description and comments.
+
+**When there is one, build from it:**
+- **Skip the prerequisite questions** it already answers, such as scope and
+  exclusions.
+- **Shorten the explain-back** to one line: "Built from your breakdown:
+  <approach in a sentence>. Still right?"
+- **Turn its scope, approach and estimate into `constraint` facts** with
+  `"ref": "BRAVE breakdown"`, so the teammate can challenge them.
+- **Put its risks and open questions on the boards** they belong to, as
+  pre-filled notes marked Open (see `notes` under Build the deck). These are
+  the owner's own words, so this is allowed even in `interviewer` mode.
+- **Spend prep finding what the breakdown missed:** stale card text, hidden
+  reach, colliding work. Those are the gaps the teammate session is for.
+
+**When there isn't one** and the card is 8 points or more, offer to run
+`brave-breakdown` first. Don't insist.
 
 ### Size it
 | Size | Session |
@@ -57,8 +75,10 @@ Before building anything, tell the owner what the task is, as you understand
 it, in no more than three lines plus one diagram. In chat, draw that diagram
 with your visual tool if you have one. Otherwise use plain Mermaid without
 the `:::` colour classes, which only the presenter defines and which break the
-chart in chat. Ask: "Is this the task?" Correct it until they agree. This is the first check, and it catches
-misunderstandings before the teammate is in the room.
+chart in chat. Ask: "Is this the task?" Correct it until they agree. This is
+the first check, and it catches misunderstandings before the teammate is in
+the room. If you're building from a breakdown, use its one-line form instead
+(see Look for a breakdown).
 
 ### Build the deck
 Make the session folder `~/.prebuild/<ISSUE-ID>/` and write `deck.json` to it:
@@ -134,12 +154,20 @@ If neither is set, use `interviewer`.
 - **`strawman`**: add `"seed": [{"text": "…", "col": "In"}]`. Seeds appear
   on the board as dashed drafts for the team to keep, edit or delete.
 
+At any assist level, a slide can start with notes taken from the owner's own
+breakdown: `"notes": [{"text": "…", "col": null, "open": true, "from": "Breakdown"}]`.
+Unlike seeds, these are real notes, not drafts. Each one shows its `from`
+label, and they go into the summary like anything the team wrote.
+
 ### Owner reviews the deck
 Show the owner a short list of the slides (topic, question, a one-line summary
 of the diagram) and ask what to cut, reword or add. Rewrite `deck.json` until
 they're happy. Don't start the session before they approve the deck.
 
-## 2. Session (owner and teammate)
+## 2. Session: owner pass first, then live on what's still Open
+
+The aim is to answer as much as possible before anyone else is pulled in, so
+the live session stays short.
 
 Start the server in the background:
 
@@ -147,21 +175,36 @@ Start the server in the background:
 python3 <this skill's folder>/serve.py ~/.prebuild/<ISSUE-ID> --port 8765
 ```
 
-If port 8765 is taken, pick another and use it in the URL. Open
-`http://localhost:8765/` in your client's browser pane if it has one, or with
-`open` if not. Then tell the owner:
-- Go through the slides together. Type notes on each board.
-- Mark anything unsettled with `?`.
+If port 8765 is taken, pick another and use it in the URLs below.
+
+### 2a. Owner pass (async, owner alone)
+Open `http://localhost:8765/` in your client's browser pane if it has one, or
+with `open` if not. Tell the owner:
+- Go through every slide alone and answer what you can on the boards.
+- For anything you can't settle alone, switch on **Open** beside the add box
+  before adding the note (it resets after each note). For an existing note,
+  hover over it and press `?`.
 - Use **Add photo** to snap a real whiteboard.
-- Everything saves as you go. Say "done" at the end.
-- If they use Granola, it's worth recording the meeting.
+- Everything saves as you go. Say "done" when you've been through it all.
 
-Then stay quiet. The people discuss and the board records. Answer questions
-only if they ask you directly.
+Then stay quiet until they say done.
 
-**`--async`** (no teammate free): the owner goes through the deck alone and
-marks anything that needs a second opinion with `?`. Those become the open
-questions in the shared summary. Never let async mode hold up the work.
+### 2b. Decide whether a live session is needed
+Read `board.json` and count the Open notes per slide (ignore untouched drafts).
+- **None Open:** say so and go straight to wrap-up. No meeting needed.
+- **Some Open:** list them in chat (slide and note, one bullet each) and ask
+  whether to run a live session with a teammate now, or to wrap up with them as
+  open questions. With `--async`, skip the question and wrap up.
+
+### 2c. Live session (owner and teammate, Open items only)
+Open `http://localhost:8765/?open`. That view shows only the slides that still
+have Open notes, with settled notes dimmed for context. Tell them:
+- Talk through each Open note. When it's settled, turn its `?` off and add the
+  answer as a note.
+- Anything still unsettled at the end stays Open and becomes an open question.
+- Say "done" at the end. If they use Granola, it's worth recording the meeting.
+
+Then stay quiet. Answer questions only if they ask you directly.
 
 ## 3. Wrap-up (Claude)
 
@@ -187,7 +230,7 @@ _<tier> · <live with <names> | async>_
 ```
 
 **Approach**
-1. <step>
+- <step, in order>
 
 **In scope:** <items> · **Out of scope:** <items>
 
@@ -198,15 +241,27 @@ _<tier> · <live with <names> | async>_
 - <risk> (likelihood/impact) — <mitigation, if discussed>
 
 **Open questions**
-1. <question>
+- <question>
 ````
+
+Use plain bullets for every list. The only exception is **Done when**, which
+uses checkboxes because people tick it off. Never use numbered lists.
+
+Always save the summary to `~/.prebuild/<ISSUE-ID>/summary.md`. It stays on
+the owner's machine, so this isn't sharing.
 
 ## 4. Share
 
 Show the summary in chat, then ask once:
 - **Post to Linear:** add it to the card as a comment
-- **Keep it here:** write it nowhere
+- **Copy as Markdown:** put `summary.md` on the clipboard (`pbcopy <` it on
+  macOS; otherwise give its path) so the owner can paste it wherever they like
+- **Keep it here:** do nothing more
 
 In live mode, list **Keep it here** first. In async mode, list **Post to
-Linear** first. Never post without an explicit yes. Once it's posted or kept,
+Linear** first. Never post without an explicit yes. Once the owner has chosen,
 the skill is done.
+
+The presenter's wrap-up screen has its own **Copy as Markdown** button, which
+copies the raw boards straight away. Mention it when someone wants to share
+the notes before you've written the summary.
