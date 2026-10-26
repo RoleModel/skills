@@ -511,7 +511,9 @@ function pickPhoto(slide) {
     const res = await fetch(`photos/${name}`, { method: "POST", body: blob });
     if (!res.ok) { document.getElementById("saved").textContent = "Photo not saved"; return; }
     slideState(slide).photos.push(name);
-    save(); renderDots(); renderBoard(slide);
+    save(); renderDots();
+    if (isShowing(slide)) renderBoard(slide);
+    else if (index === reviewIndex()) render();
   };
   input.click();
 }
