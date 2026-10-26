@@ -245,16 +245,28 @@ function save() {
   saved.textContent = "Saving…";
   saved.classList.add("is-busy");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try {
-      const res = await fetch("board.json", { method: "PUT", body: JSON.stringify(board, null, 2) });
-      saved.textContent = res.ok ? "All changes saved" : "Not saved";
-    } catch {
-      saved.textContent = "Not saved — is the server running?";
-    }
-    saved.classList.remove("is-busy");
-  }, 400);
+  saveTimer = setTimeout(() => send(), 400);
 }
+
+async function send({ leaving = false } = {}) {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  board.rev = (board.rev || 0) + 1;
+  const request = fetch("board.json", { method: "PUT", body: JSON.stringify(board, null, 2), keepalive: leaving });
+  if (leaving) return;
+  const saved = document.getElementById("saved");
+  try {
+    const res = await request;
+    saved.textContent = res.ok || res.status === 409 ? "All changes saved" : "Not saved";
+  } catch {
+    saved.textContent = "Not saved — is the server running?";
+  }
+  saved.classList.remove("is-busy");
+}
+
+const flushOnLeave = () => { if (saveTimer) send({ leaving: true }); };
+addEventListener("pagehide", flushOnLeave);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushOnLeave(); });
 
 async function loadMermaid() {
   try {

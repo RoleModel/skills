@@ -2,11 +2,13 @@
 import argparse
 import json
 import re
+import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
 SKILL_DIR = Path(__file__).resolve().parent
+WRITE_LOCK = threading.Lock()
 PHOTO_PATH = re.compile(r"/photos/([\w-]+\.jpg)")
 
 
@@ -28,10 +30,17 @@ def build_handler(session):
                 return self.reply(404)
             body = self.body()
             try:
-                json.loads(body)
+                incoming = json.loads(body)
             except ValueError:
                 return self.reply(400)
-            (session / "board.json").write_bytes(body)
+            with WRITE_LOCK:
+                current = session / "board.json"
+                if current.exists():
+                    stored_rev = json.loads(current.read_bytes() or b"{}").get("rev", 0)
+                    # A slower, older save must never overwrite a newer one.
+                    if incoming.get("rev", 0) <= stored_rev:
+                        return self.reply(409)
+                current.write_bytes(body)
             self.reply(204)
 
         def do_POST(self):
