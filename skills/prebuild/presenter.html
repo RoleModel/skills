@@ -157,7 +157,8 @@
   .pb-open-switch[aria-pressed="true"] { border-style: solid; border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
   .pb-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .pb-photos img { height: 64px; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in; animation: pb-pop .25s var(--ease) both; }
-  .pb-photos img:hover { border-color: var(--accent); }
+  .pb-photos a:hover img, .pb-photos a:focus-visible img { border-color: var(--accent); }
+  .pb-photos a { border-radius: 6px; }
 
   .pb-dots { display: flex; gap: 6px; align-items: center; justify-content: center; }
   .pb-dot { width: 8px; height: 8px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; background: var(--border); transition: width .25s var(--ease), background .25s; }
@@ -487,11 +488,9 @@ function renderBoard(slide, focusCol) {
     el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Notes" }), addPhoto),
     el("div", { className: "pb-block-body" },
       el("div", { className: `pb-columns pb-${slide.board || "stickies"}` }, columns.map((c, i) => renderColumn(slide, c, tones[i]))),
-      photos.length > 0 && el("div", { className: "pb-photos" }, photos.map(name => {
-        const img = el("img", { src: `photos/${name}`, alt: "Whiteboard photo" });
-        img.addEventListener("click", () => window.open(img.src, "_blank"));
-        return img;
-      }))),
+      photos.length > 0 && el("div", { className: "pb-photos" }, photos.map((name, i) =>
+        el("a", { href: `photos/${name}`, target: "_blank", rel: "noopener", title: "Open full size" },
+          el("img", { src: `photos/${name}`, alt: `Whiteboard photo ${i + 1}` }))))),
   );
   freshId = null;
   if (focusCol !== undefined) target.querySelector(`.pb-add[data-col="${focusCol ?? ""}"]`)?.focus();
