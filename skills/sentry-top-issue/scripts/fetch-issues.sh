@@ -52,7 +52,7 @@ done
 [[ -z "$PROJECT" ]] && error_exit "--project is required"
 [[ -z "$REGION" ]]  && REGION="https://sentry.io"
 
-QUERY="is:unresolved lastSeen:>-7d"
+QUERY="is:unresolved lastSeen:-7d"
 [[ -n "$PRIORITY" ]] && QUERY="$QUERY issue.priority:$PRIORITY"
 
 BASE_URL="${REGION%/}"

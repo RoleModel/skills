@@ -5,7 +5,7 @@ allowed-tools: Read, Grep, Glob
 compatibility:
   repo: "*"
 metadata:
-  author: OpenAI
+  author: thoughtbot (adapted by RoleModel Software)
   version: 1.0.0
 license: MIT
 ---

@@ -251,7 +251,7 @@ If you have a default state for an element and another that would be a modifier,
 
 🚫 BAD (Don't do this)
 ```css
-.music-entry__artwork-image {
+.product-card__image {
   position: absolute;
   top: 0;
   left: 0;
@@ -260,7 +260,7 @@ If you have a default state for an element and another that would be a modifier,
   object-fit: cover;
 }
 
-.music-entry__artwork-placeholder {
+.product-card__placeholder {
   position: absolute;
   top: 0;
   left: 0;
@@ -269,12 +269,12 @@ If you have a default state for an element and another that would be a modifier,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-tan) 0%, var(--color-beige) 100%);
+  background: linear-gradient(135deg, var(--op-color-neutral-plus-six) 0%, var(--op-color-neutral-plus-seven) 100%);
 }
 ```
 ✅ GOOD (Do this)
 ```css
-.music-entry__artwork-image {
+.product-card__image {
   position: absolute;
   top: 0;
   left: 0;
@@ -282,12 +282,12 @@ If you have a default state for an element and another that would be a modifier,
   height: 100%;
   object-fit: cover;
   
-  &.music-entry__artwork-image--placeholder {
+  &.product-card__image--placeholder {
     object-fit: unset;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--color-tan) 0%, var(--color-beige) 100%);
+    background: linear-gradient(135deg, var(--op-color-neutral-plus-six) 0%, var(--op-color-neutral-plus-seven) 100%);
   }
 }
 ```

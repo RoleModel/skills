@@ -55,7 +55,7 @@ Leave alone when:
 - The copies have genuinely diverged — different strong params, different authorization logic, different view structure. Consolidating these means smuggling conditionals into one controller, which is worse than the duplication. Consolidate the ones that match and leave the outlier.
 - Only one parent exists and none is planned.
 
-**Stop and reassess if the child has a separate foreign key column per parent** (`estimate_id`, `widget_id`, `account_id` all on `comments`). That is a data migration to a `commentable_type` / `commentable_id` pair, not a controller refactor. Scope and land the migration first; this pattern assumes a working polymorphic association.
+**Stop and reassess if the child has a separate foreign key column per parent** (`article_id`, `widget_id`, `account_id` all on `comments`). That is a data migration to a `commentable_type` / `commentable_id` pair, not a controller refactor. Scope and land the migration first; this pattern assumes a working polymorphic association.
 
 ## Phase 3 — Consolidate
 
@@ -90,7 +90,7 @@ Confirm `rolemodel_rails >= 2.4.0` first (see SKILL.md). Then migrate **one pare
 7. **Delete leftovers** and check for stale references:
 
    ```bash
-   grep -rn 'Estimates::CommentsController\|estimates/comments' app spec config
+   grep -rn 'Articles::CommentsController\|articles/comments' app spec config
    ```
 
 ## Phase 4 — Verify
@@ -104,7 +104,7 @@ bin/rails routes | grep comment > /tmp/routes-after.txt
 diff /tmp/routes-before.txt /tmp/routes-after.txt
 ```
 
-Expect collection route names to change shape (`estimate_comments`, `widget_comments`) and member routes to collapse to a single named `comment`. Any helper that disappeared must be updated at its call sites.
+Expect collection route names to change shape (`article_comments`, `widget_comments`) and member routes to collapse to a single named `comment`. Any helper that disappeared must be updated at its call sites.
 
 **Check for dead path helpers** left in views and specs:
 
@@ -124,7 +124,7 @@ It should appear only inside the method called by the `%i[index new create]` bef
 
 ```ruby
 RSpec.describe 'Comments', type: :request do
-  %i[estimate widget].each do |parent_type|
+  %i[article widget].each do |parent_type|
     context "on a #{parent_type}" do
       let(:parent) { create(parent_type) }
 

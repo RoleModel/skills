@@ -26,7 +26,7 @@ Scripts handle everything deterministic (directory structure, entity listing, te
 /document-this --focus "<Feature Name>" <file-path>   # Targeted update within a focus subfolder
 ```
 
-The feature name is what the user types (typically Title Case, often with spaces — e.g., `"Materials Management"`, `"Billing"`, `"Stripe Webhooks"`). The subfolder name is a **kebab-case slug** derived from that name (`materials-management/`, `billing/`, `stripe-webhooks/`) — never the human-readable name verbatim. The slug may also be a simpler form of the feature name when one reads more naturally (`Materials Management` → `materials/`).
+The feature name is what the user types (typically Title Case, often with spaces — e.g., `"Order Fulfillment"`, `"Billing"`, `"Stripe Webhooks"`). The subfolder name is a **kebab-case slug** derived from that name (`order-fulfillment/`, `billing/`, `stripe-webhooks/`) — never the human-readable name verbatim. The slug may also be a simpler form of the feature name when one reads more naturally (`Order Fulfillment` → `orders/`).
 
 ---
 
@@ -57,17 +57,17 @@ generated-docs/
         └── <slug>-data-model.mmd
 ```
 
-Example: `/document-this --focus "Materials Management"` produces `generated-docs/materials/` (or `materials-management/` — see slug rules below) containing `workflows.md`, `architecture.md`, and `diagrams/materials-architecture.mmd` + `diagrams/materials-data-model.mmd`.
+Example: `/document-this --focus "Order Fulfillment"` produces `generated-docs/orders/` (or `order-fulfillment/` — see slug rules below) containing `workflows.md`, `architecture.md`, and `diagrams/orders-architecture.mmd` + `diagrams/orders-data-model.mmd`.
 
 **Focus mode produces only the four files above** — no `README.md` or `ai-orientation.md` inside the subfolder. The top-level docs serve those roles for the whole project; the focus subfolder is a deep dive linked from them.
 
 `<slug>` is a short kebab-case form of the feature name, used for **both the folder and the diagram file prefixes**:
 
-- **Default**: kebab-case of the full feature name (`Materials Management` → `materials-management`).
-- **Shorter natural form is fine** when one reads better (`Materials Management` → `materials`, `Stripe Webhooks` → `stripe-webhooks` or `stripe`). Use judgment.
+- **Default**: kebab-case of the full feature name (`Order Fulfillment` → `order-fulfillment`).
+- **Shorter natural form is fine** when one reads better (`Order Fulfillment` → `orders`, `Stripe Webhooks` → `stripe-webhooks` or `stripe`). Use judgment.
 - The same slug applies to the folder *and* to both diagram-file prefixes — they always match.
 
-Multiple focus subfolders can coexist (`generated-docs/materials/`, `generated-docs/billing/`, etc.). Each is independent — regenerating one does not touch the others.
+Multiple focus subfolders can coexist (`generated-docs/orders/`, `generated-docs/billing/`, etc.). Each is independent — regenerating one does not touch the others.
 
 Regenerating any mode overwrites only the files it produces. Use `git diff generated-docs/` to review.
 
@@ -221,12 +221,12 @@ The output is a self-contained subfolder under `generated-docs/<slug>/` with `wo
 
 ### Phase F1 — Feature scoping
 
-Before reading or writing anything, identify what code, tests, models, controllers, JS modules, jobs, and config files belong to this feature. The agent does this — there is no deterministic script for "is this file part of the materials feature." Use whatever combination of these signals is appropriate:
+Before reading or writing anything, identify what code, tests, models, controllers, JS modules, jobs, and config files belong to this feature. The agent does this — there is no deterministic script for "is this file part of the orders feature." Use whatever combination of these signals is appropriate:
 
-- **Name match** — Glob for files with the feature name or its slug in the path (`**/*materials*`, `**/*billing*`).
-- **Reference match** — Grep for class names, table names, or domain terms associated with the feature (`MaterialList`, `MaterialsMemento`, `material_list_policy`, …).
+- **Name match** — Glob for files with the feature name or its slug in the path (`**/*orders*`, `**/*billing*`).
+- **Reference match** — Grep for class names, table names, or domain terms associated with the feature (`OrderList`, `OrderSnapshot`, `order_policy`, …).
 - **Test inventory filter** — re-run `test_inventory.mjs` and keep only specs whose names or paths match the feature.
-- **Cross-references** — once you have an initial set, scan their imports/associations to pull in tightly coupled files (e.g., the strategy hook `_patchMaterialMementosForCatalog` belongs to the materials feature even though `SystemStrategy.js` doesn't).
+- **Cross-references** — once you have an initial set, scan their imports/associations to pull in tightly coupled files (e.g., the `applyShippingRules` hook belongs to the orders feature even though `CheckoutFlow.js`, where it's registered, doesn't).
 
 Record the scoping set as you go — you will reference it across phases. Aim for the **minimum set that explains the feature end-to-end**, not every file that mentions it. If a file is only tangentially related, leave it out and rely on the top-level docs to cover it.
 
@@ -238,11 +238,11 @@ Same approach as the full-mode workflow discovery, but filter to the feature sco
 
 1. From `test_inventory.mjs`, keep system/integration tests whose paths or `describe`/`context` strings reference the feature.
 2. Read those tests. Each user-visible behavior they exercise is a workflow candidate.
-3. **Also include workflows that aren't covered by tests but are clearly part of the feature** (e.g., a developer CLI for ingesting partner data) — but mark them explicitly as not test-backed and link to whatever evidence does exist (a script, a hand-written doc, a code path).
-4. Group by **audience** (e.g., "Org admins", "Developers", "Partner systems"). Open with a "Who interacts with this feature" section.
+3. **Also include workflows that aren't covered by tests but are clearly part of the feature** (e.g., a developer rake task for importing seed data) — but mark them explicitly as not test-backed and link to whatever evidence does exist (a script, a hand-written doc, a code path).
+4. Group by **audience** (e.g., "Admins", "Customers", "Developers"). Open with a "Who interacts with this feature" section.
 5. Use `templates/focus-workflows.template.md`. Use `templates/workflow-entry.template.md` for individual workflow entries.
 6. Add an inline `sequenceDiagram` for the 1–3 most central workflows.
-7. Path references back to the rest of the repo use `../` (e.g., `[spec/system/material_lists_spec.rb](../spec/system/material_lists_spec.rb)`).
+7. Path references back to the rest of the repo use `../` (e.g., `[spec/system/orders_spec.rb](../spec/system/orders_spec.rb)`).
 
 ### Phase F3 — Architecture analysis (scoped) → `<slug>/architecture.md` + `diagrams/`
 
@@ -252,13 +252,13 @@ Cover only the slices that matter for the feature:
 2. **Directory map** — only the directories that hold the feature's code, with one line each on what each contributes to *this feature*.
 3. **Data model** — the tables and in-memory entities specific to the feature, with key columns and the JSON shapes they carry.
 4. **Pipeline / flow** — if the feature has a notable end-to-end pipeline (ingest, request lifecycle, build chain), describe it with an inline ASCII or Mermaid diagram. This is often the single most useful section.
-5. **Patterns & conventions** — only feature-specific conventions (e.g., "memento patches are best-effort, not validated").
+5. **Patterns & conventions** — only feature-specific conventions (e.g., "webhook retries are idempotent; duplicates are ignored").
 6. **Mapping section (optional)** — if the user's mental model differs from the code, include a "User concept → reality" table. Useful when documenting features the user has questions about.
 7. **Notable files** — 5–15 file paths the developer will keep returning to.
 
 Then write the two diagram files:
 
-- `diagrams/<slug>-data-model.mmd` — entities and relationships **for the feature only**. May include in-memory types (e.g., `MaterialSpecifierMemento`), not just DB tables.
+- `diagrams/<slug>-data-model.mmd` — entities and relationships **for the feature only**. May include in-memory types (e.g., `CartSnapshot`), not just DB tables.
 - `diagrams/<slug>-architecture.mmd` — the feature's end-to-end flow as a `graph TD` (sources → processing → destinations). Group with `subgraph` blocks by time/space boundary (build-time vs. runtime, web admin vs. background job, etc.).
 
 Use `templates/focus-architecture.template.md` as the scaffold. Path references back to the rest of the repo use `../`.
@@ -273,8 +273,8 @@ If the top-level docs do not exist yet, the focus subfolder is the only output. 
 
 The slug is used for **the subfolder name and both diagram file prefixes** — all three always match.
 
-- **Default**: kebab-case of the feature name (`Materials Management` → `materials-management`, `Billing` → `billing`, `Stripe Webhooks` → `stripe-webhooks`).
-- **Shorter natural form is fine** when the long form reads awkwardly (`Materials Management` → `materials`, `Stripe Webhooks` → `stripe`). Use judgment.
+- **Default**: kebab-case of the feature name (`Order Fulfillment` → `order-fulfillment`, `Billing` → `billing`, `Stripe Webhooks` → `stripe-webhooks`).
+- **Shorter natural form is fine** when the long form reads awkwardly (`Order Fulfillment` → `orders`, `Stripe Webhooks` → `stripe`). Use judgment.
 - Lowercase, ASCII letters, digits, and hyphens only. No spaces, no underscores, no capitals.
 - If the slug would collide with an existing focus subfolder of a different feature, pick a different form rather than overwriting.
 
@@ -329,5 +329,5 @@ If `--focus` is also passed, restrict the update to the focus subfolder:
 - **No README, no ai-orientation in the subfolder.** Those roles belong to the top-level docs. Producing them inside a focus subfolder creates duplication.
 - **Always link back to the top level.** The first paragraph of each focus doc should link to the top-level `workflows.md` and/or `architecture.md` so a reader knows there's a broader context.
 - **Use `../` for paths to files outside the subfolder.** Test specs, source files, and other top-level project files all need the parent-dir prefix.
-- **One slug per subfolder.** The folder name and both diagram-file prefixes always match (`materials/diagrams/materials-architecture.mmd` + `materials/diagrams/materials-data-model.mmd`, not `materials/diagrams/mat-architecture.mmd`).
+- **One slug per subfolder.** The folder name and both diagram-file prefixes always match (`orders/diagrams/orders-architecture.mmd` + `orders/diagrams/orders-data-model.mmd`, not `orders/diagrams/ord-architecture.mmd`).
 - **Refuse to invent the feature.** If feature scoping comes back near-empty, stop and tell the user — don't write a thin doc just to have produced something.

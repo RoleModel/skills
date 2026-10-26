@@ -16,8 +16,8 @@ end
 **Use `let!` (eager)** when the record must exist in the database before the test runs, even if the variable is never referenced directly:
 
 ```ruby
-let!(:location) { create(:location, name: 'Downtown Site') }
-let!(:superintendent) { create(:user, :superintendent) }
+let!(:location) { create(:location, name: 'Main Office') }
+let!(:manager) { create(:user, :manager) }
 
 it 'shows location in dropdown' do
   visit new_job_path

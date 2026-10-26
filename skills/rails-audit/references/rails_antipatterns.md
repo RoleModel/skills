@@ -73,7 +73,7 @@ class User::ActivationsController < ApplicationController
 end
 ```
 
-**Exceptions**: Actions named `turbo_fetch` are an intentional convention for Turbo Stream responses and should not be flagged as REST violations.
+**Exceptions**: Don't flag actions named `turbo_fetch` as REST violations. They are the superseded hand-wired dynamic form pattern: report them as candidates for conversion to the turbo_form gem (see the `dynamic-forms` skill).
 
 **Audit Check**: Count public actions per controller. Flag controllers with > 8 actions. Check `config/routes.rb` for excessive `member`/`collection` blocks.
 

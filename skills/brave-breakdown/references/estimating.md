@@ -1,6 +1,6 @@
 # RoleModel Way of Estimating
 
-**Not all estimates have the same level of certainty.** The intention of a ramped scale is that larger estimates are considered much less certain. This is why we say the 64-point card uses 80 hours of effort to compute the dollar amount.
+**Not all estimates have the same level of certainty.** The intention of a ramped scale is that larger estimates are considered much less certain. This is why we say the 64-point card is treated as about 80 hours of effort for planning.
 
 ## Point Conversion Chart
 

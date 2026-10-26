@@ -1,6 +1,6 @@
 ---
 name: polymorphic-parent-resources
-description: Serve a child resource that hangs off many different parents — comments, reports, duplications, attachments — from a single Rails controller, using a route concern plus `resource_for` from the rolemodel_rails gem. Use when a child resource needs to attach to several parent models, when about to write a second or third namespaced controller that differs only by its parent (`Estimates::CommentsController`, `Widgets::CommentsController`), when a route concern passes a `*_type` route default such as `commentable_type` or `reportable_type`, when a controller looks up its parent with a hard-coded `Parent.find(params[:parent_id])` that now needs to support more parents, or when consolidating duplicated per-parent controllers.
+description: Serve a child resource that hangs off many different parents — comments, reports, duplications, attachments — from a single Rails controller, using a route concern plus `resource_for` from the rolemodel_rails gem. Use when a child resource needs to attach to several parent models, when about to write a second or third namespaced controller that differs only by its parent (`Articles::CommentsController`, `Widgets::CommentsController`), when a route concern passes a `*_type` route default such as `commentable_type` or `reportable_type`, when a controller looks up its parent with a hard-coded `Parent.find(params[:parent_id])` that now needs to support more parents, or when consolidating duplicated per-parent controllers.
 metadata:
   triggers: "polymorphic parent, polymorphic association controller, comments on multiple models, commentable, reportable, duplicatable, attachable, commentable_type, reportable_type, parent_resource.name.classify, resource_for, rolemodel_rails, one controller many parents, duplicate controllers per parent, namespaced controller per parent, shared child controller, route concern parent type, consolidate controllers"
 ---
@@ -11,8 +11,8 @@ metadata:
 
 Apps accumulate child resources that hang off many different parents — `comments`, `generated_reports`, `duplications`, `attachments`. The naive approaches both scale badly:
 
-- **A namespaced controller per parent** (`Estimates::CommentsController`, `Widgets::CommentsController`, `Accounts::CommentsController`) — identical code, N copies, N sets of specs.
-- **Non-RESTful actions bolted onto each parent controller** (`EstimatesController#add_comment`) — breaks REST and spreads comment logic across the app.
+- **A namespaced controller per parent** (`Articles::CommentsController`, `Widgets::CommentsController`, `Accounts::CommentsController`) — identical code, N copies, N sets of specs.
+- **Non-RESTful actions bolted onto each parent controller** (`ArticlesController#add_comment`) — breaks REST and spreads comment logic across the app.
 
 This pattern uses one route concern plus one controller to serve every parent. The parent's class name travels as a **route default**, and `resource_for` turns it back into the record.
 
@@ -61,7 +61,7 @@ class Comment < ApplicationRecord
   belongs_to :commentable, polymorphic: true
 end
 
-class Estimate < ApplicationRecord
+class Article < ApplicationRecord
   has_many :comments, as: :commentable, dependent: :destroy
 end
 ```
@@ -81,14 +81,12 @@ end
 
 shallow do
   resources :accounts do
-    resources :estimates, concerns: %i[commentable reportable] do
+    resources :articles, concerns: %i[commentable reportable] do
       resources :widgets, concerns: %i[commentable reportable]
     end
   end
 end
 ```
-
-See `routing-patterns` for route concerns and shallow nesting in general.
 
 ### 3. Controller
 
@@ -154,14 +152,14 @@ Polymorphic routing keeps paths parent-agnostic — one set of views serves ever
 Route defaults are merged into `params` last, so a route-supplied type **cannot** be overridden by a query string or request body. If a type ever arrives from user input instead, allowlist it before calling `resource_for` — `safe_constantize` will resolve any constant in the app.
 
 ```ruby
-REPORT_CONTEXTS = %w[Accessory Estimate PartProxy Tank].freeze
+REPORTABLE_TYPES = %w[Article Widget].freeze
 
-before_action :verify_context_type, :set_context, only: %i[create]
+before_action :verify_reportable_type, :set_reportable, only: %i[create]
 
 private
 
-def verify_context_type
-  return if REPORT_CONTEXTS.include?(params[:context_type])
+def verify_reportable_type
+  return if REPORTABLE_TYPES.include?(params[:reportable_type])
 
   redirect_back_or_to root_url, alert: 'Invalid Request'
 end
@@ -177,7 +175,7 @@ Do this even for route-supplied types: it documents which parents the controller
 | Unexplained 404 on every member action (`show`, `edit`, `update`, `destroy`) | The parent `before_action` ran on a shallow member route: the `*_type` default is inherited from the first-drawn parent, whose id param is absent, so `find(nil)` raises | Scope the parent `before_action` to `%i[index new create]` |
 | Member action behaves as though the child belongs to the wrong parent | Same cause — `params[:commentable_type]` on a shallow member route is always the first-drawn parent | Never read the `*_type` param on member actions; use `@comment.commentable` |
 | `ActiveRecord::RecordNotFound` (404) on a collection action | Id did not resolve — same behavior as any `find` | Expected; nothing to fix |
-| Wrong id param looked up for a namespaced parent | The class name is demodulized to derive the id param, so `Reporting::Tank` looks for `params[:tank_id]` | Expected; avoid two namespaced parents that demodulize to the same name |
+| Wrong id param looked up for a namespaced parent | The class name is demodulized to derive the id param, so `Inventory::Widget` looks for `params[:widget_id]` | Expected; avoid two namespaced parents that demodulize to the same name |
 | `resource_for` undefined in an API controller | Included via `on_load(:action_controller_base)`, so `ActionController::API` does not get it | Include the concern explicitly in the API base class |
 | `resource_for` undefined everywhere | rolemodel_rails < 2.4.0 | Bump the gem — see prerequisite above |
 
@@ -187,6 +185,5 @@ To find and consolidate duplicated per-parent controllers already in a project, 
 
 ## Related Skills
 
-- **routing-patterns** — route concerns, shallow nesting, and resourceful routing
-- **controller-patterns** — RESTful actions, authorization, strong params, naming conventions
+- **rails-conventions** — route concern, flash, and failed-save conventions
 - **tdd** — request and system specs for the consolidated controller

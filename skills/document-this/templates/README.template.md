@@ -32,7 +32,7 @@ Feature-scoped documentation generated with `/document-this --focus`. Each subfo
 <!--
 Render one bullet per focus subfolder. The link text is the human-readable feature name;
 the path is the slugged folder, e.g.:
-- [Materials Management](./materials/) — workflows, architecture, and diagrams for the materials subsystem
+- [Order Fulfillment](./orders/) — workflows, architecture, and diagrams for the order fulfillment subsystem
 - [Stripe Webhooks](./stripe-webhooks/) — end-to-end webhook handling
 -->
 {{/if}}
