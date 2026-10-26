@@ -39,6 +39,8 @@ def build_handler(session, port):
             self.path = urlsplit(self.path).path
             if self.path in ("/", "/index.html"):
                 return self.reply(200, "text/html; charset=utf-8", (SKILL_DIR / "presenter.html").read_bytes())
+            if self.path == "/diagrams.js":
+                return self.reply(200, "text/javascript; charset=utf-8", (SKILL_DIR / "diagrams.js").read_bytes())
             if self.path == "/board.json" and not (session / "board.json").exists():
                 return self.reply(200, "application/json", b"{}")
             super().do_GET()

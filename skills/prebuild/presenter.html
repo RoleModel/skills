@@ -18,6 +18,7 @@
     --ease: cubic-bezier(.2, .8, .2, 1);
     --width: 920px;
     color-scheme: dark;
+    --add-b: var(--good-line); --add-bg: var(--good-soft); --del-b: var(--bad-line); --del-bg: var(--bad-soft);
   }
 
   * { box-sizing: border-box; }
@@ -72,18 +73,45 @@
   .pb-block-body { padding: 14px 16px; }
 
   .pb-diagram { overflow-x: auto; background: var(--inset); border-radius: 0 0 8px 8px; }
-  .pb-diagram svg { display: block; margin: 0 auto; width: 100%; height: auto; max-height: 50vh; }
-  .pb-diagram .node rect, .pb-diagram .node polygon { rx: 6px; ry: 6px; }
-  .pb-diagram pre { margin: 0; font: 12px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; }
-  .pb-diagram pre.mermaid:not([data-processed]):not(.is-raw) { visibility: hidden; min-height: 120px; }
-  .pb-diagram pre[data-processed] svg { animation: pb-fade .3s ease both; }
-  .pb-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-  .pb-legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .pb-legend i { width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid var(--muted); }
-  .pb-legend .good i { border-color: var(--good-line); background: var(--good-soft); }
-  .pb-legend .warn i { border-color: var(--warn); background: var(--warn-soft); }
-  .pb-legend .bad i { border-color: var(--bad-line); background: var(--bad-soft); border-style: dashed; }
-  .pb-legend .accent i { border-color: var(--accent); background: var(--accent-soft); }
+  .pb-diagram .dbody { overflow-x: auto; }
+  .pb-diagram .dexpand { display: none; }
+  .pb-diagram .dsvg { width: 100%; height: auto; max-height: 52vh; animation: pb-fade .3s ease both; }
+  .pb-diagram-caption { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+  .pb-diagram-problems { margin: 0; padding-left: 18px; color: var(--bad); font: 12px/1.6 var(--mono); }
+  .dcompare { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .dside { border: 1px dashed var(--border); border-radius: 6px; padding: 8px; min-width: 0; }
+  .dsidet { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .dside.after .dsidet { color: var(--accent); }
+  .dsvg { display: block; margin: 0 auto; font-family: var(--font); }
+  .dsvg text { fill: var(--text); font-size: 13px; }
+  .dsvg .dsub { fill: var(--muted); font-size: 11px; }
+  .dsvg .dtag { font-size: 8.5px; letter-spacing: .06em; fill: var(--muted); paint-order: stroke; stroke: var(--inset); stroke-width: 3px; stroke-linejoin: round; }
+  .dsvg.banded .dtag { stroke: var(--panel); }
+  .dsvg .dlayer { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .dsvg .dband { fill: var(--panel); stroke: none; }
+  .dsvg .dn rect { fill: var(--panel); stroke: var(--muted); stroke-width: 1.2; }
+  .dsvg .dn.new rect { fill: var(--good-soft); stroke: var(--good-line); stroke-width: 1.6; }
+  .dsvg .dn.new .dtag { fill: var(--good); }
+  .dsvg .dn.changed rect { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.6; }
+  .dsvg .dn.changed .dtag { fill: var(--warn); }
+  .dsvg .dn.removed rect { fill: var(--bad-soft); stroke: var(--bad-line); stroke-dasharray: 5 4; }
+  .dsvg .dn.removed text { text-decoration: line-through; fill: var(--muted); }
+  .dsvg .dn.removed .dtag { fill: var(--bad); text-decoration: none; }
+  .dsvg .de { fill: none; stroke: var(--muted); stroke-width: 1.4; }
+  .dsvg .de.new { stroke: var(--good-line); } .dsvg .de.changed { stroke: var(--warn); } .dsvg .de.removed { stroke: var(--bad-line); stroke-dasharray: 5 4; }
+  .dsvg .de.reply { stroke-dasharray: 4 3; }
+  .dsvg .dm { fill: var(--muted); } .dsvg .dm.new { fill: var(--good-line); } .dsvg .dm.changed { fill: var(--warn); } .dsvg .dm.removed { fill: var(--bad-line); }
+  .dsvg .dlbl rect { fill: var(--inset); stroke: none; opacity: .9; }
+  .dsvg .dlbl text, .dsvg .dmsg { font-size: 11px; fill: var(--muted); }
+  .dsvg .dlbl.new text { fill: var(--good); } .dsvg .dlbl.changed text { fill: var(--warn); } .dsvg .dlbl.removed text { fill: var(--bad); }
+  .dsvg .dlife { stroke: var(--border); stroke-dasharray: 3 4; }
+  .dsvg .ddiv { stroke: var(--border); }
+  .dsvg .dlbl.div text { fill: var(--text); font-weight: 600; }
+  .dlegend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .dk i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; border: 1.5px solid var(--muted); margin-right: 6px; vertical-align: -1px; }
+  .dk.new i { border-color: var(--good-line); background: var(--good-soft); }
+  .dk.changed i { border-color: var(--warn); background: var(--warn-soft); }
+  .dk.removed i { border-color: var(--bad-line); border-style: dashed; }
 
   .pb-fact-group { border-left: 3px solid var(--border-strong); }
   .pb-fact-group[data-kind="gap"] { border-left-color: var(--warn); }
@@ -220,10 +248,11 @@
 </footer>
 <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
 
+<script src="diagrams.js"></script>
 <script type="module">
 const LEVELS = ["", "L", "M", "H"];
 const FACT_KINDS = [["gap", "Gaps"], ["constraint", "Constraints"], ["context", "Context"]];
-let deck, board, mermaid, saveTimer, freshId;
+let deck, board, saveTimer, freshId;
 let slides = [];
 let index = 0;
 const openOnly = new URLSearchParams(location.search).has("open");
@@ -235,7 +264,6 @@ const el = (tag, attrs = {}, ...children) => {
   return node;
 };
 const uid = () => Math.random().toString(36).slice(2, 10);
-const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const slideState = slide => board.slides[slide.id];
 const reviewIndex = () => slides.length;
 const hasOpen = slide => slideState(slide).notes.some(n => n.open && !n.draft);
@@ -269,49 +297,6 @@ const flushOnLeave = () => { if (saveTimer) send({ leaving: true }); };
 addEventListener("pagehide", flushOnLeave);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushOnLeave(); });
 
-async function loadMermaid() {
-  try {
-    ({ default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs"));
-    configureMermaid();
-  } catch {
-    mermaid = null;
-  }
-}
-
-function configureMermaid() {
-  mermaid?.initialize({
-      startOnLoad: false,
-      theme: "base",
-      flowchart: { curve: "basis", padding: 16, nodeSpacing: 36, rankSpacing: 52, htmlLabels: true },
-      themeVariables: {
-        fontFamily: css("--font"),
-        fontSize: "14px",
-        background: css("--inset"),
-        primaryColor: css("--panel"),
-        primaryBorderColor: css("--muted"),
-        primaryTextColor: css("--text"),
-        secondaryColor: css("--accent-soft"),
-        tertiaryColor: css("--panel"),
-        clusterBkg: css("--panel"),
-        clusterBorder: css("--border"),
-        lineColor: css("--muted"),
-        textColor: css("--text"),
-        edgeLabelBackground: css("--inset"),
-      },
-  });
-}
-
-function withGroupColours(source) {
-  if (!/^\s*(flowchart|graph)\b/.test(source)) return source;
-  const tone = (fill, stroke, text, extra = "") => `fill:${css(fill)},stroke:${css(stroke)},color:${css(text)},stroke-width:1.6px${extra}`;
-  return `${source}
-  classDef accent ${tone("--accent-soft", "--accent", "--text")}
-  classDef good ${tone("--good-soft", "--good-line", "--text")}
-  classDef warn ${tone("--warn-soft", "--warn", "--text")}
-  classDef bad ${tone("--bad-soft", "--bad-line", "--muted", ",stroke-dasharray:5 4")}
-  classDef muted ${tone("--inset", "--border", "--muted")}`;
-}
-
 async function load() {
   try {
     deck = await (await fetch("deck.json")).json();
@@ -337,26 +322,30 @@ async function load() {
   document.getElementById("mode").hidden = !openOnly;
   document.getElementById("issue").textContent = `${deck.issue.id} · ${deck.issue.title}`;
   document.title = `Pre-build · ${deck.issue.id}`;
-  await loadMermaid();
   render();
 }
 
 const block = (heading, aside, ...body) =>
   el("section", { className: "pb-block" }, el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: heading }), aside), ...body);
 
-const LEGEND = [["accent", "Changing"], ["good", "Yes"], ["warn", "To discuss"], ["bad", "No"]];
-
-function renderLegend(source) {
-  const used = LEGEND.filter(([cls]) => source.includes(`:::${cls}`));
-  if (!used.length) return null;
-  return el("div", { className: "pb-legend" }, used.map(([cls, text]) => el("span", { className: cls }, el("i"), text)));
+function renderDiagram(d) {
+  const problems = typeof DIAG === "object" ? DIAG.problems(d) : ["diagrams.js didn't load"];
+  if (problems.length) {
+    return el("div", { className: "pb-diagram pb-block-body" },
+      el("ul", { className: "pb-diagram-problems" }, problems.map(p => el("li", { textContent: p }))));
+  }
+  const body = DIAG.body(d);
+  for (const [status, text] of Object.entries(d.legend || {})) {
+    body.querySelectorAll(`.dk.${status}`).forEach(key => key.replaceChildren(el("i"), text));
+    body.querySelectorAll(`.dn.${status} .dtag`).forEach(tag => { tag.textContent = text.toUpperCase(); });
+  }
+  return el("div", { className: "pb-diagram pb-block-body" }, body,
+    d.caption && el("p", { className: "pb-diagram-caption", textContent: d.caption }));
 }
 
 function renderContext(slide) {
   return [
-    slide.diagram && block("Diagram", renderLegend(slide.diagram),
-      el("div", { className: "pb-diagram pb-block-body" },
-        el("pre", { className: mermaid ? "mermaid" : "mermaid is-raw", textContent: mermaid ? withGroupColours(slide.diagram) : slide.diagram }))),
+    slide.diagram && block(slide.diagram.title || "Diagram", null, renderDiagram(slide.diagram)),
     ...FACT_KINDS.map(([kind, heading]) => {
       const facts = (slide.facts || []).filter(f => (FACT_KINDS.some(([k]) => k === f.kind) ? f.kind : "context") === kind);
       if (!facts.length) return null;
@@ -619,8 +608,6 @@ function render() {
   next.disabled = onReview;
   next.textContent = index === reviewIndex() - 1 ? "Wrap up →" : "Next →";
   renderDots();
-  const nodes = main.querySelectorAll(".mermaid:not(.is-raw)");
-  if (mermaid && nodes.length) mermaid.run({ nodes }).catch(() => nodes.forEach(n => n.classList.add("is-raw")));
 }
 
 function renderDots() {

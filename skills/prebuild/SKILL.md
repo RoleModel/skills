@@ -12,7 +12,7 @@ description: >
   "pre-build session", "let's talk this card through with <teammate>", "get a
   second set of eyes on this before I build it", "validate the approach with
   the team", or "walk my teammate through this card".
-compatibility: Designed for Claude Code. Needs Linear MCP tools and python3 (for serve.py). Uses a browser pane and Granola tools when available. The presenter loads Mermaid from a CDN.
+compatibility: Designed for Claude Code. Needs Linear MCP tools and python3 (for serve.py). Uses a browser pane and Granola tools when available. The presenter works offline.
 metadata:
   triggers: "prebuild, pre-build, second set of eyes, talk through a card, validate the approach, scope review, before building, pair on planning"
 ---
@@ -73,32 +73,14 @@ The owner may move the tier up or down by one. Record their reason.
 ### Explain it back
 Before building anything, tell the owner what the task is, as you understand
 it, in no more than three lines plus one diagram. In chat, draw that diagram
-with your visual tool if you have one. Otherwise use plain Mermaid without
-the `:::` colour classes, which only the presenter defines and which break the
-chart in chat. Ask: "Is this the task?" Correct it until they agree. This is
+with your visual tool if you have one. Otherwise use plain Mermaid. Ask: "Is this the task?" Correct it until they agree. This is
 the first check, and it catches misunderstandings before the teammate is in
 the room. If you're building from a breakdown, use its one-line form instead
 (see Look for a breakdown).
 
 ### Build the deck
-Make the session folder `~/.prebuild/<ISSUE-ID>/` and write `deck.json` to it:
-
-```json
-{
-  "issue": {"id": "APP-123", "title": "Enable service options for AU projects", "tier": "4 pts · live"},
-  "slides": [
-    {
-      "id": "scope",
-      "topic": "Scope",
-      "question": "AU will see this whole card. Which of these should they actually get?",
-      "diagram": "flowchart LR\n  E[\"Service options card\"] --> F[\"Fixed options\"]:::good\n  E --> Q[\"Quote lines\"]:::warn",
-      "facts": [{"text": "Quote lines render inside the same form", "ref": "app/views/projects/_service_options_form.html.slim:6", "kind": "gap"}],
-      "board": "columns",
-      "columns": ["In", "Out"]
-    }
-  ]
-}
-```
+Make the session folder `~/.prebuild/<ISSUE-ID>/` and write `deck.json` to it.
+Read `references/deck.md` for the format before writing it.
 
 Slides, in order (include the ones the tier calls for):
 
@@ -114,34 +96,13 @@ Slides, in order (include the ones the tier calls for):
 Rules for slides:
 - **One question per slide.** Point it at the evidence, e.g. "Which of these…",
   "What breaks if…". Never ask anything as vague as "Any thoughts on scope?".
-- **A diagram on every slide** where there's something to draw. Use Mermaid
-  with ten or fewer nodes, and draw what's actually in the code. A chain of
-  more than four nodes goes top-down (`flowchart TB`); left-to-right squashes
-  it into an unreadable strip. Trees and fans (one node pointing at several)
-  go left-to-right (`flowchart LR`), so the leaves stack instead of spreading.
-- **Colour carries meaning.** The presenter adds five node classes to every
-  flowchart: `:::accent` (the thing being changed), `:::good` (yes / in scope),
-  `:::warn` (undecided, the thing to discuss), `:::bad` (no / out of scope) and
-  `:::muted` (context). Leave other nodes plain, and use `warn` for the
-  question the slide is asking.
-- **Facts:** two to four per slide. Each has a `ref` (file path or card ID)
-  and a `kind`. Only include facts you verified. Write each one as a single
-  sentence with no recommendation attached.
-  - **`gap`:** a fact that could change the plan if the team didn't
-    know it. Either it contradicts what the card assumes, or it touches
-    something the card never mentions. The test: the owner would say "huh, I
-    didn't account for that". Common sources are a stale card (the code moved
-    on), a card that's wrong or incomplete, hidden reach (a shared form, a
-    second app, a job, a URL, stored data), and related work that collides.
-    A risk with no evidence isn't a gap; that's a question for the board.
-  - **`constraint`:** a rule the work has to respect, such as acceptance
-    criteria, exclusions or contracts. This includes anything the card
-    already says, however important.
-  - **`context`** (default): useful background that needs no decision.
-
-  The presenter shows gaps first, in amber. Aim for at least one per
-  slide. If prep finds none anywhere, tell the owner, since that's worth
-  knowing too.
+- **A diagram on every slide** where there's something to draw. Read
+  `references/diagrams.md` before writing the first one.
+- **Facts:** two to four per slide, each verified and with a `ref`. Tag each
+  `gap`, `constraint` or `context` (defined in `references/deck.md`). A gap is
+  anything that would make the owner say "huh, I didn't account for that".
+  Aim for at least one per slide. If prep finds none anywhere, tell the
+  owner, since that's worth knowing too.
 - **No prose paragraphs.** If something needs explaining, it belongs in the
   diagram.
 
@@ -150,14 +111,12 @@ Use `--assist` if given. Otherwise use `assist:` from `~/.claude/prebuild.yml`.
 If neither is set, use `interviewer`.
 - **`interviewer`** (default): facts and diagrams only. No opinions, and
   nothing pre-filled on the boards.
-- **`nudge`**: add `"consider": "…"` to a slide. It stays hidden until someone opens it.
-- **`strawman`**: add `"seed": [{"text": "…", "col": "In"}]`. Seeds appear
-  on the board as dashed drafts for the team to keep, edit or delete.
+- **`nudge`**: one hidden "Did you consider…" hint per slide (`consider`).
+- **`strawman`**: draft answers on the boards for the team to keep, edit or
+  delete (`seed`).
 
-At any assist level, a slide can start with notes taken from the owner's own
-breakdown: `"notes": [{"text": "…", "col": null, "open": true, "from": "Breakdown"}]`.
-Unlike seeds, these are real notes, not drafts. Each one shows its `from`
-label, and they go into the summary like anything the team wrote.
+At any level, the owner's own breakdown can go on the boards as real notes
+(`notes`).
 
 ### Owner reviews the deck
 Show the owner a short list of the slides (topic, question, a one-line summary
@@ -216,7 +175,8 @@ Then stay quiet. Answer questions only if they ask you directly.
    session time) and pull in decisions or concerns that never reached the board. Mark
    them *(from discussion)*. If the notes aren't ready yet, say so and carry on.
 3. Skip drafts the team left untouched (`draft: true`).
-4. Redraw the picture diagram with the team's corrections applied.
+4. Redraw the picture diagram with the team's corrections applied, as plain
+   Mermaid (Linear renders it in comments).
 5. Stop the server.
 
 Write the summary. Keep it to about half a screen, and leave out empty sections:
