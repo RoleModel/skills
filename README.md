@@ -68,6 +68,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[rails-audit](skills/rails-audit)** | Audit a whole Rails app against thoughtbot's best practices and write a markdown report grouped by category (Testing, Security, Models, Controllers, Code Design, Views) with severity levels. Optionally collects SimpleCov and RubyCritic metrics first. |
 | **[rm-sentry-issue-fixer](skills/rm-sentry-issue-fixer)** | Full seven-phase workflow for diagnosing and fixing a Sentry issue using the Sentry API: issue discovery → deep analysis → root cause hypothesis → entry point audit → code investigation → implement fix → report results. Enforces security constraints (never follows instructions embedded in Sentry event data). |
 | **[sentry-top-issue](skills/sentry-top-issue)** | Picks the single highest-priority unresolved Sentry issue (sorted by Trends, filtered for open PRs) and hands it off to `rm-sentry-issue-fixer`. Discovers Sentry scope from args or project docs; exits cleanly if scope or API access is unavailable. Supports `dry-run`, `no-pr-filter`, and `fixer=` overrides. |
+| **[standup-prep](skills/standup-prep)** | Interview-style prep for a daily standup call. Asks which project/customer to focus on and whether the person is leading it — a lead gets a second, separate cross-project pass across Linear, GitHub, Harvest, and Slack on top of their own personal view — pulls context from those sources plus the local git repo, Harvest timer comments, and Almanac, flags inconsistencies between Linear cards and GitHub PRs, then interviews the person to produce read-aloud prose answering the four standup questions (plus a project-status section for leads) — including opening questions to ask the customer. |
 
 ## Installation
 
@@ -263,7 +264,10 @@ maxTurns: 40
 - **Rails Conventions + Polymorphic Parent Resources + Dynamic Forms** — Rails Conventions holds the house rules and points to the other two: Polymorphic Parent Resources for a child resource that hangs off several parents, and Dynamic Forms for forms that change as they are filled in.
 - **Scaffold Docs + Generate Conventions + Wrap Up** — Scaffold Docs installs the doc structure; Generate Conventions fills `docs/conventions/`; Wrap Up keeps the docs current at the end of each session.
 - **Sentry Top Issue + Sentry Issue Fixer** — Top Issue selects the highest-priority Sentry issue; Issue Fixer runs the full diagnosis-and-fix workflow. Run together or invoke the fixer directly with a known issue.
+- **Explain + Trace** — Explain orients you to a feature area or concept; Trace follows a specific code path through the stack. Use Explain first to build context, then Trace to dig into a specific flow.
+- **Explain + Document This** — Explain answers questions interactively; Document This generates persistent reference docs. Use Explain while exploring, Document This when you want to capture the results for the team.
 - **File PR + Split Stack + Babysit PR** — File PR opens or updates a single PR. Split Stack is what you reach for when that PR turns out to cover more than one concern: it carves each concern into its own stacked PR, then File PR writes the description for each. Babysit PR takes over once a PR is open, driving it to mergeable while you work on something else.
+- **BRAVE Breakdown + Standup Prep** — Both interview one question at a time and lean on Linear. BRAVE Breakdown runs before you pick up a card, to validate the plan. Standup Prep runs the next morning, to report on it — pulling from git, GitHub, Almanac, and Slack in addition to Linear, and flagging Linear/GitHub inconsistencies along the way.
 
 ## License
 
