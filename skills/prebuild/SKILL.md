@@ -144,7 +144,9 @@ with `open` if not. Tell the owner:
   under each board before writing it (it goes back to Note after each one).
   For an existing note, hover over it and press `?`. Press Enter or **Add**
   to add a note; anything still typed when you change slides is added too.
-- Use **Add photo** to snap a real whiteboard.
+- Use **Add photo** to snap a real whiteboard, or open the **Whiteboard** row above Notes to draw:
+  **Inline** in the slide, or a **Live session** on excalidraw.com for a remote
+  teammate (see `references/whiteboard.md`).
 - Everything saves as you go. Say "done" when you've been through it all.
 
 Then stay quiet until they say done.
@@ -170,7 +172,9 @@ Then stay quiet. Answer questions only if they ask you directly.
 
 1. Read `~/.prebuild/<ISSUE-ID>/board.json`, and look at every image in
    `photos/`. Describe what each whiteboard photo shows (boxes, arrows, lists)
-   and fold that in.
+   and fold that in. For every `whiteboards/<slide>.excalidraw`, compare it
+   with its `.seed.excalidraw` as `references/whiteboard.md` describes, and
+   fold in what the team added, crossed out or moved.
 2. **Granola** (only if you have Granola tools): ask the owner whether the
    meeting was recorded. If it was, find it (search by the card title or the
    session time) and pull in decisions or concerns that never reached the board. Mark

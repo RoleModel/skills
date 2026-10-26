@@ -10,6 +10,9 @@ from urllib.parse import urlsplit
 SKILL_DIR = Path(__file__).resolve().parent
 WRITE_LOCK = threading.Lock()
 PHOTO_PATH = re.compile(r"/photos/([\w-]+\.jpg)")
+BOARD_PATH = re.compile(r"/whiteboards/([\w-]+(?:\.seed)?\.excalidraw)")
+SKILL_SCRIPTS = {"/diagrams.js", "/whiteboard.js"}
+MAX_BOARD_BYTES = 5_000_000
 
 
 def build_handler(session, port):
@@ -39,8 +42,8 @@ def build_handler(session, port):
             self.path = urlsplit(self.path).path
             if self.path in ("/", "/index.html"):
                 return self.reply(200, "text/html; charset=utf-8", (SKILL_DIR / "presenter.html").read_bytes())
-            if self.path == "/diagrams.js":
-                return self.reply(200, "text/javascript; charset=utf-8", (SKILL_DIR / "diagrams.js").read_bytes())
+            if self.path in SKILL_SCRIPTS:
+                return self.reply(200, "text/javascript; charset=utf-8", (SKILL_DIR / self.path[1:]).read_bytes())
             if self.path == "/board.json" and not (session / "board.json").exists():
                 return self.reply(200, "application/json", b"{}")
             super().do_GET()
@@ -68,6 +71,17 @@ def build_handler(session, port):
         def do_POST(self):
             if self.refused(writing=True):
                 return
+            board = BOARD_PATH.fullmatch(self.path)
+            if board:
+                body = self.body()
+                if len(body) > MAX_BOARD_BYTES:
+                    return self.reply(413)
+                try:
+                    json.loads(body)
+                except ValueError:
+                    return self.reply(400)
+                (session / "whiteboards" / board.group(1)).write_bytes(body)
+                return self.reply(204)
             match = PHOTO_PATH.fullmatch(self.path)
             if not match:
                 return self.reply(404)
@@ -103,6 +117,7 @@ def main():
 
     session = Path(args.session_dir).expanduser().resolve()
     (session / "photos").mkdir(parents=True, exist_ok=True)
+    (session / "whiteboards").mkdir(exist_ok=True)
     print(f"http://localhost:{args.port}/  ({session})", flush=True)
     ThreadingHTTPServer(("127.0.0.1", args.port), build_handler(session, args.port)).serve_forever()
 

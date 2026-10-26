@@ -131,7 +131,7 @@
   .pb-consider summary { cursor: pointer; color: var(--muted); }
   .pb-consider p { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 6px 6px 0; }
 
-  .pb-board { margin-top: 24px; }
+  .pb-board { margin-top: 0; }
   .pb-columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .pb-column .pb-label { margin-bottom: 8px; }
   .pb-column[data-tone="good"] .pb-label { color: var(--good); }
@@ -198,6 +198,44 @@
     background: var(--warn-soft); border: 1px solid var(--warn); color: var(--warn); font-size: 11px; font-weight: 700;
     animation: pb-pop .2s var(--ease) both;
   }
+  .pb-wb-block { margin-top: 24px; }
+  .pb-wb-block:not(.is-open) .pb-block-head { border-bottom: 0; }
+  .pb-whiteboard { padding: 14px 16px; }
+  .pb-wb-steps { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .pb-steps-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .pb-step-row { display: flex; gap: 12px; align-items: flex-start; }
+  .pb-step-num {
+    flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    border: 1px solid var(--border-strong); color: var(--muted); font-size: 12px; font-weight: 600;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .pb-step-row.is-done .pb-step-num { background: var(--good-soft); border-color: var(--good-line); color: var(--good); font-size: 0; }
+  .pb-step-row.is-done .pb-step-num::before { content: "✓"; font-size: 12px; }
+  .pb-step-body { flex: 1; min-width: 0; }
+  .pb-step-title { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+  .pb-step-help { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .pb-step-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .pb-step-actions a.pb-btn { text-decoration: none; display: inline-block; }
+  .pb-step-body .pb-wb-paste { margin-top: 8px; }
+  .pb-wb-paste {
+    width: 100%; max-height: 180px; resize: vertical; padding: 8px 10px; border-radius: 6px; font: 12px/1.45 var(--mono);
+    border: 1px dashed var(--border-strong); background: transparent; color: var(--text);
+  }
+  .pb-wb-paste:focus { outline: none; border-style: solid; border-color: var(--accent); }
+  .pb-wb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .pb-wb-head .pb-kinds { padding: 0; }
+  .pb-wb-head .pb-kind[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .pb-wb-inline { margin-bottom: 10px; background: var(--inset); }
+  .pb-excalidraw { height: 520px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .pb-wb-inline:fullscreen { padding: 0; }
+  .pb-wb-inline:fullscreen .pb-excalidraw, .pb-wb-inline.is-fullscreen .pb-excalidraw { height: 100vh; border: 0; border-radius: 0; }
+  .pb-wb-inline { position: relative; }
+  .pb-wb-inline.is-fullscreen { position: fixed; inset: 0; z-index: 50; margin: 0; }
+  .pb-wb-exit { display: none; position: absolute; top: 12px; right: 76px; z-index: 5; }
+  .pb-wb-inline:fullscreen .pb-wb-exit, .pb-wb-inline.is-fullscreen .pb-wb-exit { display: block; }
+  .pb-wb-status { margin: 0; font-size: 13px; color: var(--muted); }
+  .pb-wb-status strong { color: var(--good); font-weight: 600; }
+  .pb-wb-status a { color: var(--accent); }
   .pb-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .pb-photos img { height: 64px; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in; animation: pb-pop .25s var(--ease) both; }
   .pb-photos a:hover img, .pb-photos a:focus-visible img { border-color: var(--accent); }
@@ -264,6 +302,7 @@
 <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
 
 <script src="diagrams.js"></script>
+<script src="whiteboard.js"></script>
 <script type="module">
 const LEVELS = ["", "L", "M", "H"];
 const FACT_KINDS = [["gap", "Gaps"], ["constraint", "Constraints"], ["context", "Context"]];
@@ -534,6 +573,209 @@ function renderBoard(slide, focusCol) {
   if (focusCol !== undefined) target.querySelector(`.pb-add[data-col="${focusCol ?? ""}"]`)?.focus();
 }
 
+const EXCALIDRAW = "https://esm.sh/@excalidraw/excalidraw@0.17.6?deps=react@18.3.1,react-dom@18.3.1";
+let excalidrawLib;
+const loadExcalidraw = () => (excalidrawLib ||= Promise.all([
+  import("https://esm.sh/react@18.3.1"),
+  import("https://esm.sh/react-dom@18.3.1/client"),
+  import(EXCALIDRAW),
+]).then(([react, reactDom, lib]) => ({
+  React: react.default || react,
+  createRoot: (reactDom.default || reactDom).createRoot,
+  Excalidraw: lib.Excalidraw || lib.default?.Excalidraw,
+})));
+
+const whiteboardPanels = new Map();
+
+function renderWhiteboard(slide) {
+  const state = slideState(slide);
+  let latest = null;
+  let root = null;
+  const status = el("p", { className: "pb-wb-status" });
+  const showSaved = () => {
+    const wb = state.whiteboard;
+    status.replaceChildren(...(wb
+      ? [el("strong", { textContent: "Board saved" }), ` · ${wb.shapes} shapes`, wb.labels.length ? ` · ${wb.labels.slice(0, 4).map(l => l.length > 28 ? l.slice(0, 27) + "…" : l).join(", ")}${wb.labels.length > 4 ? "…" : ""}` : "",
+        " · ", el("a", { href: wb.file, download: "", textContent: "Download" })]
+      : ["No board saved for this slide yet."]));
+  };
+  showSaved();
+
+  const persist = async elements => {
+    latest = elements;
+    const file = `whiteboards/${slide.id}.excalidraw`;
+    const res = await fetch(file, { method: "POST", body: WHITEBOARD.file(elements) });
+    if (!res.ok) { status.textContent = "Board not saved — is the server running?"; return false; }
+    state.whiteboard = { file, ...WHITEBOARD.summary(elements), savedAt: new Date().toISOString() };
+    save(); renderDots(); showSaved();
+    return true;
+  };
+  const seed = () => {
+    const elements = WHITEBOARD.seedFromSlide(slide, document.querySelector(".pb-diagram"));
+    fetch(`whiteboards/${slide.id}.seed.excalidraw`, { method: "POST", body: WHITEBOARD.file(elements) });
+    return elements;
+  };
+  const loadSaved = async () => {
+    if (latest || !state.whiteboard) return latest;
+    const textValue = await fetch(state.whiteboard.file).then(r => (r.ok ? r.text() : "")).catch(() => "");
+    latest = WHITEBOARD.parse(textValue);
+    return latest;
+  };
+
+  // Inline: an Excalidraw editor in the slide, saved as you draw.
+  const canvas = el("div", { className: "pb-excalidraw" }, el("p", { className: "pb-wb-steps", textContent: "Loading the whiteboard…" }));
+  const fullScreen = el("button", { className: "pb-link", type: "button", textContent: "Full screen ⤢" });
+  const exitFullScreen = el("button", { className: "pb-btn pb-wb-exit", type: "button", textContent: "Exit full screen" });
+  const inline = el("div", { className: "pb-wb-inline" }, canvas, exitFullScreen);
+  const leaveFullScreen = () => {
+    if (document.fullscreenElement === inline) document.exitFullscreen();
+    inline.classList.remove("is-fullscreen");
+  };
+  // Fill the window instead when the browser refuses real full screen (embedded panes often do).
+  fullScreen.addEventListener("click", () => {
+    const fallback = () => { if (document.fullscreenElement !== inline) inline.classList.add("is-fullscreen"); };
+    if (!inline.requestFullscreen) return fallback();
+    inline.requestFullscreen().catch(fallback);
+    setTimeout(fallback, 600);
+  });
+  document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement === inline) inline.classList.remove("is-fullscreen"); });
+  exitFullScreen.addEventListener("click", leaveFullScreen);
+  inline.addEventListener("keydown", e => { if (e.key === "Escape" && inline.classList.contains("is-fullscreen")) leaveFullScreen(); });
+  let saveTimer = null, lastSignature = "", touched = false;
+  // Excalidraw fires changes on its own while loading (fonts resize text), so only save after someone uses the board.
+  ["pointerdown", "keydown", "paste", "drop"].forEach(type => canvas.addEventListener(type, () => { touched = true; }, true));
+  const scheduleSave = elements => {
+    if (!touched) return;
+    const live = elements.filter(e => !e.isDeleted);
+    const signature = live.map(e => e.id + ":" + e.version).join(",");
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+    clearTimeout(saveTimer);
+    status.textContent = "Saving…";
+    saveTimer = setTimeout(() => persist(JSON.parse(JSON.stringify(live))), 700);
+  };
+  const mountInline = async () => {
+    if (root) return;
+    try {
+      const lib = await loadExcalidraw();
+      const elements = (await loadSaved()) || seed();
+      touched = false;
+      canvas.replaceChildren();
+      root = lib.createRoot(canvas);
+      root.render(lib.React.createElement(lib.Excalidraw, {
+        initialData: { elements, appState: { viewBackgroundColor: "#ffffff" }, scrollToContent: true },
+        theme: "dark",
+        onChange: scheduleSave,
+        excalidrawAPI: api => setTimeout(() => api.scrollToContent(undefined, { fitToContent: true }), 60),
+      }));
+    } catch {
+      canvas.replaceChildren(el("p", { className: "pb-wb-steps",
+        textContent: "Couldn't load Excalidraw (it needs an internet connection the first time). Use Live session, or add a photo instead." }));
+    }
+  };
+
+  // Live session: hand the board to excalidraw.com and take it back by pasting.
+  const step = (n, title, help, ...actions) => {
+    const row = el("li", { className: "pb-step-row" },
+      el("span", { className: "pb-step-num", textContent: String(n) }),
+      el("div", { className: "pb-step-body" },
+        el("p", { className: "pb-step-title", textContent: title }),
+        help && el("p", { className: "pb-step-help", textContent: help }),
+        actions.length > 0 && el("div", { className: "pb-step-actions" }, actions)));
+    row.done = () => row.classList.add("is-done");
+    return row;
+  };
+  const copy = el("button", { className: "pb-btn", type: "button", textContent: "Copy board" });
+  const open = el("a", { className: "pb-btn", href: "https://excalidraw.com", target: "_blank", rel: "noopener", textContent: "Open excalidraw.com ↗" });
+  const copyStep = step(1, "Copy this slide's board",
+    "Copies what's drawn inline, or the slide's starting board if nothing is.", copy);
+  const openStep = step(2, "Open Excalidraw and paste it",
+    "In the new tab, click the canvas and press ⌘V.", open);
+  const shareStep = step(3, "Start the live session",
+    "In Excalidraw: Live collaboration → Start session, then send the link to your teammate.");
+  copy.addEventListener("click", async () => {
+    if (await copyText(WHITEBOARD.clipboardText(latest || seed()))) {
+      copy.textContent = "Copied ✓";
+      copyStep.done();
+    } else {
+      copy.textContent = "Couldn't copy — try again";
+    }
+  });
+  open.addEventListener("click", () => openStep.done());
+  const paste = el("textarea", { className: "pb-wb-paste", rows: 4, spellcheck: false,
+    placeholder: "Paste the finished board here" });
+  const upload = el("input", { type: "file", accept: ".excalidraw,application/json", hidden: true });
+  const uploadLink = el("button", { className: "pb-link", type: "button", textContent: "or upload a .excalidraw file" });
+  uploadLink.addEventListener("click", () => upload.click());
+  const saveText = async textValue => {
+    const elements = WHITEBOARD.parse(textValue);
+    if (!elements) { status.textContent = "That isn't an Excalidraw board. Copy it from Excalidraw (select all, copy) and paste again."; return; }
+    if (!(await persist(elements))) return;
+    backStep.done();
+    if (root) { root.unmount(); root = null; }
+  };
+  // A paste replaces the whole box, so a new board never mixes with the one already shown.
+  paste.addEventListener("paste", e => {
+    e.preventDefault();
+    paste.value = e.clipboardData.getData("text");
+    saveText(paste.value);
+  });
+  paste.addEventListener("change", () => saveText(paste.value));
+  upload.addEventListener("change", async () => {
+    if (!upload.files[0]) return;
+    paste.value = await upload.files[0].text();
+    saveText(paste.value);
+  });
+  const backStep = step(4, "Bring the finished board back",
+    "When you're done, in Excalidraw select all (⌘A) and copy (⌘C), then paste below. It saves straight away.");
+  backStep.querySelector(".pb-step-body").append(paste, el("div", { className: "pb-step-actions" }, uploadLink, upload));
+  const live = el("div", { className: "pb-wb-live" },
+    el("ol", { className: "pb-steps-list" }, copyStep, openStep, shareStep, backStep));
+
+  const inlineMode = el("button", { className: "pb-kind", type: "button", textContent: "Inline" });
+  const liveMode = el("button", { className: "pb-kind", type: "button", textContent: "Live session" });
+  const setMode = mode => {
+    state.wbMode = mode;
+    inlineMode.ariaPressed = String(mode === "inline");
+    liveMode.ariaPressed = String(mode === "live");
+    inline.hidden = mode !== "inline";
+    fullScreen.hidden = mode !== "inline";
+    live.hidden = mode !== "live";
+    if (mode === "inline" && !panel.hidden) mountInline();
+    if (mode === "live") loadSaved().then(elements => { if (elements) paste.value = WHITEBOARD.file(elements); });
+  };
+  inlineMode.addEventListener("click", () => { setMode("inline"); save(); });
+  liveMode.addEventListener("click", () => { setMode("live"); save(); });
+
+  const panel = el("section", { className: "pb-whiteboard", hidden: !state.whiteboard },
+    el("div", { className: "pb-wb-head" },
+      el("div", { className: "pb-kinds", role: "group", ariaLabel: "Whiteboard mode" }, inlineMode, liveMode),
+      fullScreen),
+    inline, live, status);
+  panel.open = () => { panel.hidden = false; setMode(state.wbMode || "inline"); };
+  panel.unmount = () => { clearTimeout(saveTimer); root?.unmount(); root = null; };
+  setMode(state.wbMode || "inline");
+  return panel;
+}
+
+function renderWhiteboardRow(slide) {
+  const target = document.getElementById("whiteboard-row");
+  if (!whiteboardPanels.has(slide.id)) whiteboardPanels.set(slide.id, renderWhiteboard(slide));
+  const whiteboard = whiteboardPanels.get(slide.id);
+  const toggle = el("button", { className: "pb-link", type: "button" });
+  const showToggle = () => {
+    toggle.textContent = whiteboard.hidden ? "Open ▾" : "Close ▴";
+    toggle.ariaExpanded = String(!whiteboard.hidden);
+    target.classList.toggle("is-open", !whiteboard.hidden);
+  };
+  toggle.addEventListener("click", () => {
+    if (whiteboard.hidden) whiteboard.open(); else whiteboard.hidden = true;
+    showToggle();
+  });
+  showToggle();
+  target.replaceChildren(el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Whiteboard" }), toggle), whiteboard);
+}
+
 function pickPhoto(slide) {
   const input = document.getElementById("photo-input");
   input.value = "";
@@ -561,6 +803,7 @@ function renderSlide(slide) {
     el("p", { className: "pb-step", textContent: `${openOnly ? "Open item" : "Step"} ${index + 1} of ${slides.length} · ${slide.topic}` }),
     el("h2", { className: "pb-question", textContent: slide.question }),
     ...renderContext(slide),
+    el("section", { className: "pb-block pb-wb-block", id: "whiteboard-row" }),
     el("section", { className: "pb-block pb-board", id: "board" }),
   ];
 }
@@ -585,6 +828,7 @@ function toMarkdown() {
       `**${s.topic}**`,
       ...(notes.length ? notes.map(n => line(s, n)) : ["- _Nothing captured_"]),
       ...(photos ? [`- _${photos} whiteboard photo${photos > 1 ? "s" : ""}_`] : []),
+    ...(slideState(s).whiteboard ? [`- _Whiteboard: ${slideState(s).whiteboard.shapes} shapes (${slideState(s).whiteboard.file})_`] : []),
     ].join("\n");
   });
   return [
@@ -595,17 +839,22 @@ function toMarkdown() {
   ].filter(Boolean).join("\n\n") + "\n";
 }
 
-async function copyMarkdown(button) {
-  const text = toMarkdown();
+async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
+    return true;
   } catch {
     const area = el("textarea", { value: text });
     document.body.append(area);
     area.select();
-    document.execCommand("copy");
+    const copied = document.execCommand("copy");
     area.remove();
+    return copied;
   }
+}
+
+async function copyMarkdown(button) {
+  await copyText(toMarkdown());
   button.textContent = "Copied";
   setTimeout(() => { button.textContent = "Copy as Markdown"; }, 2000);
 }
@@ -642,6 +891,8 @@ function copyButton() {
 }
 
 function render() {
+  whiteboardPanels.forEach(panel => panel.unmount());
+  whiteboardPanels.clear();
   const main = document.getElementById("main");
   const onReview = index === reviewIndex();
   const slide = slides[index];
@@ -650,7 +901,7 @@ function render() {
   main.classList.remove("is-entering");
   void main.offsetWidth;
   main.classList.add("is-entering");
-  if (!onReview) renderBoard(slide);
+  if (!onReview) { renderWhiteboardRow(slide); renderBoard(slide); }
   document.getElementById("progress").textContent = deck.issue.tier || "";
   document.getElementById("back").disabled = index === 0;
   const next = document.getElementById("next");
@@ -684,6 +935,8 @@ document.getElementById("back").addEventListener("click", () => go(index - 1));
 document.getElementById("next").addEventListener("click", () => go(index + 1));
 document.addEventListener("keydown", e => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+  // Excalidraw uses the arrow keys to nudge shapes, so they mustn't change slides while it has focus.
+  if (e.target.closest?.(".pb-excalidraw") || document.activeElement?.closest?.(".pb-excalidraw")) return;
   if (e.key === "ArrowRight") go(index + 1);
   if (e.key === "ArrowLeft") go(index - 1);
 });
