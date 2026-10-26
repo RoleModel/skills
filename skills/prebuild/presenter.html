@@ -371,13 +371,14 @@ function renderContext(slide) {
   ];
 }
 
+const isShowing = slide => index !== reviewIndex() && slides[index] === slide;
+
 function removeItem(slide, note, li) {
   const state = slideState(slide);
+  state.notes.splice(state.notes.indexOf(note), 1);
+  save(); renderDots();
   li.classList.add("is-leaving");
-  li.addEventListener("animationend", () => {
-    state.notes.splice(state.notes.indexOf(note), 1);
-    save(); renderDots(); renderBoard(slide);
-  }, { once: true });
+  li.addEventListener("animationend", () => { if (isShowing(slide)) renderBoard(slide); }, { once: true });
 }
 
 function renderItem(slide, note) {
