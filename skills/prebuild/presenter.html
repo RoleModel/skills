@@ -145,7 +145,7 @@
   }
   .pb-item:hover, .pb-item:focus-within { border-color: var(--accent); }
   .pb-item.is-draft { border-style: dashed; border-left-style: dashed; color: var(--muted); }
-  .pb-item.is-open, .pb-item.is-open:hover { border-color: var(--warn); }
+  .pb-item.is-open, .pb-item.is-open:hover { border-color: var(--warn); background: var(--warn-soft); }
   .pb-column[data-tone="good"] .pb-item { border-left-color: var(--good-line); }
   .pb-column[data-tone="bad"] .pb-item { border-left-color: var(--bad-line); }
   .pb-item input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 4px 0; outline: none; font-size: 14px; }
@@ -153,7 +153,6 @@
   .pb-item input[type="checkbox"] { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--good-line); }
   .pb-item select { border: 1px solid var(--border); border-radius: 6px; background: var(--inset); color: var(--muted); font-size: 12px; padding: 2px 4px; }
   .pb-pill { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border: 1px solid; border-radius: 20px; padding: 0 7px; }
-  .pb-pill.open { color: var(--warn); border-color: var(--warn); animation: pb-pop .2s var(--ease) both; }
   .pb-pill.draft { color: var(--muted); border-color: var(--border-strong); }
   .pb-pill.from { color: var(--accent); border-color: var(--accent); }
   .pb-main.is-open-only .pb-item:not(.is-open) { opacity: .55; }
@@ -166,23 +165,39 @@
   }
   .pb-icon:hover { border-color: var(--border); color: var(--accent); }
   .pb-icon.on { color: var(--warn); }
-  .pb-add {
-    width: 100%; min-height: 40px; margin-top: 6px; padding: 8px 12px; border-radius: 6px;
-    border: 1px dashed var(--border-strong); background: transparent; font-size: 14px; transition: border-color .15s, background .15s;
+  .pb-composer {
+    margin-top: 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--inset);
+    transition: border-color .15s;
   }
+  .pb-composer:focus-within { border-color: var(--accent); }
+  .pb-composer.is-open, .pb-composer.is-open:focus-within { border-color: var(--warn); }
+  .pb-kinds { display: flex; gap: 4px; padding: 6px 8px 0; }
+  .pb-kind {
+    border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer;
+    border-radius: 6px; padding: 3px 10px; font-size: 12px; transition: color .15s, background .15s, border-color .15s;
+  }
+  .pb-kind:hover { color: var(--text); }
+  .pb-kind[aria-pressed="true"] { background: var(--panel); border-color: var(--border-strong); color: var(--text); }
+  .pb-kind.question[aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+  .pb-compose-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px 12px; }
+  .pb-add { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; font-size: 14px; outline: none; }
   .pb-add::placeholder { color: var(--faint); }
-  .pb-add:focus { outline: none; border-style: solid; border-color: var(--accent); background: var(--inset); }
-  .pb-add.is-open, .pb-add.is-open:focus { border-color: var(--warn); }
-  .pb-add-row { display: flex; gap: 6px; margin-top: 6px; }
-  .pb-add-row .pb-add { flex: 1; min-width: 0; margin-top: 0; }
-  .pb-open-switch {
-    flex: none; padding: 0 12px; border-radius: 6px; cursor: pointer;
-    border: 1px dashed var(--border-strong); background: transparent; color: var(--muted);
-    font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-    transition: border-color .15s, color .15s, background .15s;
+  .pb-enter-hint { font-size: 11px; color: var(--faint); white-space: nowrap; }
+  .pb-add-btn {
+    flex: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
   }
-  .pb-open-switch:hover { border-color: var(--warn); color: var(--warn); }
-  .pb-open-switch[aria-pressed="true"] { border-style: solid; border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+  .pb-add-btn:hover { filter: brightness(1.1); }
+  .pb-added { font-size: 12px; color: var(--good); opacity: 0; pointer-events: none; }
+  .pb-added.is-showing { animation: pb-added 1.6s ease forwards; }
+  @keyframes pb-added { 0% { opacity: 0; } 15%, 70% { opacity: 1; } 100% { opacity: 0; } }
+  .pb-marker { flex: none; width: 18px; height: 18px; display: grid; place-items: center; }
+  .pb-marker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+  .pb-item.is-open .pb-marker::before {
+    content: "?"; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--warn-soft); border: 1px solid var(--warn); color: var(--warn); font-size: 11px; font-weight: 700;
+    animation: pb-pop .2s var(--ease) both;
+  }
   .pb-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .pb-photos img { height: 64px; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in; animation: pb-pop .25s var(--ease) both; }
   .pb-photos a:hover img, .pb-photos a:focus-visible img { border-color: var(--accent); }
@@ -293,7 +308,17 @@ async function send({ leaving = false } = {}) {
   saved.classList.remove("is-busy");
 }
 
-const flushOnLeave = () => { if (saveTimer) send({ leaving: true }); };
+const commitPendingNotes = () => {
+  document.querySelectorAll(".pb-add").forEach(add => add.commitPending?.());
+  for (const state of Object.values(board?.slides || {})) {
+    const kept = state.notes.filter(n => n.text.trim());
+    if (kept.length !== state.notes.length) { state.notes = kept; save(); }
+  }
+};
+const flushOnLeave = () => {
+  commitPendingNotes();
+  if (saveTimer) send({ leaving: true });
+};
 addEventListener("pagehide", flushOnLeave);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushOnLeave(); });
 
@@ -365,7 +390,9 @@ const isShowing = slide => index !== reviewIndex() && slides[index] === slide;
 
 function removeItem(slide, note, li) {
   const state = slideState(slide);
-  state.notes.splice(state.notes.indexOf(note), 1);
+  const at = state.notes.indexOf(note);
+  if (at === -1) return;
+  state.notes.splice(at, 1);
   save(); renderDots();
   li.classList.add("is-leaving");
   li.addEventListener("animationend", () => { if (isShowing(slide)) renderBoard(slide); }, { once: true });
@@ -393,8 +420,11 @@ function renderItem(slide, note) {
     li.append(box);
   }
 
-  const text = el("input", { type: "text", value: note.text, ariaLabel: "Note" });
+  if (slide.board !== "checklist") li.append(el("span", { className: "pb-marker", ariaHidden: "true" }));
+  const text = el("input", { type: "text", value: note.text, ariaLabel: note.open ? "Open question" : "Note" });
   text.addEventListener("input", () => { note.text = text.value; changed(); });
+  text.addEventListener("blur", () => { if (!note.text.trim()) removeItem(slide, note, li); });
+  text.addEventListener("keydown", e => { if (e.key === "Enter") text.blur(); });
   li.append(text);
   if (draftPill) li.append(draftPill);
   if (note.from) li.append(el("span", { className: "pb-pill from", textContent: note.from }));
@@ -408,8 +438,6 @@ function renderItem(slide, note) {
     }
   }
 
-  const openPill = el("span", { className: "pb-pill open", textContent: "Open" });
-  if (note.open) li.append(openPill);
 
   const actions = el("span", { className: "pb-actions" });
   if (slide.board === "steps") {
@@ -430,7 +458,7 @@ function renderItem(slide, note) {
     note.open = !note.open;
     open.classList.toggle("on", note.open);
     li.classList.toggle("is-open", note.open);
-    note.open ? li.insertBefore(openPill, actions) : openPill.remove();
+    text.ariaLabel = note.open ? "Open question" : "Note";
     changed();
   });
   const remove = el("button", { className: "pb-icon", textContent: "×", title: "Remove" });
@@ -443,25 +471,46 @@ function renderItem(slide, note) {
 function renderColumn(slide, col, tone) {
   const state = slideState(slide);
   const list = el("ul", { className: "pb-items" }, state.notes.filter(n => (n.col ?? null) === col).map(n => renderItem(slide, n)));
-  const add = el("input", { className: "pb-add", type: "text", placeholder: col ? `Add to ${col}…` : "Add a note and press Enter" });
+  const add = el("input", { className: "pb-add", type: "text", placeholder: col ? `Add to ${col}…` : "Write a note…", ariaLabel: "New note" });
   add.dataset.col = col ?? "";
-  const openSwitch = el("button", { className: "pb-open-switch", type: "button", textContent: "Open", title: "Add the next note as an open question" });
-  openSwitch.ariaPressed = "false";
-  const setOpen = on => {
-    openSwitch.ariaPressed = String(on);
-    add.classList.toggle("is-open", on);
+  const noteKind = el("button", { className: "pb-kind", type: "button", textContent: "Note" });
+  const questionKind = el("button", { className: "pb-kind question", type: "button", textContent: "? Open question" });
+  const addButton = el("button", { className: "pb-add-btn", type: "button", textContent: "Add" });
+  const added = el("span", { className: "pb-added", textContent: "Added", ariaLive: "polite" });
+  const composer = el("div", { className: "pb-composer" },
+    el("div", { className: "pb-kinds", role: "group", ariaLabel: "What you're adding" }, noteKind, questionKind),
+    el("div", { className: "pb-compose-row" }, add, added, el("span", { className: "pb-enter-hint", textContent: "Enter ↵" }), addButton));
+  let asQuestion = false;
+  const setKind = question => {
+    asQuestion = question;
+    noteKind.ariaPressed = String(!question);
+    questionKind.ariaPressed = String(question);
+    composer.classList.toggle("is-open", question);
+    add.placeholder = question ? "Write the open question…" : col ? `Add to ${col}…` : "Write a note…";
   };
-  openSwitch.addEventListener("click", () => { setOpen(openSwitch.ariaPressed !== "true"); add.focus(); });
-  add.addEventListener("keydown", e => {
-    if (e.key !== "Enter" || !add.value.trim()) return;
-    const note = { id: uid(), text: add.value.trim(), col };
-    if (openSwitch.ariaPressed === "true") note.open = true;
+  setKind(false);
+  const commit = () => {
+    const text = add.value.trim();
+    if (!text) return;
+    const note = { id: uid(), text, col };
+    if (asQuestion) note.open = true;
     state.notes.push(note);
+    add.value = "";
+    setKind(false);
+    save(); renderDots();
     freshId = note.id;
-    save(); renderDots(); renderBoard(slide, col);
-  });
-  const addRow = el("div", { className: "pb-add-row" }, add, openSwitch);
-  const column = el("div", { className: "pb-column" }, col && el("p", { className: "pb-label", textContent: col }), list, addRow);
+    list.append(renderItem(slide, note));
+    freshId = null;
+    added.classList.remove("is-showing");
+    void added.offsetWidth;
+    added.classList.add("is-showing");
+  };
+  add.commitPending = commit;
+  add.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
+  noteKind.addEventListener("click", () => { setKind(false); add.focus(); });
+  questionKind.addEventListener("click", () => { setKind(true); add.focus(); });
+  addButton.addEventListener("click", () => { commit(); add.focus(); });
+  const column = el("div", { className: "pb-column" }, col && el("p", { className: "pb-label", textContent: col }), list, composer);
   if (tone) column.dataset.tone = tone;
   return column;
 }
@@ -622,6 +671,7 @@ function renderDots() {
 }
 
 function go(i) {
+  commitPendingNotes();
   const target = Math.max(0, Math.min(reviewIndex(), i));
   if (target === index) return;
   direction = target > index ? "next" : "back";

@@ -140,9 +140,10 @@ If port 8765 is taken, pick another and use it in the URLs below.
 Open `http://localhost:8765/` in your client's browser pane if it has one, or
 with `open` if not. Tell the owner:
 - Go through every slide alone and answer what you can on the boards.
-- For anything you can't settle alone, switch on **Open** beside the add box
-  before adding the note (it resets after each note). For an existing note,
-  hover over it and press `?`.
+- For anything you can't settle alone, pick **? Open question** in the box
+  under each board before writing it (it goes back to Note after each one).
+  For an existing note, hover over it and press `?`. Press Enter or **Add**
+  to add a note; anything still typed when you change slides is added too.
 - Use **Add photo** to snap a real whiteboard.
 - Everything saves as you go. Say "done" when you've been through it all.
 
