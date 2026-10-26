@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-build</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --inset: #0d1117; --border: #30363d; --border-strong: #484f58;
+    --text: #c9d1d9; --muted: #8b949e; --faint: #6e7681;
+    --accent: #58a6ff; --accent-soft: #1b2b40;
+    --good: #3fb950; --good-line: #238636; --good-soft: #12261e;
+    --warn: #d29922; --warn-soft: #2b2111;
+    --bad: #f85149; --bad-line: #da3633; --bad-soft: #2d1213;
+    --primary: #238636; --on-primary: #ffffff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --width: 920px;
+    color-scheme: dark;
+    --add-b: var(--good-line); --add-bg: var(--good-soft); --del-b: var(--bad-line); --del-bg: var(--bad-soft);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    background: var(--bg); color: var(--text); font: 14px/1.5 var(--font);
+  }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  code { font: 12px var(--mono); }
+
+  .pb-label { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+  .pb-header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 16px; padding: 12px 20px;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .pb-issue { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pb-progress { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .pb-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .pb-saved { font-size: 12px; color: var(--muted); transition: opacity .2s; }
+  .pb-saved.is-busy { opacity: .5; }
+
+  .pb-btn, .pb-link {
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px;
+    transition: border-color .15s, color .15s, transform .15s var(--ease);
+  }
+  .pb-btn:hover:not(:disabled), .pb-link:hover { border-color: var(--accent); color: var(--accent); }
+  .pb-btn:active:not(:disabled) { transform: scale(.97); }
+  .pb-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+  .pb-btn.primary:hover:not(:disabled) { color: var(--on-primary); filter: brightness(1.1); }
+  .pb-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .pb-link { padding: 3px 10px; font-size: 12px; }
+
+  .pb-footer {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+    padding: 10px 20px; background: var(--panel); border-top: 1px solid var(--border);
+  }
+  .pb-next { justify-self: end; }
+
+  .pb-main { flex: 1; width: 100%; max-width: var(--width); margin: 0 auto; padding: 24px 20px 48px; }
+  .pb-step { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+  .pb-question { margin: 0 0 20px; font-size: 22px; line-height: 1.3; font-weight: 600; text-wrap: balance; }
+
+  .pb-block { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); margin-bottom: 16px; }
+  .pb-block-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+  }
+  .pb-block-body { padding: 14px 16px; }
+
+  .pb-diagram { overflow-x: auto; background: var(--inset); border-radius: 0 0 8px 8px; }
+  .pb-diagram .dbody { overflow-x: auto; }
+  .pb-diagram .dexpand { display: none; }
+  .pb-diagram .dsvg { width: 100%; height: auto; max-height: 52vh; animation: pb-fade .3s ease both; }
+  .pb-diagram-caption { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+  .pb-diagram-problems { margin: 0; padding-left: 18px; color: var(--bad); font: 12px/1.6 var(--mono); }
+  .dcompare { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .dside { border: 1px dashed var(--border); border-radius: 6px; padding: 8px; min-width: 0; }
+  .dsidet { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .dside.after .dsidet { color: var(--accent); }
+  .dsvg { display: block; margin: 0 auto; font-family: var(--font); }
+  .dsvg text { fill: var(--text); font-size: 13px; }
+  .dsvg .dsub { fill: var(--muted); font-size: 11px; }
+  .dsvg .dtag { font-size: 8.5px; letter-spacing: .06em; fill: var(--muted); paint-order: stroke; stroke: var(--inset); stroke-width: 3px; stroke-linejoin: round; }
+  .dsvg.banded .dtag { stroke: var(--panel); }
+  .dsvg .dlayer { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .dsvg .dband { fill: var(--panel); stroke: none; }
+  .dsvg .dn rect { fill: var(--panel); stroke: var(--muted); stroke-width: 1.2; }
+  .dsvg .dn.new rect { fill: var(--good-soft); stroke: var(--good-line); stroke-width: 1.6; }
+  .dsvg .dn.new .dtag { fill: var(--good); }
+  .dsvg .dn.changed rect { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.6; }
+  .dsvg .dn.changed .dtag { fill: var(--warn); }
+  .dsvg .dn.removed rect { fill: var(--bad-soft); stroke: var(--bad-line); stroke-dasharray: 5 4; }
+  .dsvg .dn.removed text { text-decoration: line-through; fill: var(--muted); }
+  .dsvg .dn.removed .dtag { fill: var(--bad); text-decoration: none; }
+  .dsvg .de { fill: none; stroke: var(--muted); stroke-width: 1.4; }
+  .dsvg .de.new { stroke: var(--good-line); } .dsvg .de.changed { stroke: var(--warn); } .dsvg .de.removed { stroke: var(--bad-line); stroke-dasharray: 5 4; }
+  .dsvg .de.reply { stroke-dasharray: 4 3; }
+  .dsvg .dm { fill: var(--muted); } .dsvg .dm.new { fill: var(--good-line); } .dsvg .dm.changed { fill: var(--warn); } .dsvg .dm.removed { fill: var(--bad-line); }
+  .dsvg .dlbl rect { fill: var(--inset); stroke: none; opacity: .9; }
+  .dsvg .dlbl text, .dsvg .dmsg { font-size: 11px; fill: var(--muted); }
+  .dsvg .dlbl.new text { fill: var(--good); } .dsvg .dlbl.changed text { fill: var(--warn); } .dsvg .dlbl.removed text { fill: var(--bad); }
+  .dsvg .dlife { stroke: var(--border); stroke-dasharray: 3 4; }
+  .dsvg .ddiv { stroke: var(--border); }
+  .dsvg .dlbl.div text { fill: var(--text); font-weight: 600; }
+  .dlegend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .dk i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; border: 1.5px solid var(--muted); margin-right: 6px; vertical-align: -1px; }
+  .dk.new i { border-color: var(--good-line); background: var(--good-soft); }
+  .dk.changed i { border-color: var(--warn); background: var(--warn-soft); }
+  .dk.removed i { border-color: var(--bad-line); border-style: dashed; }
+
+  .pb-fact-group { border-left: 3px solid var(--border-strong); }
+  .pb-fact-group[data-kind="gap"] { border-left-color: var(--warn); }
+  .pb-fact-group[data-kind="gap"] .pb-label { color: var(--warn); }
+  .pb-fact-group[data-kind="constraint"] { border-left-color: var(--accent); }
+  .pb-fact-group[data-kind="constraint"] .pb-label { color: var(--accent); }
+  .pb-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pb-facts { margin: 0; padding: 0; list-style: none; }
+  .pb-fact {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .pb-fact:last-child { border-bottom: 0; }
+  .pb-fact code { flex: none; max-width: 45%; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+  [data-kind="context"] .pb-fact { color: var(--muted); }
+  .pb-consider { margin-bottom: 16px; font-size: 13px; }
+  .pb-consider summary { cursor: pointer; color: var(--muted); }
+  .pb-consider p { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 6px 6px 0; }
+
+  .pb-board { margin-top: 0; }
+  .pb-columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .pb-column .pb-label { margin-bottom: 8px; }
+  .pb-column[data-tone="good"] .pb-label { color: var(--good); }
+  .pb-column[data-tone="bad"] .pb-label { color: var(--bad); }
+
+  .pb-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .pb-item {
+    display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 12px;
+    background: var(--inset); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 6px;
+    transition: border-color .15s;
+  }
+  .pb-item:hover, .pb-item:focus-within { border-color: var(--accent); }
+  .pb-item.is-draft { border-style: dashed; border-left-style: dashed; color: var(--muted); }
+  .pb-item.is-open, .pb-item.is-open:hover { border-color: var(--warn); background: var(--warn-soft); }
+  .pb-column[data-tone="good"] .pb-item { border-left-color: var(--good-line); }
+  .pb-column[data-tone="bad"] .pb-item { border-left-color: var(--bad-line); }
+  .pb-item input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 4px 0; outline: none; font-size: 14px; }
+  .pb-item.is-done input[type="text"] { text-decoration: line-through; color: var(--muted); }
+  .pb-item input[type="checkbox"] { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--good-line); }
+  .pb-item select { border: 1px solid var(--border); border-radius: 6px; background: var(--inset); color: var(--muted); font-size: 12px; padding: 2px 4px; }
+  .pb-pill { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border: 1px solid; border-radius: 20px; padding: 0 7px; }
+  .pb-pill.draft { color: var(--muted); border-color: var(--border-strong); }
+  .pb-pill.from { color: var(--accent); border-color: var(--accent); }
+  .pb-main.is-open-only .pb-item:not(.is-open) { opacity: .55; }
+  .pb-main.is-open-only .pb-item:not(.is-open):hover, .pb-main.is-open-only .pb-item:not(.is-open):focus-within { opacity: 1; }
+  .pb-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+  .pb-item:hover .pb-actions, .pb-item:focus-within .pb-actions { opacity: 1; }
+  .pb-icon {
+    width: 26px; height: 26px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer;
+    color: var(--muted); font-size: 13px; line-height: 1; transition: border-color .15s, color .15s;
+  }
+  .pb-icon:hover { border-color: var(--border); color: var(--accent); }
+  .pb-icon.on { color: var(--warn); }
+  .pb-composer {
+    margin-top: 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--inset);
+    transition: border-color .15s;
+  }
+  .pb-composer:focus-within { border-color: var(--accent); }
+  .pb-composer.is-open, .pb-composer.is-open:focus-within { border-color: var(--warn); }
+  .pb-kinds { display: flex; gap: 4px; padding: 6px 8px 0; }
+  .pb-kind {
+    border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer;
+    border-radius: 6px; padding: 3px 10px; font-size: 12px; transition: color .15s, background .15s, border-color .15s;
+  }
+  .pb-kind:hover { color: var(--text); }
+  .pb-kind[aria-pressed="true"] { background: var(--panel); border-color: var(--border-strong); color: var(--text); }
+  .pb-kind.question[aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+  .pb-compose-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px 12px; }
+  .pb-add { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; font-size: 14px; outline: none; }
+  .pb-add::placeholder { color: var(--faint); }
+  .pb-enter-hint { font-size: 11px; color: var(--faint); white-space: nowrap; }
+  .pb-add-btn {
+    flex: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary);
+  }
+  .pb-add-btn:hover { filter: brightness(1.1); }
+  .pb-added { font-size: 12px; color: var(--good); opacity: 0; pointer-events: none; }
+  .pb-added.is-showing { animation: pb-added 1.6s ease forwards; }
+  @keyframes pb-added { 0% { opacity: 0; } 15%, 70% { opacity: 1; } 100% { opacity: 0; } }
+  .pb-marker { flex: none; width: 18px; height: 18px; display: grid; place-items: center; }
+  .pb-marker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+  .pb-item.is-open .pb-marker::before {
+    content: "?"; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--warn-soft); border: 1px solid var(--warn); color: var(--warn); font-size: 11px; font-weight: 700;
+    animation: pb-pop .2s var(--ease) both;
+  }
+  .pb-wb-block { margin-top: 24px; }
+  .pb-wb-block:not(.is-open) .pb-block-head { border-bottom: 0; }
+  .pb-whiteboard { padding: 14px 16px; }
+  .pb-wb-steps { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .pb-steps-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .pb-step-row { display: flex; gap: 12px; align-items: flex-start; }
+  .pb-step-num {
+    flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    border: 1px solid var(--border-strong); color: var(--muted); font-size: 12px; font-weight: 600;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .pb-step-row.is-done .pb-step-num { background: var(--good-soft); border-color: var(--good-line); color: var(--good); font-size: 0; }
+  .pb-step-row.is-done .pb-step-num::before { content: "✓"; font-size: 12px; }
+  .pb-step-body { flex: 1; min-width: 0; }
+  .pb-step-title { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+  .pb-step-help { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .pb-step-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .pb-step-actions a.pb-btn { text-decoration: none; display: inline-block; }
+  .pb-step-body .pb-wb-paste { margin-top: 8px; }
+  .pb-wb-paste {
+    width: 100%; max-height: 180px; resize: vertical; padding: 8px 10px; border-radius: 6px; font: 12px/1.45 var(--mono);
+    border: 1px dashed var(--border-strong); background: transparent; color: var(--text);
+  }
+  .pb-wb-paste:focus { outline: none; border-style: solid; border-color: var(--accent); }
+  .pb-wb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .pb-wb-head .pb-kinds { padding: 0; }
+  .pb-wb-head .pb-kind[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .pb-wb-inline { margin-bottom: 10px; background: var(--inset); }
+  .pb-excalidraw { height: 520px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .pb-wb-inline:fullscreen { padding: 0; }
+  .pb-wb-inline:fullscreen .pb-excalidraw, .pb-wb-inline.is-fullscreen .pb-excalidraw { height: 100vh; border: 0; border-radius: 0; }
+  .pb-wb-inline { position: relative; }
+  .pb-wb-inline.is-fullscreen { position: fixed; inset: 0; z-index: 50; margin: 0; }
+  .pb-wb-exit { display: none; position: absolute; top: 12px; right: 76px; z-index: 5; }
+  .pb-wb-inline:fullscreen .pb-wb-exit, .pb-wb-inline.is-fullscreen .pb-wb-exit { display: block; }
+  .pb-wb-status { margin: 0; font-size: 13px; color: var(--muted); }
+  .pb-wb-status strong { color: var(--good); font-weight: 600; }
+  .pb-wb-status a { color: var(--accent); }
+  .pb-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pb-photos img { height: 64px; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in; animation: pb-pop .25s var(--ease) both; }
+  .pb-photos a:hover img, .pb-photos a:focus-visible img { border-color: var(--accent); }
+  .pb-photos a { border-radius: 6px; }
+
+  .pb-dots { display: flex; gap: 6px; align-items: center; justify-content: center; }
+  .pb-dot { width: 8px; height: 8px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; background: var(--border); transition: width .25s var(--ease), background .25s; }
+  .pb-dot.touched { background: var(--muted); }
+  .pb-dot.current { width: 22px; background: var(--accent); }
+
+  .pb-review ul { margin: 0; padding: 0; list-style: none; }
+  .pb-review li { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .pb-review li:last-child { border-bottom: 0; }
+  .pb-review li.is-open { box-shadow: inset 3px 0 0 var(--warn); }
+  .pb-empty { margin: 0; padding: 8px 14px; color: var(--muted); font-size: 13px; }
+  .pb-review-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+  .pb-review-foot .pb-empty { padding: 0; }
+  .pb-error { margin: 15vh auto; text-align: center; color: var(--muted); }
+
+  @keyframes pb-fade { from { opacity: 0; } }
+  @keyframes pb-rise { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes pb-in-next { from { opacity: 0; transform: translateX(16px); } }
+  @keyframes pb-in-back { from { opacity: 0; transform: translateX(-16px); } }
+  @keyframes pb-pop { from { opacity: 0; transform: scale(.95); } }
+  @keyframes pb-leave { to { opacity: 0; transform: translateX(8px); } }
+  .pb-main.is-entering > * { animation: pb-in-next .3s var(--ease) both; }
+  .pb-main.is-entering[data-dir="back"] > * { animation-name: pb-in-back; }
+  .pb-main.is-entering > :nth-child(2) { animation-delay: .04s; }
+  .pb-main.is-entering > :nth-child(3) { animation-delay: .08s; }
+  .pb-main.is-entering > :nth-child(4) { animation-delay: .12s; }
+  .pb-main.is-entering > :nth-child(n+5) { animation-delay: .16s; }
+  .pb-item.is-new { animation: pb-rise .2s var(--ease) both; }
+  .pb-item.is-leaving { animation: pb-leave .15s ease-in forwards; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
+  }
+
+  @media (max-width: 760px) {
+    .pb-main { padding: 16px 16px 32px; }
+    .pb-question { font-size: 19px; }
+    .pb-header, .pb-footer { padding: 10px 16px; }
+    .pb-progress { display: none; }
+    .pb-fact { flex-direction: column; gap: 2px; }
+    .pb-fact code { max-width: none; text-align: left; }
+    .pb-actions { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<header class="pb-header">
+  <h1 class="pb-issue" id="issue">Loading…</h1>
+  <span class="pb-progress" id="progress"></span>
+  <span class="pb-pill open" id="mode" hidden title="Showing only slides with open notes. Remove ?open from the URL to see everything.">Open only</span>
+  <div class="pb-tools">
+    <span class="pb-saved" id="saved"></span>
+  </div>
+</header>
+<main class="pb-main" id="main"></main>
+<footer class="pb-footer">
+  <span><button class="pb-btn" id="back">← Back</button></span>
+  <div class="pb-dots" id="dots"></div>
+  <button class="pb-btn primary pb-next" id="next">Next →</button>
+</footer>
+<input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+
+<script src="diagrams.js"></script>
+<script src="whiteboard.js"></script>
+<script type="module">
+const LEVELS = ["", "L", "M", "H"];
+const FACT_KINDS = [["gap", "Gaps"], ["constraint", "Constraints"], ["context", "Context"]];
+let deck, board, saveTimer, freshId;
+let slides = [];
+let index = 0;
+const openOnly = new URLSearchParams(location.search).has("open");
+let direction = "next";
+
+const el = (tag, attrs = {}, ...children) => {
+  const node = Object.assign(document.createElement(tag), attrs);
+  node.append(...children.flat().filter(c => c !== null && c !== undefined && c !== false && c !== ""));
+  return node;
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const slideState = slide => board.slides[slide.id];
+const reviewIndex = () => slides.length;
+const hasOpen = slide => slideState(slide).notes.some(n => n.open && !n.draft);
+
+function save() {
+  if (!openOnly) board.index = index;
+  const saved = document.getElementById("saved");
+  saved.textContent = "Saving…";
+  saved.classList.add("is-busy");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => send(), 400);
+}
+
+async function send({ leaving = false } = {}) {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  board.rev = (board.rev || 0) + 1;
+  const request = fetch("board.json", { method: "PUT", body: JSON.stringify(board, null, 2), keepalive: leaving });
+  if (leaving) return;
+  const saved = document.getElementById("saved");
+  try {
+    const res = await request;
+    saved.textContent = res.ok || res.status === 409 ? "All changes saved" : "Not saved";
+  } catch {
+    saved.textContent = "Not saved — is the server running?";
+  }
+  saved.classList.remove("is-busy");
+}
+
+const commitPendingNotes = () => {
+  document.querySelectorAll(".pb-add").forEach(add => add.commitPending?.());
+  for (const state of Object.values(board?.slides || {})) {
+    const kept = state.notes.filter(n => n.text.trim());
+    if (kept.length !== state.notes.length) { state.notes = kept; save(); }
+  }
+};
+const flushOnLeave = () => {
+  commitPendingNotes();
+  if (saveTimer) send({ leaving: true });
+};
+addEventListener("pagehide", flushOnLeave);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushOnLeave(); });
+
+async function load() {
+  try {
+    deck = await (await fetch("deck.json")).json();
+    board = await (await fetch("board.json")).json();
+  } catch {
+    document.getElementById("main").replaceChildren(el("p", { className: "pb-error",
+      textContent: "Couldn't load the deck. Open this through serve.py, not as a file." }));
+    return;
+  }
+  board.slides ||= {};
+  for (const slide of deck.slides) {
+    board.slides[slide.id] ||= {
+      notes: [
+        ...(slide.notes || []).map(n => ({ id: uid(), text: n.text, col: n.col ?? null, open: !!n.open, from: n.from })),
+        ...(slide.seed || []).map(n => ({ id: uid(), text: n.text, col: n.col ?? null, draft: true })),
+      ],
+      photos: [],
+    };
+  }
+  slides = openOnly ? deck.slides.filter(hasOpen) : deck.slides;
+  index = openOnly ? 0 : Math.min(board.index || 0, reviewIndex());
+  document.getElementById("main").classList.toggle("is-open-only", openOnly);
+  document.getElementById("mode").hidden = !openOnly;
+  document.getElementById("issue").textContent = `${deck.issue.id} · ${deck.issue.title}`;
+  document.title = `Pre-build · ${deck.issue.id}`;
+  render();
+}
+
+const block = (heading, aside, ...body) =>
+  el("section", { className: "pb-block" }, el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: heading }), aside), ...body);
+
+function renderDiagram(d) {
+  const problems = typeof DIAG === "object" ? DIAG.problems(d) : ["diagrams.js didn't load"];
+  if (problems.length) {
+    return el("div", { className: "pb-diagram pb-block-body" },
+      el("ul", { className: "pb-diagram-problems" }, problems.map(p => el("li", { textContent: p }))));
+  }
+  const body = DIAG.body(d);
+  for (const [status, text] of Object.entries(d.legend || {})) {
+    body.querySelectorAll(`.dk.${status}`).forEach(key => key.replaceChildren(el("i"), text));
+    body.querySelectorAll(`.dn.${status} .dtag`).forEach(tag => { tag.textContent = text.toUpperCase(); });
+  }
+  return el("div", { className: "pb-diagram pb-block-body" }, body,
+    d.caption && el("p", { className: "pb-diagram-caption", textContent: d.caption }));
+}
+
+function renderContext(slide) {
+  return [
+    slide.diagram && block(slide.diagram.title || "Diagram", null, renderDiagram(slide.diagram)),
+    ...FACT_KINDS.map(([kind, heading]) => {
+      const facts = (slide.facts || []).filter(f => (FACT_KINDS.some(([k]) => k === f.kind) ? f.kind : "context") === kind);
+      if (!facts.length) return null;
+      const group = block(heading, el("span", { className: "pb-count", textContent: String(facts.length) }),
+        el("ul", { className: "pb-facts" }, facts.map(f =>
+          el("li", { className: "pb-fact" }, el("span", { textContent: f.text }), f.ref && el("code", { textContent: f.ref })))));
+      group.classList.add("pb-fact-group");
+      group.dataset.kind = kind;
+      return group;
+    }),
+    slide.consider && el("details", { className: "pb-consider" },
+      el("summary", { textContent: "Did you consider…" }), el("p", { textContent: slide.consider })),
+  ];
+}
+
+const isShowing = slide => index !== reviewIndex() && slides[index] === slide;
+
+function removeItem(slide, note, li) {
+  const state = slideState(slide);
+  const at = state.notes.indexOf(note);
+  if (at === -1) return;
+  state.notes.splice(at, 1);
+  save(); renderDots();
+  li.classList.add("is-leaving");
+  li.addEventListener("animationend", () => { if (isShowing(slide)) renderBoard(slide); }, { once: true });
+}
+
+function renderItem(slide, note) {
+  const state = slideState(slide);
+  const li = el("li", { className: ["pb-item", note.draft && "is-draft", note.open && "is-open", note.done && "is-done",
+    note.id === freshId && "is-new"].filter(Boolean).join(" ") });
+  const draftPill = note.draft ? el("span", { className: "pb-pill draft", textContent: "Draft" }) : null;
+  const keep = note.draft ? el("button", { className: "pb-icon", textContent: "✓", title: "Keep this draft" }) : null;
+  const accept = () => {
+    if (!note.draft) return;
+    note.draft = false;
+    li.classList.remove("is-draft");
+    draftPill.remove();
+    keep.remove();
+  };
+  const changed = () => { accept(); save(); renderDots(); };
+  keep?.addEventListener("click", changed);
+
+  if (slide.board === "checklist") {
+    const box = el("input", { type: "checkbox", checked: !!note.done, title: "Done" });
+    box.addEventListener("change", () => { note.done = box.checked; li.classList.toggle("is-done", note.done); changed(); });
+    li.append(box);
+  }
+
+  if (slide.board !== "checklist") li.append(el("span", { className: "pb-marker", ariaHidden: "true" }));
+  const text = el("input", { type: "text", value: note.text, ariaLabel: note.open ? "Open question" : "Note" });
+  text.addEventListener("input", () => { note.text = text.value; changed(); });
+  text.addEventListener("blur", () => { if (!note.text.trim()) removeItem(slide, note, li); });
+  text.addEventListener("keydown", e => { if (e.key === "Enter") text.blur(); });
+  li.append(text);
+  if (draftPill) li.append(draftPill);
+  if (note.from) li.append(el("span", { className: "pb-pill from", textContent: note.from }));
+
+  if (slide.board === "risks") {
+    for (const [key, label] of [["likelihood", "Likelihood"], ["impact", "Impact"]]) {
+      const select = el("select", { title: label }, LEVELS.map(l => el("option", { value: l, textContent: `${label}: ${l || "?"}` })));
+      select.value = note[key] || "";
+      select.addEventListener("change", () => { note[key] = select.value; changed(); });
+      li.append(select);
+    }
+  }
+
+
+  const actions = el("span", { className: "pb-actions" });
+  if (slide.board === "steps") {
+    for (const [label, delta, title] of [["↑", -1, "Move up"], ["↓", 1, "Move down"]]) {
+      const move = el("button", { className: "pb-icon", textContent: label, title });
+      move.addEventListener("click", () => {
+        const i = state.notes.indexOf(note), j = i + delta;
+        if (j < 0 || j >= state.notes.length) return;
+        [state.notes[i], state.notes[j]] = [state.notes[j], state.notes[i]];
+        freshId = note.id;
+        changed(); renderBoard(slide);
+      });
+      actions.append(move);
+    }
+  }
+  const open = el("button", { className: `pb-icon${note.open ? " on" : ""}`, textContent: "?", title: "Mark as open question" });
+  open.addEventListener("click", () => {
+    note.open = !note.open;
+    open.classList.toggle("on", note.open);
+    li.classList.toggle("is-open", note.open);
+    text.ariaLabel = note.open ? "Open question" : "Note";
+    changed();
+  });
+  const remove = el("button", { className: "pb-icon", textContent: "×", title: "Remove" });
+  remove.addEventListener("click", () => removeItem(slide, note, li));
+  actions.append(...[keep, open, remove].filter(Boolean));
+  li.append(actions);
+  return li;
+}
+
+function renderColumn(slide, col, tone) {
+  const state = slideState(slide);
+  const list = el("ul", { className: "pb-items" }, state.notes.filter(n => (n.col ?? null) === col).map(n => renderItem(slide, n)));
+  const add = el("input", { className: "pb-add", type: "text", placeholder: col ? `Add to ${col}…` : "Write a note…", ariaLabel: "New note" });
+  add.dataset.col = col ?? "";
+  const noteKind = el("button", { className: "pb-kind", type: "button", textContent: "Note" });
+  const questionKind = el("button", { className: "pb-kind question", type: "button", textContent: "? Open question" });
+  const addButton = el("button", { className: "pb-add-btn", type: "button", textContent: "Add" });
+  const added = el("span", { className: "pb-added", textContent: "Added", ariaLive: "polite" });
+  const composer = el("div", { className: "pb-composer" },
+    el("div", { className: "pb-kinds", role: "group", ariaLabel: "What you're adding" }, noteKind, questionKind),
+    el("div", { className: "pb-compose-row" }, add, added, el("span", { className: "pb-enter-hint", textContent: "Enter ↵" }), addButton));
+  let asQuestion = false;
+  const setKind = question => {
+    asQuestion = question;
+    noteKind.ariaPressed = String(!question);
+    questionKind.ariaPressed = String(question);
+    composer.classList.toggle("is-open", question);
+    add.placeholder = question ? "Write the open question…" : col ? `Add to ${col}…` : "Write a note…";
+  };
+  setKind(false);
+  const commit = () => {
+    const text = add.value.trim();
+    if (!text) return;
+    const note = { id: uid(), text, col };
+    if (asQuestion) note.open = true;
+    state.notes.push(note);
+    add.value = "";
+    setKind(false);
+    save(); renderDots();
+    freshId = note.id;
+    list.append(renderItem(slide, note));
+    freshId = null;
+    added.classList.remove("is-showing");
+    void added.offsetWidth;
+    added.classList.add("is-showing");
+  };
+  add.commitPending = commit;
+  add.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
+  noteKind.addEventListener("click", () => { setKind(false); add.focus(); });
+  questionKind.addEventListener("click", () => { setKind(true); add.focus(); });
+  addButton.addEventListener("click", () => { commit(); add.focus(); });
+  const column = el("div", { className: "pb-column" }, col && el("p", { className: "pb-label", textContent: col }), list, composer);
+  if (tone) column.dataset.tone = tone;
+  return column;
+}
+
+function renderBoard(slide, focusCol) {
+  const target = document.getElementById("board");
+  const columns = slide.board === "columns" ? slide.columns || ["In", "Out"] : [null];
+  const tones = slide.tones || (slide.board === "columns" && columns.length === 2 ? ["good", "bad"] : []);
+  const addPhoto = el("button", { className: "pb-link", textContent: "+ Add photo" });
+  addPhoto.addEventListener("click", () => pickPhoto(slide));
+  const photos = slideState(slide).photos;
+  target.replaceChildren(
+    el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Notes" }), addPhoto),
+    el("div", { className: "pb-block-body" },
+      el("div", { className: `pb-columns pb-${slide.board || "stickies"}` }, columns.map((c, i) => renderColumn(slide, c, tones[i]))),
+      photos.length > 0 && el("div", { className: "pb-photos" }, photos.map((name, i) =>
+        el("a", { href: `photos/${name}`, target: "_blank", rel: "noopener", title: "Open full size" },
+          el("img", { src: `photos/${name}`, alt: `Whiteboard photo ${i + 1}` }))))),
+  );
+  freshId = null;
+  if (focusCol !== undefined) target.querySelector(`.pb-add[data-col="${focusCol ?? ""}"]`)?.focus();
+}
+
+const EXCALIDRAW = "https://esm.sh/@excalidraw/excalidraw@0.17.6?deps=react@18.3.1,react-dom@18.3.1";
+let excalidrawLib;
+const loadExcalidraw = () => (excalidrawLib ||= Promise.all([
+  import("https://esm.sh/react@18.3.1"),
+  import("https://esm.sh/react-dom@18.3.1/client"),
+  import(EXCALIDRAW),
+]).then(([react, reactDom, lib]) => ({
+  React: react.default || react,
+  createRoot: (reactDom.default || reactDom).createRoot,
+  Excalidraw: lib.Excalidraw || lib.default?.Excalidraw,
+})));
+
+const whiteboardPanels = new Map();
+
+function renderWhiteboard(slide) {
+  const state = slideState(slide);
+  let latest = null;
+  let root = null;
+  const status = el("p", { className: "pb-wb-status" });
+  const showSaved = () => {
+    const wb = state.whiteboard;
+    status.replaceChildren(...(wb
+      ? [el("strong", { textContent: "Board saved" }), ` · ${wb.shapes} shapes`, wb.labels.length ? ` · ${wb.labels.slice(0, 4).map(l => l.length > 28 ? l.slice(0, 27) + "…" : l).join(", ")}${wb.labels.length > 4 ? "…" : ""}` : "",
+        " · ", el("a", { href: wb.file, download: "", textContent: "Download" })]
+      : ["No board saved for this slide yet."]));
+  };
+  showSaved();
+
+  const persist = async elements => {
+    latest = elements;
+    const file = `whiteboards/${slide.id}.excalidraw`;
+    const res = await fetch(file, { method: "POST", body: WHITEBOARD.file(elements) });
+    if (!res.ok) { status.textContent = "Board not saved — is the server running?"; return false; }
+    state.whiteboard = { file, ...WHITEBOARD.summary(elements), savedAt: new Date().toISOString() };
+    save(); renderDots(); showSaved();
+    return true;
+  };
+  const seed = () => {
+    const elements = WHITEBOARD.seedFromSlide(slide, document.querySelector(".pb-diagram"));
+    fetch(`whiteboards/${slide.id}.seed.excalidraw`, { method: "POST", body: WHITEBOARD.file(elements) });
+    return elements;
+  };
+  const loadSaved = async () => {
+    if (latest || !state.whiteboard) return latest;
+    const textValue = await fetch(state.whiteboard.file).then(r => (r.ok ? r.text() : "")).catch(() => "");
+    latest = WHITEBOARD.parse(textValue);
+    return latest;
+  };
+
+  // Inline: an Excalidraw editor in the slide, saved as you draw.
+  const canvas = el("div", { className: "pb-excalidraw" }, el("p", { className: "pb-wb-steps", textContent: "Loading the whiteboard…" }));
+  const fullScreen = el("button", { className: "pb-link", type: "button", textContent: "Full screen ⤢" });
+  const exitFullScreen = el("button", { className: "pb-btn pb-wb-exit", type: "button", textContent: "Exit full screen" });
+  const inline = el("div", { className: "pb-wb-inline" }, canvas, exitFullScreen);
+  const leaveFullScreen = () => {
+    if (document.fullscreenElement === inline) document.exitFullscreen();
+    inline.classList.remove("is-fullscreen");
+  };
+  // Fill the window instead when the browser refuses real full screen (embedded panes often do).
+  fullScreen.addEventListener("click", () => {
+    const fallback = () => { if (document.fullscreenElement !== inline) inline.classList.add("is-fullscreen"); };
+    if (!inline.requestFullscreen) return fallback();
+    inline.requestFullscreen().catch(fallback);
+    setTimeout(fallback, 600);
+  });
+  document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement === inline) inline.classList.remove("is-fullscreen"); });
+  exitFullScreen.addEventListener("click", leaveFullScreen);
+  inline.addEventListener("keydown", e => { if (e.key === "Escape" && inline.classList.contains("is-fullscreen")) leaveFullScreen(); });
+  let saveTimer = null, lastSignature = "", touched = false;
+  // Excalidraw fires changes on its own while loading (fonts resize text), so only save after someone uses the board.
+  ["pointerdown", "keydown", "paste", "drop"].forEach(type => canvas.addEventListener(type, () => { touched = true; }, true));
+  const scheduleSave = elements => {
+    if (!touched) return;
+    const live = elements.filter(e => !e.isDeleted);
+    const signature = live.map(e => e.id + ":" + e.version).join(",");
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+    clearTimeout(saveTimer);
+    status.textContent = "Saving…";
+    saveTimer = setTimeout(() => persist(JSON.parse(JSON.stringify(live))), 700);
+  };
+  const mountInline = async () => {
+    if (root) return;
+    try {
+      const lib = await loadExcalidraw();
+      const elements = (await loadSaved()) || seed();
+      touched = false;
+      canvas.replaceChildren();
+      root = lib.createRoot(canvas);
+      root.render(lib.React.createElement(lib.Excalidraw, {
+        initialData: { elements, appState: { viewBackgroundColor: "#ffffff" }, scrollToContent: true },
+        theme: "dark",
+        onChange: scheduleSave,
+        excalidrawAPI: api => setTimeout(() => api.scrollToContent(undefined, { fitToContent: true }), 60),
+      }));
+    } catch {
+      canvas.replaceChildren(el("p", { className: "pb-wb-steps",
+        textContent: "Couldn't load Excalidraw (it needs an internet connection the first time). Use Live session, or add a photo instead." }));
+    }
+  };
+
+  // Live session: hand the board to excalidraw.com and take it back by pasting.
+  const step = (n, title, help, ...actions) => {
+    const row = el("li", { className: "pb-step-row" },
+      el("span", { className: "pb-step-num", textContent: String(n) }),
+      el("div", { className: "pb-step-body" },
+        el("p", { className: "pb-step-title", textContent: title }),
+        help && el("p", { className: "pb-step-help", textContent: help }),
+        actions.length > 0 && el("div", { className: "pb-step-actions" }, actions)));
+    row.done = () => row.classList.add("is-done");
+    return row;
+  };
+  const copy = el("button", { className: "pb-btn", type: "button", textContent: "Copy board" });
+  const open = el("a", { className: "pb-btn", href: "https://excalidraw.com", target: "_blank", rel: "noopener", textContent: "Open excalidraw.com ↗" });
+  const copyStep = step(1, "Copy this slide's board",
+    "Copies what's drawn inline, or the slide's starting board if nothing is.", copy);
+  const openStep = step(2, "Open Excalidraw and paste it",
+    "In the new tab, click the canvas and press ⌘V.", open);
+  const shareStep = step(3, "Start the live session",
+    "In Excalidraw: Live collaboration → Start session, then send the link to your teammate.");
+  copy.addEventListener("click", async () => {
+    if (await copyText(WHITEBOARD.clipboardText(latest || seed()))) {
+      copy.textContent = "Copied ✓";
+      copyStep.done();
+    } else {
+      copy.textContent = "Couldn't copy — try again";
+    }
+  });
+  open.addEventListener("click", () => openStep.done());
+  const paste = el("textarea", { className: "pb-wb-paste", rows: 4, spellcheck: false,
+    placeholder: "Paste the finished board here" });
+  const upload = el("input", { type: "file", accept: ".excalidraw,application/json", hidden: true });
+  const uploadLink = el("button", { className: "pb-link", type: "button", textContent: "or upload a .excalidraw file" });
+  uploadLink.addEventListener("click", () => upload.click());
+  const saveText = async textValue => {
+    const elements = WHITEBOARD.parse(textValue);
+    if (!elements) { status.textContent = "That isn't an Excalidraw board. Copy it from Excalidraw (select all, copy) and paste again."; return; }
+    if (!(await persist(elements))) return;
+    backStep.done();
+    if (root) { root.unmount(); root = null; }
+  };
+  // A paste replaces the whole box, so a new board never mixes with the one already shown.
+  paste.addEventListener("paste", e => {
+    e.preventDefault();
+    paste.value = e.clipboardData.getData("text");
+    saveText(paste.value);
+  });
+  paste.addEventListener("change", () => saveText(paste.value));
+  upload.addEventListener("change", async () => {
+    if (!upload.files[0]) return;
+    paste.value = await upload.files[0].text();
+    saveText(paste.value);
+  });
+  const backStep = step(4, "Bring the finished board back",
+    "When you're done, in Excalidraw select all (⌘A) and copy (⌘C), then paste below. It saves straight away.");
+  backStep.querySelector(".pb-step-body").append(paste, el("div", { className: "pb-step-actions" }, uploadLink, upload));
+  const live = el("div", { className: "pb-wb-live" },
+    el("ol", { className: "pb-steps-list" }, copyStep, openStep, shareStep, backStep));
+
+  const inlineMode = el("button", { className: "pb-kind", type: "button", textContent: "Inline" });
+  const liveMode = el("button", { className: "pb-kind", type: "button", textContent: "Live session" });
+  const setMode = mode => {
+    state.wbMode = mode;
+    inlineMode.ariaPressed = String(mode === "inline");
+    liveMode.ariaPressed = String(mode === "live");
+    inline.hidden = mode !== "inline";
+    fullScreen.hidden = mode !== "inline";
+    live.hidden = mode !== "live";
+    if (mode === "inline" && !panel.hidden) mountInline();
+    if (mode === "live") loadSaved().then(elements => { if (elements) paste.value = WHITEBOARD.file(elements); });
+  };
+  inlineMode.addEventListener("click", () => { setMode("inline"); save(); });
+  liveMode.addEventListener("click", () => { setMode("live"); save(); });
+
+  const panel = el("section", { className: "pb-whiteboard", hidden: !state.whiteboard },
+    el("div", { className: "pb-wb-head" },
+      el("div", { className: "pb-kinds", role: "group", ariaLabel: "Whiteboard mode" }, inlineMode, liveMode),
+      fullScreen),
+    inline, live, status);
+  panel.open = () => { panel.hidden = false; setMode(state.wbMode || "inline"); };
+  panel.unmount = () => { clearTimeout(saveTimer); root?.unmount(); root = null; };
+  setMode(state.wbMode || "inline");
+  return panel;
+}
+
+function renderWhiteboardRow(slide) {
+  const target = document.getElementById("whiteboard-row");
+  if (!whiteboardPanels.has(slide.id)) whiteboardPanels.set(slide.id, renderWhiteboard(slide));
+  const whiteboard = whiteboardPanels.get(slide.id);
+  const toggle = el("button", { className: "pb-link", type: "button" });
+  const showToggle = () => {
+    toggle.textContent = whiteboard.hidden ? "Open ▾" : "Close ▴";
+    toggle.ariaExpanded = String(!whiteboard.hidden);
+    target.classList.toggle("is-open", !whiteboard.hidden);
+  };
+  toggle.addEventListener("click", () => {
+    if (whiteboard.hidden) whiteboard.open(); else whiteboard.hidden = true;
+    showToggle();
+  });
+  showToggle();
+  target.replaceChildren(el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Whiteboard" }), toggle), whiteboard);
+}
+
+function pickPhoto(slide) {
+  const input = document.getElementById("photo-input");
+  input.value = "";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = Object.assign(document.createElement("canvas"), { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) });
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
+    const name = `${slide.id}-${Date.now()}.jpg`;
+    const res = await fetch(`photos/${name}`, { method: "POST", body: blob });
+    if (!res.ok) { document.getElementById("saved").textContent = "Photo not saved"; return; }
+    slideState(slide).photos.push(name);
+    save(); renderDots();
+    if (isShowing(slide)) renderBoard(slide);
+    else if (index === reviewIndex()) render();
+  };
+  input.click();
+}
+
+function renderSlide(slide) {
+  return [
+    el("p", { className: "pb-step", textContent: `${openOnly ? "Open item" : "Step"} ${index + 1} of ${slides.length} · ${slide.topic}` }),
+    el("h2", { className: "pb-question", textContent: slide.question }),
+    ...renderContext(slide),
+    el("section", { className: "pb-block pb-wb-block", id: "whiteboard-row" }),
+    el("section", { className: "pb-block pb-board", id: "board" }),
+  ];
+}
+
+function describe(note) {
+  const rating = note.likelihood || note.impact ? ` · L:${note.likelihood || "?"} I:${note.impact || "?"}` : "";
+  return `${note.col ? `${note.col}: ` : ""}${note.done ? "✓ " : ""}${note.text}${rating}`;
+}
+
+function toMarkdown() {
+  const kept = s => slideState(s).notes.filter(n => !n.draft);
+  const line = (s, n) => {
+    const rating = n.likelihood || n.impact ? ` (likelihood ${n.likelihood || "?"}, impact ${n.impact || "?"})` : "";
+    const text = `${n.col ? `${n.col}: ` : ""}${n.text}${rating}${n.open ? " _(open)_" : ""}`;
+    return s.board === "checklist" ? `- [${n.done ? "x" : " "}] ${text}` : `- ${text}`;
+  };
+  const open = deck.slides.flatMap(s => kept(s).filter(n => n.open).map(n => `- ${s.topic}: ${n.text}`));
+  const sections = deck.slides.map(s => {
+    const notes = kept(s);
+    const photos = slideState(s).photos.length;
+    return [
+      `**${s.topic}**`,
+      ...(notes.length ? notes.map(n => line(s, n)) : ["- _Nothing captured_"]),
+      ...(photos ? [`- _${photos} whiteboard photo${photos > 1 ? "s" : ""}_`] : []),
+    ...(slideState(s).whiteboard ? [`- _Whiteboard: ${slideState(s).whiteboard.shapes} shapes (${slideState(s).whiteboard.file})_`] : []),
+    ].join("\n");
+  });
+  return [
+    `### Pre-build notes: ${deck.issue.id} ${deck.issue.title}`,
+    deck.issue.tier ? `_${deck.issue.tier}_` : null,
+    ["**Open questions**", ...(open.length ? open : ["- _None flagged_"])].join("\n"),
+    ...sections,
+  ].filter(Boolean).join("\n\n") + "\n";
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = el("textarea", { value: text });
+    document.body.append(area);
+    area.select();
+    const copied = document.execCommand("copy");
+    area.remove();
+    return copied;
+  }
+}
+
+async function copyMarkdown(button) {
+  await copyText(toMarkdown());
+  button.textContent = "Copied";
+  setTimeout(() => { button.textContent = "Copy as Markdown"; }, 2000);
+}
+
+function renderReview() {
+  const open = deck.slides.flatMap(s => slideState(s).notes.filter(n => n.open).map(n => `${s.topic}: ${n.text}`));
+  const sections = deck.slides.map(s => {
+    const { notes, photos } = slideState(s);
+    const kept = notes.filter(n => !n.draft);
+    return block(s.topic, photos.length > 0 && el("span", { className: "pb-count", textContent: `${photos.length} photo${photos.length > 1 ? "s" : ""}` }),
+      kept.length ? el("ul", {}, kept.map(n => el("li", { className: n.open ? "is-open" : "", textContent: describe(n) })))
+        : el("p", { className: "pb-empty", textContent: "Nothing captured" }));
+  });
+  const openBlock = block("Open questions", el("span", { className: "pb-count", textContent: String(open.length) }),
+    open.length ? el("ul", {}, open.map(t => el("li", { className: "is-open", textContent: t }))) : el("p", { className: "pb-empty", textContent: "None flagged" }));
+  openBlock.classList.add("pb-fact-group");
+  openBlock.dataset.kind = "gap";
+  return [
+    el("p", { className: "pb-step", textContent: "Wrap-up" }),
+    el("h2", { className: "pb-question", textContent: openOnly && !slides.length
+      ? "Nothing is left open. Anything missing before Claude writes it up?"
+      : "Anything missing before Claude writes it up?" }),
+    el("div", { className: "pb-review" }, openBlock, sections),
+    el("div", { className: "pb-review-foot" },
+      el("p", { className: "pb-empty", textContent: "Everything is saved. Tell Claude you're done, or copy the notes to share them now." }),
+      copyButton()),
+  ];
+}
+
+function copyButton() {
+  const button = el("button", { className: "pb-btn", textContent: "Copy as Markdown" });
+  button.addEventListener("click", () => copyMarkdown(button));
+  return button;
+}
+
+function render() {
+  whiteboardPanels.forEach(panel => panel.unmount());
+  whiteboardPanels.clear();
+  const main = document.getElementById("main");
+  const onReview = index === reviewIndex();
+  const slide = slides[index];
+  main.replaceChildren(...(onReview ? renderReview() : renderSlide(slide)).filter(Boolean));
+  main.dataset.dir = direction;
+  main.classList.remove("is-entering");
+  void main.offsetWidth;
+  main.classList.add("is-entering");
+  if (!onReview) { renderWhiteboardRow(slide); renderBoard(slide); }
+  document.getElementById("progress").textContent = deck.issue.tier || "";
+  document.getElementById("back").disabled = index === 0;
+  const next = document.getElementById("next");
+  next.disabled = onReview;
+  next.textContent = index === reviewIndex() - 1 ? "Wrap up →" : "Next →";
+  renderDots();
+}
+
+function renderDots() {
+  document.getElementById("dots").replaceChildren(...[...slides, null].map((s, i) => {
+    const state = s && slideState(s);
+    const touched = state && (state.notes.some(n => !n.draft) || state.photos.length);
+    const dot = el("button", { className: ["pb-dot", i === index && "current", touched && "touched"].filter(Boolean).join(" "),
+      title: s?.topic || "Wrap-up", ariaLabel: s?.topic || "Wrap-up" });
+    dot.addEventListener("click", () => go(i));
+    return dot;
+  }));
+}
+
+function go(i) {
+  commitPendingNotes();
+  const target = Math.max(0, Math.min(reviewIndex(), i));
+  if (target === index) return;
+  direction = target > index ? "next" : "back";
+  index = target;
+  save();
+  render();
+}
+
+document.getElementById("back").addEventListener("click", () => go(index - 1));
+document.getElementById("next").addEventListener("click", () => go(index + 1));
+document.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+  // Excalidraw uses the arrow keys to nudge shapes, so they mustn't change slides while it has focus.
+  if (e.target.closest?.(".pb-excalidraw") || document.activeElement?.closest?.(".pb-excalidraw")) return;
+  if (e.key === "ArrowRight") go(index + 1);
+  if (e.key === "ArrowLeft") go(index - 1);
+});
+
+load();
+</script>
+</body>
+</html>
