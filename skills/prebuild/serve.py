@@ -12,12 +12,30 @@ WRITE_LOCK = threading.Lock()
 PHOTO_PATH = re.compile(r"/photos/([\w-]+\.jpg)")
 
 
-def build_handler(session):
+def build_handler(session, port):
+    hosts = {f"localhost:{port}", f"127.0.0.1:{port}"}
+    origins = {f"http://{host}" for host in hosts}
+
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(session), **kwargs)
 
+        def refused(self, writing=False):
+            # Loopback binding alone doesn't stop DNS rebinding or a foreign page posting here.
+            origin = self.headers.get("Origin")
+            if self.headers.get("Host") not in hosts or (writing and origin is not None and origin not in origins):
+                self.reply(403)
+                return True
+            return False
+
+        def do_HEAD(self):
+            if self.refused():
+                return
+            super().do_HEAD()
+
         def do_GET(self):
+            if self.refused():
+                return
             self.path = urlsplit(self.path).path
             if self.path in ("/", "/index.html"):
                 return self.reply(200, "text/html; charset=utf-8", (SKILL_DIR / "presenter.html").read_bytes())
@@ -26,6 +44,8 @@ def build_handler(session):
             super().do_GET()
 
         def do_PUT(self):
+            if self.refused(writing=True):
+                return
             if self.path != "/board.json":
                 return self.reply(404)
             body = self.body()
@@ -44,6 +64,8 @@ def build_handler(session):
             self.reply(204)
 
         def do_POST(self):
+            if self.refused(writing=True):
+                return
             match = PHOTO_PATH.fullmatch(self.path)
             if not match:
                 return self.reply(404)
@@ -80,7 +102,7 @@ def main():
     session = Path(args.session_dir).expanduser().resolve()
     (session / "photos").mkdir(parents=True, exist_ok=True)
     print(f"http://localhost:{args.port}/  ({session})", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", args.port), build_handler(session)).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", args.port), build_handler(session, args.port)).serve_forever()
 
 
 if __name__ == "__main__":
