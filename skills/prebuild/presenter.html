@@ -385,7 +385,17 @@ function renderItem(slide, note) {
   const state = slideState(slide);
   const li = el("li", { className: ["pb-item", note.draft && "is-draft", note.open && "is-open", note.done && "is-done",
     note.id === freshId && "is-new"].filter(Boolean).join(" ") });
-  const changed = () => { save(); renderDots(); };
+  const draftPill = note.draft ? el("span", { className: "pb-pill draft", textContent: "Draft" }) : null;
+  const keep = note.draft ? el("button", { className: "pb-icon", textContent: "✓", title: "Keep this draft" }) : null;
+  const accept = () => {
+    if (!note.draft) return;
+    note.draft = false;
+    li.classList.remove("is-draft");
+    draftPill.remove();
+    keep.remove();
+  };
+  const changed = () => { accept(); save(); renderDots(); };
+  keep?.addEventListener("click", changed);
 
   if (slide.board === "checklist") {
     const box = el("input", { type: "checkbox", checked: !!note.done, title: "Done" });
@@ -394,12 +404,7 @@ function renderItem(slide, note) {
   }
 
   const text = el("input", { type: "text", value: note.text, ariaLabel: "Note" });
-  const draftPill = note.draft ? el("span", { className: "pb-pill draft", textContent: "Draft" }) : null;
-  text.addEventListener("input", () => {
-    note.text = text.value;
-    if (note.draft) { note.draft = false; li.classList.remove("is-draft"); draftPill?.remove(); }
-    changed();
-  });
+  text.addEventListener("input", () => { note.text = text.value; changed(); });
   li.append(text);
   if (draftPill) li.append(draftPill);
   if (note.from) li.append(el("span", { className: "pb-pill from", textContent: note.from }));
@@ -440,7 +445,7 @@ function renderItem(slide, note) {
   });
   const remove = el("button", { className: "pb-icon", textContent: "×", title: "Remove" });
   remove.addEventListener("click", () => removeItem(slide, note, li));
-  actions.append(open, remove);
+  actions.append(...[keep, open, remove].filter(Boolean));
   li.append(actions);
   return li;
 }
