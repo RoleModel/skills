@@ -203,7 +203,7 @@
   // position of the run that follows it (as split view pairs them), and the
   // tokens that differ get a <mark>. Lines with little in common are left alone,
   // since marking nearly everything says less than marking nothing.
-  const WORDS = /\w+|\s+|[^\w\s]/g;
+  const WORDS = /\w+|\s+|[^\w\s]/gu;
   function changedRanges(a, b) {
     const ta = a.match(WORDS) || [], tb = b.match(WORDS) || [];
     if (ta.length * tb.length > 250000) return null;
@@ -261,8 +261,9 @@
     for (let i = 0; i < rows.length;) {
       if (rows[i].t !== 'd') { i++; continue; }
       const ds = [], as = [];
-      while (i < rows.length && rows[i].t === 'd') ds.push(rows[i++]);
-      while (i < rows.length && rows[i].t === 'a') as.push(rows[i++]);
+      // Metadata rows ("\ No newline at end of file") can sit between the two runs.
+      for (; i < rows.length && (rows[i].t === 'd' || rows[i].t === 'm'); i++) if (rows[i].t === 'd') ds.push(rows[i]);
+      for (; i < rows.length && (rows[i].t === 'a' || rows[i].t === 'm'); i++) if (rows[i].t === 'a') as.push(rows[i]);
       for (let k = 0; k < Math.min(ds.length, as.length); k++) {
         const d = ds[k], a = as[k], rs = changedRanges(d.text, a.text);
         if (!rs) continue;
