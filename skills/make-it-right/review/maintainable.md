@@ -23,17 +23,23 @@ a rung holds:
 4. **Already in the project?** The app's own shared modules, helpers,
    components, design-system classes, and test data builders, plus dependencies
    it already has (the stack map's "Already in the project"). `reuse:`
-   Search by what the code does, not what it's called. For each new
-   mechanism (a cache key, a retry, a formatter, a permission check, a
-   background notice), grep for the tables, columns, and calls it uses. An
-   existing module that touches the same data may already solve the same
-   problem. Read it before writing a new one. When you find one, ask whether
-   the whole change could be built on it, not just one piece borrowed from
-   it: a change that rebuilds a mechanism the project already uses elsewhere
-   (lazy loading, stored results, snapshots) is a `reuse:` finding even when
-   the new copy works. Don't drop it because reusing looks costlier, such as
-   more requests or a bigger diff: report the finding with that cost, and let
-   the verifier weigh it.
+   - Search by what the code does, not what it's called. For each new
+     mechanism (a cache key, a retry, a formatter, a permission check, a
+     background notice), grep for the tables, columns, and calls it uses. An
+     existing module that touches the same data may already solve the same
+     problem. Read it before writing a new one.
+   - Look sideways too, not only at what the new code calls: find sibling
+     code of the same kind (other tools, endpoints, jobs, components) and
+     check how they handle the same concern, such as paging, params, errors,
+     or response shape. When siblings share a module for it, new code that
+     hand-rolls that concern is `reuse:`, even if the call underneath is new.
+   - When you find an existing module, ask whether the whole change could be
+     built on it, not just one piece borrowed from it: a change that rebuilds
+     a mechanism the project already uses elsewhere (lazy loading, stored
+     results, snapshots) is a `reuse:` finding even when the new copy works.
+     Don't drop it because reusing looks costlier, such as more requests or a
+     bigger diff: report the finding with that cost, and let the verifier
+     weigh it.
 5. **Only then**: the smallest thing that works. An abstraction with one
    implementation, a config option nobody sets, or a parameter every caller
    passes the same is `yagni:`.
