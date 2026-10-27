@@ -69,6 +69,8 @@ tr.a td.c{background:var(--add-bg)}tr.d td.c{background:var(--del-bg)}
 tr.a td.n{background:var(--add-bg)}tr.d td.n{background:var(--del-bg)}
 td.ra{background:var(--add-bg)}td.rd{background:var(--del-bg)}td.re{background:var(--panel)}
 td.n.rx{opacity:.6}
+td.c mark{color:inherit}
+td.ra mark{background:color-mix(in srgb,var(--add-b) 35%,transparent)}td.rd mark{background:color-mix(in srgb,var(--del-b) 35%,transparent)}
 /* --- split view, gaps between hunks ---------------------------------------- */
 table.split{table-layout:fixed}
 table.split td.n{width:auto;min-width:0}
