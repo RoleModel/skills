@@ -29,6 +29,7 @@ const { execFileSync } = require('child_process');
 const { submitReview, saveReview } = require('./submit-review.cjs');
 const { parseDiff } = require('./lib/diff-parse.cjs');
 const { logDecisions } = require('./lib/decisions.cjs');
+const events = require('./lib/events.cjs');
 
 const PLACEHOLDER = '<script id="server-src" type="application/json">null</script>';
 const island = (html, id) => {
@@ -42,10 +43,18 @@ function logQuietly(review) {
   catch (e) { console.error(`decisions: not logged (${e.message})`); }
 }
 
-function serve(htmlPath, { port = 4823, keepAlive = false } = {}) {
+function serve(htmlPath, { port = 4823, keepAlive = false, onListening = null } = {}) {
   const token = crypto.randomBytes(16).toString('hex');
   const outDir = path.dirname(path.resolve(htmlPath));
   let bound = port;
+  // The PR this page reviews, for FEATURE_REVIEW_EVENTS_DIR. Read once: events are best-effort.
+  let pr = null;
+  try { pr = (island(fs.readFileSync(htmlPath, 'utf8'), 'meta-src') || {}).pr; } catch (e) { /* no events then */ }
+  let opened = false;
+  if (pr && process.env.FEATURE_REVIEW_EVENTS_DIR) {
+    process.once('exit', () => events.emit(pr, 'server_exit'));
+    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(sig, () => process.exit(128 + (sig === 'SIGINT' ? 2 : sig === 'SIGTERM' ? 15 : 1)));
+  }
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -70,6 +79,7 @@ function serve(htmlPath, { port = 4823, keepAlive = false } = {}) {
       // Re-read each time so a rebuilt page (new reading guide) shows up on refresh.
       const html = fs.readFileSync(htmlPath, 'utf8').replace(PLACEHOLDER,
         `<script id="server-src" type="application/json">${JSON.stringify({ token })}</script>`);
+      if (!opened) { opened = true; events.emit(pr, 'opened'); }
       return send(res, 200, html, 'text/html; charset=utf-8');
     }
     if (!url.pathname.startsWith('/api/')) return send(res, 404, { error: 'not found' });
@@ -104,6 +114,7 @@ function serve(htmlPath, { port = 4823, keepAlive = false } = {}) {
         const result = submitReview(review, { outDir });
         logQuietly(review);
         console.log(`submitted: ${result.url}`);
+        events.emit(pr, 'submitted', { review_url: result.url, commit_id: result.payload ? result.payload.commit_id : review.commit_id || null });
         result.notes.forEach((n) => console.log(`note: ${n}`));
         send(res, 200, result);
         if (!keepAlive) setTimeout(() => process.exit(0), 300);
@@ -121,6 +132,7 @@ function serve(htmlPath, { port = 4823, keepAlive = false } = {}) {
   server.once('listening', () => {
     bound = server.address().port;
     console.log(`serving http://127.0.0.1:${bound}/ (Ctrl-C to stop${keepAlive ? '' : '; exits after submit'})`);
+    if (onListening) onListening(`http://127.0.0.1:${bound}/`);
   });
   const listen = (p, triesLeft) => {
     server.once('error', (e) => {
