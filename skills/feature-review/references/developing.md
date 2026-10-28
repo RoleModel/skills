@@ -102,6 +102,17 @@ expanding a gap fully joins the state up again. A leading `*` is still treated
 as a comment continuation, which covers JSDoc whose opening `/*` is in hidden
 lines.
 
+## Word-level diff
+
+`wordDiff` in `app.js` runs after highlighting. It pairs the k-th deleted line
+of a run with the k-th added line after it (the same pairing as split view),
+diffs their word, whitespace and punctuation tokens, and wraps what changed in
+`<mark>` inside the already highlighted HTML. `markHtml` counts an entity as
+one character and closes the mark around every highlighter tag, so it never
+changes the displayed text. Pairs whose unchanged non-space text is under half
+the shorter line get no marks. Marks use `<mark>`, not `<span>`, so they stay
+when syntax highlighting is off.
+
 ## Verifying a change to the page
 
 The build always self-checks: it re-parses the diff it embedded and compares

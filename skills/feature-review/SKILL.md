@@ -10,7 +10,7 @@ allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '3.8'
+  version: '3.9'
 license: MIT
 ---
 

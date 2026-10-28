@@ -196,6 +196,81 @@
       else if (r.t === 'd') r.html = HL.hl(r.text, f.lang, sO);
       else if (r.t === 'c' || r.t === 'x') { r.html = HL.hl(r.text, f.lang, sN); HL.hl(r.text, f.lang, sO); }
     });
+    wordDiff(f.rows);
+  }
+
+  // Word-level changes. Each deleted line pairs with the added line in the same
+  // position of the run that follows it (as split view pairs them), and the
+  // tokens that differ get a <mark>. Lines with little in common are left alone,
+  // since marking nearly everything says less than marking nothing.
+  const WORDS = /\w+|\s+|[^\w\s]/gu;
+  function changedRanges(a, b) {
+    const ta = a.match(WORDS) || [], tb = b.match(WORDS) || [];
+    if (ta.length * tb.length > 250000) return null;
+    // LCS table, filled from the end so the walk below can go forwards.
+    const n = ta.length, m = tb.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) {
+      L[i][j] = ta[i] === tb[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    }
+    const keepA = new Array(n).fill(false), keepB = new Array(m).fill(false);
+    let same = 0;
+    for (let i = 0, j = 0; i < n && j < m;) {
+      if (ta[i] === tb[j]) { keepA[i] = keepB[j] = true; if (/\S/.test(ta[i])) same += ta[i].length; i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) i++;
+      else j++;
+    }
+    const shorter = Math.min(a.replace(/\s/g, '').length, b.replace(/\s/g, '').length);
+    if (!shorter || same < shorter / 2) return null;
+    return [ranges(ta, keepA), ranges(tb, keepB)];
+  }
+  // Character ranges of the dropped tokens, with lone whitespace between two of them folded in.
+  function ranges(toks, keep) {
+    const out = [];
+    let pos = 0;
+    toks.forEach((t, i) => {
+      const glue = keep[i] && !/\S/.test(t) && i > 0 && !keep[i - 1] && i + 1 < toks.length && !keep[i + 1];
+      if (!keep[i] || glue) {
+        const last = out[out.length - 1];
+        if (last && last[1] === pos) last[1] += t.length; else out.push([pos, pos + t.length]);
+      }
+      pos += t.length;
+    });
+    return out;
+  }
+  // Wrap text offsets of highlighted HTML in <mark>, closing and reopening around
+  // the highlighter's tags so the nesting stays valid. An entity is one character.
+  function markHtml(html, rs) {
+    let out = '', pos = 0, open = false, k = 0;
+    for (let i = 0; i < html.length;) {
+      if (html[i] === '<') {
+        const e = html.indexOf('>', i) + 1;
+        if (open) { out += '</mark>'; open = false; }
+        out += html.slice(i, e); i = e;
+        continue;
+      }
+      const e = html[i] === '&' ? html.indexOf(';', i) + 1 : i + 1;
+      while (k < rs.length && rs[k][1] <= pos) k++;
+      const inside = k < rs.length && rs[k][0] <= pos;
+      if (inside && !open) { out += '<mark>'; open = true; }
+      else if (!inside && open) { out += '</mark>'; open = false; }
+      out += html.slice(i, e); i = e; pos++;
+    }
+    return open ? out + '</mark>' : out;
+  }
+  function wordDiff(rows) {
+    for (let i = 0; i < rows.length;) {
+      if (rows[i].t !== 'd') { i++; continue; }
+      const ds = [], as = [];
+      // Metadata rows ("\ No newline at end of file") can sit between the two runs.
+      for (; i < rows.length && (rows[i].t === 'd' || rows[i].t === 'm'); i++) if (rows[i].t === 'd') ds.push(rows[i]);
+      for (; i < rows.length && (rows[i].t === 'a' || rows[i].t === 'm'); i++) if (rows[i].t === 'a') as.push(rows[i]);
+      for (let k = 0; k < Math.min(ds.length, as.length); k++) {
+        const d = ds[k], a = as[k], rs = changedRanges(d.text, a.text);
+        if (!rs) continue;
+        if (rs[0].length) d.html = markHtml(d.html, rs[0]);
+        if (rs[1].length) a.html = markHtml(a.html, rs[1]);
+      }
+    }
   }
 
   const SIGN = { a: '+', d: '-', c: ' ', x: ' ' };
