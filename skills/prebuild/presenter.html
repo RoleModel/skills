@@ -82,11 +82,12 @@
   .pb-diagram { overflow-x: auto; background: var(--inset); border-radius: 0 0 8px 8px; }
   .pb-diagram .dbody { overflow-x: auto; }
   .pb-diagram .dexpand { display: none; }
-  .pb-diagram { overflow-x: auto; }
+  .pb-diagram-block { --fit: max(100%, min(calc(100% + var(--grow, 0px)), calc(100vw - 48px))); width: var(--fit); margin-left: calc((100% - var(--fit)) / 2); }
   .pb-diagram .dsvg { width: 100%; height: auto; animation: pb-fade .3s ease both; }
   .pb-diagram-caption { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
   .pb-diagram-problems { margin: 0; padding-left: 18px; color: var(--bad); font: 12px/1.6 var(--mono); }
   .dcompare { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .dcompare.is-stacked { grid-template-columns: 1fr; }
   .dside { border: 1px dashed var(--border); border-radius: 6px; padding: 8px; min-width: 0; overflow-x: auto; }
   .dsidet { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
   .dside.after .dsidet { color: var(--accent); }
@@ -489,9 +490,34 @@ function renderDiagram(d) {
     d.caption && el("p", { className: "pb-diagram-caption", textContent: d.caption }));
 }
 
+// Widens a diagram's block past the column until its diagram fits; the rest of the slide keeps the column width.
+// A side-by-side pair that can't fit even at the window's width is stacked instead.
+function fitDiagrams() {
+  const over = box => box.scrollWidth - box.clientWidth;
+  document.querySelectorAll(".pb-diagram-block").forEach(block => {
+    block.style.removeProperty("--grow");
+    const body = block.querySelector(".pb-diagram");
+    const pair = body.querySelector(".dcompare");
+    pair?.classList.remove("is-stacked");
+    const overflow = () => {
+      const sides = [...body.querySelectorAll(".dside")].map(side => Math.max(over(side), ...[...side.querySelectorAll(".dbody")].map(over)));
+      const sideBySide = pair && pair.children.length === 2 && pair.children[0].offsetTop === pair.children[1].offsetTop;
+      return Math.max(...[body, ...body.querySelectorAll(".dbody")].map(over),
+        sideBySide ? sides.reduce((a, b) => a + Math.max(b, 0), 0) : Math.max(0, ...sides));
+    };
+    let grow = overflow();
+    if (pair && grow > innerWidth - 48 - block.offsetWidth) {
+      pair.classList.add("is-stacked");
+      grow = overflow();
+    }
+    if (grow > 1) block.style.setProperty("--grow", `${grow}px`);
+  });
+}
+addEventListener("resize", fitDiagrams);
+
 function renderContext(slide) {
   return [
-    slide.diagram && block(slide.diagram.title || "Diagram", null, renderDiagram(slide.diagram)),
+    slide.diagram && Object.assign(block(slide.diagram.title || "Diagram", null, renderDiagram(slide.diagram)), { className: "pb-block pb-diagram-block" }),
     ...FACT_KINDS.map(([kind, heading]) => {
       const facts = (slide.facts || []).filter(f => (FACT_KINDS.some(([k]) => k === f.kind) ? f.kind : "context") === kind);
       if (!facts.length) return null;
@@ -1052,7 +1078,7 @@ function render() {
   main.classList.remove("is-entering");
   void main.offsetWidth;
   main.classList.add("is-entering");
-  if (!onReview) { renderWhiteboardRow(slide); renderBoard(slide); }
+  if (!onReview) { fitDiagrams(); renderWhiteboardRow(slide); renderBoard(slide); }
   document.getElementById("progress").textContent = deck.issue.tier || "";
   document.getElementById("back").disabled = index === 0;
   const next = document.getElementById("next");

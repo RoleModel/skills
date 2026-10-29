@@ -121,9 +121,11 @@ The presenter validates every diagram when the slide opens and shows any
 problems (an unknown kind, an edge to a missing node) in red instead of the
 diagram.
 
-Diagrams never shrink below 90% of their drawn size; a wider one scrolls
-sideways instead. Scrolling still means it's too big, so render-check each
-slide during prep: open it in the presenter and run `diagramCheck()` in the
+Diagrams never shrink below 90% of their drawn size. A wider one widens its
+block past the slide's column, up to the window's edge, and scrolls sideways
+only beyond that. A `compare` pair too wide to sit side by side even then is
+stacked instead. Scrolling means it's too big, so render-check each slide
+during prep: open it in the presenter and run `diagramCheck()` in the
 page. It returns one entry per diagram:
 
 ```json
