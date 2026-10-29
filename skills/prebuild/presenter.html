@@ -60,6 +60,13 @@
     padding: 10px 20px; background: var(--panel); border-top: 1px solid var(--border);
   }
   .pb-next { justify-self: end; }
+  .pb-nav { display: flex; align-items: center; gap: 10px; }
+  .pb-key-hint { font-size: 12px; color: var(--faint); white-space: nowrap; }
+  .pb-key-hint kbd {
+    display: inline-block; min-width: 20px; padding: 0 5px; text-align: center;
+    border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px;
+    font: 11px/1.5 var(--mono); color: var(--muted);
+  }
 
   .pb-main { flex: 1; width: 100%; max-width: var(--width); margin: 0 auto; padding: 24px 20px 48px; }
   .pb-step { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
@@ -75,11 +82,12 @@
   .pb-diagram { overflow-x: auto; background: var(--inset); border-radius: 0 0 8px 8px; }
   .pb-diagram .dbody { overflow-x: auto; }
   .pb-diagram .dexpand { display: none; }
-  .pb-diagram .dsvg { width: 100%; height: auto; max-height: 52vh; animation: pb-fade .3s ease both; }
+  .pb-diagram { overflow-x: auto; }
+  .pb-diagram .dsvg { width: 100%; height: auto; animation: pb-fade .3s ease both; }
   .pb-diagram-caption { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
   .pb-diagram-problems { margin: 0; padding-left: 18px; color: var(--bad); font: 12px/1.6 var(--mono); }
   .dcompare { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
-  .dside { border: 1px dashed var(--border); border-radius: 6px; padding: 8px; min-width: 0; }
+  .dside { border: 1px dashed var(--border); border-radius: 6px; padding: 8px; min-width: 0; overflow-x: auto; }
   .dsidet { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
   .dside.after .dsidet { color: var(--accent); }
   .dsvg { display: block; margin: 0 auto; font-family: var(--font); }
@@ -134,6 +142,13 @@
   .pb-board { margin-top: 0; }
   .pb-columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .pb-column .pb-label { margin-bottom: 8px; }
+  .pb-grip { flex: none; width: 18px; height: 18px; display: grid; place-items: center; cursor: grab; color: var(--faint); font-size: 13px; line-height: 1; user-select: none; }
+  .pb-grip:hover { color: var(--text); }
+  .pb-item.is-dragging { opacity: .4; }
+  .pb-items.is-droppable { min-height: 36px; }
+  .pb-items.is-drop-target { outline: 1px dashed var(--accent); outline-offset: 4px; border-radius: 8px; min-height: 36px; }
+  .pb-item.drop-before { box-shadow: 0 -3px 0 -1px var(--accent); }
+  .pb-general { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); }
   .pb-column[data-tone="good"] .pb-label { color: var(--good); }
   .pb-column[data-tone="bad"] .pb-label { color: var(--bad); }
 
@@ -148,8 +163,9 @@
   .pb-item.is-open, .pb-item.is-open:hover { border-color: var(--warn); background: var(--warn-soft); }
   .pb-column[data-tone="good"] .pb-item { border-left-color: var(--good-line); }
   .pb-column[data-tone="bad"] .pb-item { border-left-color: var(--bad-line); }
-  .pb-item input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 4px 0; outline: none; font-size: 14px; }
-  .pb-item.is-done input[type="text"] { text-decoration: line-through; color: var(--muted); }
+  .pb-grow { display: block; resize: none; overflow: hidden; font: inherit; line-height: 1.45; overflow-wrap: anywhere; }
+  .pb-item .pb-grow { flex: 1; min-width: 0; border: 0; background: transparent; padding: 4px 0; outline: none; font-size: 14px; color: var(--text); }
+  .pb-item.is-done .pb-grow { text-decoration: line-through; color: var(--muted); }
   .pb-item input[type="checkbox"] { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--good-line); }
   .pb-item select { border: 1px solid var(--border); border-radius: 6px; background: var(--inset); color: var(--muted); font-size: 12px; padding: 2px 4px; }
   .pb-pill { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border: 1px solid; border-radius: 20px; padding: 0 7px; }
@@ -180,7 +196,7 @@
   .pb-kind[aria-pressed="true"] { background: var(--panel); border-color: var(--border-strong); color: var(--text); }
   .pb-kind.question[aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
   .pb-compose-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px 12px; }
-  .pb-add { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; font-size: 14px; outline: none; }
+  .pb-add { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; font-size: 14px; outline: none; color: var(--text); }
   .pb-add::placeholder { color: var(--faint); }
   .pb-enter-hint { font-size: 11px; color: var(--faint); white-space: nowrap; }
   .pb-add-btn {
@@ -247,7 +263,7 @@
   .pb-dot.current { width: 22px; background: var(--accent); }
 
   .pb-review ul { margin: 0; padding: 0; list-style: none; }
-  .pb-review li { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .pb-review li { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; white-space: pre-line; }
   .pb-review li:last-child { border-bottom: 0; }
   .pb-review li.is-open { box-shadow: inset 3px 0 0 var(--warn); }
   .pb-empty { margin: 0; padding: 8px 14px; color: var(--muted); font-size: 13px; }
@@ -277,7 +293,7 @@
     .pb-main { padding: 16px 16px 32px; }
     .pb-question { font-size: 19px; }
     .pb-header, .pb-footer { padding: 10px 16px; }
-    .pb-progress { display: none; }
+    .pb-progress, .pb-key-hint { display: none; }
     .pb-fact { flex-direction: column; gap: 2px; }
     .pb-fact code { max-width: none; text-align: left; }
     .pb-actions { opacity: 1; }
@@ -295,9 +311,9 @@
 </header>
 <main class="pb-main" id="main"></main>
 <footer class="pb-footer">
-  <span><button class="pb-btn" id="back">← Back</button></span>
+  <span class="pb-nav"><button class="pb-btn" id="back">← Back</button><span class="pb-key-hint">or press <kbd>←</kbd></span></span>
   <div class="pb-dots" id="dots"></div>
-  <button class="pb-btn primary pb-next" id="next">Next →</button>
+  <span class="pb-nav pb-next"><span class="pb-key-hint">or press <kbd>→</kbd></span><button class="pb-btn primary" id="next">Next →</button></span>
 </footer>
 <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
 
@@ -392,6 +408,67 @@ async function load() {
 const block = (heading, aside, ...body) =>
   el("section", { className: "pb-block" }, el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: heading }), aside), ...body);
 
+const SOURCE_COLOURS = ["#58a6ff", "#bc8cff", "#39c5cf", "#f778ba", "#ffa198"];
+
+// Gives each box that has arrows leaving it its own colour, and colours those arrows to match.
+function colourBySource(svg) {
+  const nodes = new Map([...svg.querySelectorAll("g.dn")].map(g => [g.querySelector("title")?.textContent, g]));
+  const colours = new Map();
+  svg.querySelectorAll("path.de, line.de").forEach(edge => {
+    if (["new", "changed", "removed"].some(status => edge.classList.contains(status))) return;
+    const source = (edge.querySelector("title")?.textContent || "").split(" → ")[0];
+    if (!colours.has(source)) colours.set(source, SOURCE_COLOURS[colours.size % SOURCE_COLOURS.length]);
+    const colour = colours.get(source);
+    edge.style.stroke = colour;
+    const marker = svg.querySelector((edge.getAttribute("marker-end") || "").replace(/^url\((.*)\)$/, "$1") || "none");
+    if (marker) {
+      const id = `${marker.id}-src${[...colours.keys()].indexOf(source)}`;
+      if (!svg.getElementById(id)) {
+        const copy = marker.cloneNode(true);
+        copy.id = id;
+        copy.querySelector("path").style.fill = colour;
+        marker.parentNode.append(copy);
+      }
+      edge.setAttribute("marker-end", `url(#${id})`);
+    }
+  });
+  colours.forEach((colour, source) => {
+    const node = nodes.get(source);
+    if (!node || !node.classList.contains("same")) return;
+    const rect = node.querySelector("rect");
+    rect.style.stroke = colour;
+    rect.style.strokeWidth = "1.8";
+  });
+}
+
+const MIN_SCALE = 0.9;
+
+// For the prep render check: how far each diagram on screen is scaled, and how many of its edges cross.
+function diagramCheck() {
+  const sample = path => {
+    const length = path.getTotalLength();
+    return Array.from({ length: 17 }, (_, i) => path.getPointAtLength(length * i / 16));
+  };
+  const cross = (a, b, c, d) => {
+    const turn = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+    return turn(a, b, c) * turn(a, b, d) < 0 && turn(c, d, a) * turn(c, d, b) < 0;
+  };
+  return [...document.querySelectorAll(".pb-diagram svg.dsvg")].map(svg => {
+    const lines = [...svg.querySelectorAll("path.de")].map(sample);
+    let crossings = 0;
+    lines.forEach((a, i) => lines.slice(i + 1).forEach(b => {
+      const hit = a.slice(1).some((p, m) => b.slice(1).some((q, n) => cross(a[m], p, b[n], q)));
+      if (hit) crossings++;
+    }));
+    const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+    let scrolls = false;
+    for (let box = svg.parentElement; box && !scrolls; box = box.closest(".pb-diagram") === box ? null : box.parentElement)
+      scrolls = box.scrollWidth > box.clientWidth + 1;
+    return { scale: Math.round(scale * 100) / 100, scrolls, crossings, readable: !scrolls && crossings <= 3 };
+  });
+}
+window.diagramCheck = diagramCheck;
+
 function renderDiagram(d) {
   const problems = typeof DIAG === "object" ? DIAG.problems(d) : ["diagrams.js didn't load"];
   if (problems.length) {
@@ -399,6 +476,13 @@ function renderDiagram(d) {
       el("ul", { className: "pb-diagram-problems" }, problems.map(p => el("li", { textContent: p }))));
   }
   const body = DIAG.body(d);
+  const svgs = [...body.querySelectorAll("svg.dsvg")];
+  const sides = d.kind === "compare" ? [d.before, d.after] : [d];
+  svgs.forEach((svg, i) => {
+    if ((sides[i] || d).colorBy === "source" || d.colorBy === "source") colourBySource(svg);
+    const width = svg.viewBox.baseVal?.width;
+    if (width) Object.assign(svg.style, { minWidth: `${width * MIN_SCALE}px`, maxWidth: `${width * 1.5}px` });
+  });
   for (const [status, text] of Object.entries(d.legend || {})) {
     body.querySelectorAll(`.dk.${status}`).forEach(key => key.replaceChildren(el("i"), text));
     body.querySelectorAll(`.dn.${status} .dtag`).forEach(tag => { tag.textContent = text.toUpperCase(); });
@@ -427,6 +511,13 @@ function renderContext(slide) {
 
 const isShowing = slide => index !== reviewIndex() && slides[index] === slide;
 
+const autosize = area => {
+  if (!area) return;
+  area.style.height = "auto";
+  area.style.height = area.scrollHeight + "px";
+};
+addEventListener("resize", () => document.querySelectorAll(".pb-grow").forEach(autosize));
+
 function removeItem(slide, note, li) {
   const state = slideState(slide);
   const at = state.notes.indexOf(note);
@@ -437,7 +528,10 @@ function removeItem(slide, note, li) {
   li.addEventListener("animationend", () => { if (isShowing(slide)) renderBoard(slide); }, { once: true });
 }
 
+const GENERAL = "General";
+
 function renderItem(slide, note) {
+  const kind = note.col === GENERAL ? "stickies" : slide.board;
   const state = slideState(slide);
   const li = el("li", { className: ["pb-item", note.draft && "is-draft", note.open && "is-open", note.done && "is-done",
     note.id === freshId && "is-new"].filter(Boolean).join(" ") });
@@ -453,22 +547,23 @@ function renderItem(slide, note) {
   const changed = () => { accept(); save(); renderDots(); };
   keep?.addEventListener("click", changed);
 
-  if (slide.board === "checklist") {
+  if (kind === "checklist") {
     const box = el("input", { type: "checkbox", checked: !!note.done, title: "Done" });
     box.addEventListener("change", () => { note.done = box.checked; li.classList.toggle("is-done", note.done); changed(); });
     li.append(box);
   }
 
-  if (slide.board !== "checklist") li.append(el("span", { className: "pb-marker", ariaHidden: "true" }));
-  const text = el("input", { type: "text", value: note.text, ariaLabel: note.open ? "Open question" : "Note" });
-  text.addEventListener("input", () => { note.text = text.value; changed(); });
+  if (slide.board === "columns") li.append(dragGrip(slide, note, li));
+  else if (kind !== "checklist") li.append(el("span", { className: "pb-marker", ariaHidden: "true" }));
+  const text = el("textarea", { className: "pb-grow", rows: 1, value: note.text, ariaLabel: note.open ? "Open question" : "Note" });
+  text.addEventListener("input", () => { note.text = text.value; autosize(text); changed(); });
   text.addEventListener("blur", () => { if (!note.text.trim()) removeItem(slide, note, li); });
-  text.addEventListener("keydown", e => { if (e.key === "Enter") text.blur(); });
+  text.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); text.blur(); } });
   li.append(text);
   if (draftPill) li.append(draftPill);
   if (note.from) li.append(el("span", { className: "pb-pill from", textContent: note.from }));
 
-  if (slide.board === "risks") {
+  if (kind === "risks") {
     for (const [key, label] of [["likelihood", "Likelihood"], ["impact", "Impact"]]) {
       const select = el("select", { title: label }, LEVELS.map(l => el("option", { value: l, textContent: `${label}: ${l || "?"}` })));
       select.value = note[key] || "";
@@ -479,12 +574,14 @@ function renderItem(slide, note) {
 
 
   const actions = el("span", { className: "pb-actions" });
-  if (slide.board === "steps") {
+  if (kind === "steps") {
     for (const [label, delta, title] of [["↑", -1, "Move up"], ["↓", 1, "Move down"]]) {
       const move = el("button", { className: "pb-icon", textContent: label, title });
       move.addEventListener("click", () => {
-        const i = state.notes.indexOf(note), j = i + delta;
-        if (j < 0 || j >= state.notes.length) return;
+        const steps = state.notes.filter(n => n.col === note.col);
+        const other = steps[steps.indexOf(note) + delta];
+        if (!other) return;
+        const i = state.notes.indexOf(note), j = state.notes.indexOf(other);
         [state.notes[i], state.notes[j]] = [state.notes[j], state.notes[i]];
         freshId = note.id;
         changed(); renderBoard(slide);
@@ -504,13 +601,65 @@ function renderItem(slide, note) {
   remove.addEventListener("click", () => removeItem(slide, note, li));
   actions.append(...[keep, open, remove].filter(Boolean));
   li.append(actions);
+  li.note = note;
   return li;
+}
+
+let dragged = null;
+
+function dragGrip(slide, note, li) {
+  const grip = el("span", { className: "pb-grip", textContent: "⠿", title: "Drag to another column" });
+  grip.addEventListener("pointerdown", () => { li.draggable = true; });
+  grip.addEventListener("pointerup", () => { li.draggable = false; });
+  li.addEventListener("dragstart", e => {
+    dragged = note;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", note.text);
+    requestAnimationFrame(() => li.classList.add("is-dragging"));
+  });
+  li.addEventListener("dragend", () => {
+    li.draggable = false;
+    li.classList.remove("is-dragging");
+    dragged = null;
+    document.querySelectorAll(".is-drop-target, .drop-before").forEach(n => n.classList.remove("is-drop-target", "drop-before"));
+  });
+  return grip;
+}
+
+function dropZone(slide, list, col) {
+  const before = y => [...list.children].find(item => !item.classList.contains("is-dragging") &&
+    y < item.getBoundingClientRect().top + item.offsetHeight / 2);
+  list.addEventListener("dragover", e => {
+    if (!dragged) return;
+    e.preventDefault();
+    list.classList.add("is-drop-target");
+    list.querySelectorAll(".drop-before").forEach(n => n.classList.remove("drop-before"));
+    before(e.clientY)?.classList.add("drop-before");
+  });
+  list.addEventListener("dragleave", e => {
+    if (!list.contains(e.relatedTarget)) list.classList.remove("is-drop-target");
+  });
+  list.addEventListener("drop", e => {
+    if (!dragged) return;
+    e.preventDefault();
+    const notes = slideState(slide).notes;
+    const target = before(e.clientY)?.note;
+    notes.splice(notes.indexOf(dragged), 1);
+    dragged.col = col;
+    const last = notes.findLast(n => (n.col ?? null) === col);
+    notes.splice(target ? notes.indexOf(target) : last ? notes.indexOf(last) + 1 : notes.length, 0, dragged);
+    freshId = dragged.id;
+    dragged = null;
+    save(); renderDots(); renderBoard(slide);
+  });
 }
 
 function renderColumn(slide, col, tone) {
   const state = slideState(slide);
   const list = el("ul", { className: "pb-items" }, state.notes.filter(n => (n.col ?? null) === col).map(n => renderItem(slide, n)));
-  const add = el("input", { className: "pb-add", type: "text", placeholder: col ? `Add to ${col}…` : "Write a note…", ariaLabel: "New note" });
+  if (slide.board === "columns") { list.classList.add("is-droppable"); dropZone(slide, list, col); }
+  const add = el("textarea", { className: "pb-add pb-grow", rows: 1, placeholder: col && col !== GENERAL ? `Add to ${col}…` : "Write a note…", ariaLabel: "New note" });
+  add.addEventListener("input", () => autosize(add));
   add.dataset.col = col ?? "";
   const noteKind = el("button", { className: "pb-kind", type: "button", textContent: "Note" });
   const questionKind = el("button", { className: "pb-kind question", type: "button", textContent: "? Open question" });
@@ -518,14 +667,14 @@ function renderColumn(slide, col, tone) {
   const added = el("span", { className: "pb-added", textContent: "Added", ariaLive: "polite" });
   const composer = el("div", { className: "pb-composer" },
     el("div", { className: "pb-kinds", role: "group", ariaLabel: "What you're adding" }, noteKind, questionKind),
-    el("div", { className: "pb-compose-row" }, add, added, el("span", { className: "pb-enter-hint", textContent: "Enter ↵" }), addButton));
+    el("div", { className: "pb-compose-row" }, add, added, el("span", { className: "pb-enter-hint", textContent: "Enter ↵", title: "Shift+Enter for a new line" }), addButton));
   let asQuestion = false;
   const setKind = question => {
     asQuestion = question;
     noteKind.ariaPressed = String(!question);
     questionKind.ariaPressed = String(question);
     composer.classList.toggle("is-open", question);
-    add.placeholder = question ? "Write the open question…" : col ? `Add to ${col}…` : "Write a note…";
+    add.placeholder = question ? "Write the open question…" : col && col !== GENERAL ? `Add to ${col}…` : "Write a note…";
   };
   setKind(false);
   const commit = () => {
@@ -535,21 +684,27 @@ function renderColumn(slide, col, tone) {
     if (asQuestion) note.open = true;
     state.notes.push(note);
     add.value = "";
+    autosize(add);
     setKind(false);
     save(); renderDots();
     freshId = note.id;
-    list.append(renderItem(slide, note));
+    const item = renderItem(slide, note);
+    list.append(item);
+    autosize(item.querySelector(".pb-grow"));
     freshId = null;
     added.classList.remove("is-showing");
     void added.offsetWidth;
     added.classList.add("is-showing");
   };
   add.commitPending = commit;
-  add.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
+  add.draft = () => ({ text: add.value, question: asQuestion });
+  add.restore = draft => { add.value = draft.text; setKind(draft.question); };
+  add.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commit(); } });
   noteKind.addEventListener("click", () => { setKind(false); add.focus(); });
   questionKind.addEventListener("click", () => { setKind(true); add.focus(); });
   addButton.addEventListener("click", () => { commit(); add.focus(); });
-  const column = el("div", { className: "pb-column" }, col && el("p", { className: "pb-label", textContent: col }), list, composer);
+  const label = col === GENERAL ? "General notes" : col;
+  const column = el("div", { className: "pb-column" }, label && el("p", { className: "pb-label", textContent: label }), list, composer);
   if (tone) column.dataset.tone = tone;
   return column;
 }
@@ -561,15 +716,22 @@ function renderBoard(slide, focusCol) {
   const addPhoto = el("button", { className: "pb-link", textContent: "+ Add photo" });
   addPhoto.addEventListener("click", () => pickPhoto(slide));
   const photos = slideState(slide).photos;
+  const drafts = target.dataset.slide === slide.id
+    ? new Map([...target.querySelectorAll(".pb-add")].map(add => [add.dataset.col, add.draft()]))
+    : new Map();
+  target.dataset.slide = slide.id;
   target.replaceChildren(
     el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Notes" }), addPhoto),
     el("div", { className: "pb-block-body" },
       el("div", { className: `pb-columns pb-${slide.board || "stickies"}` }, columns.map((c, i) => renderColumn(slide, c, tones[i]))),
+      slide.board && slide.board !== "stickies" && el("div", { className: "pb-general" }, renderColumn(slide, GENERAL)),
       photos.length > 0 && el("div", { className: "pb-photos" }, photos.map((name, i) =>
         el("a", { href: `photos/${name}`, target: "_blank", rel: "noopener", title: "Open full size" },
           el("img", { src: `photos/${name}`, alt: `Whiteboard photo ${i + 1}` }))))),
   );
   freshId = null;
+  target.querySelectorAll(".pb-add").forEach(add => { if (drafts.has(add.dataset.col)) add.restore(drafts.get(add.dataset.col)); });
+  target.querySelectorAll(".pb-grow").forEach(autosize);
   if (focusCol !== undefined) target.querySelector(`.pb-add[data-col="${focusCol ?? ""}"]`)?.focus();
 }
 
@@ -586,11 +748,17 @@ const loadExcalidraw = () => (excalidrawLib ||= Promise.all([
 })));
 
 const whiteboardPanels = new Map();
+// Arrows and labels move a little when Excalidraw re-measures them, so only boxes count by position.
+const sceneShape = elements => elements.filter(e => !e.isDeleted).map(e =>
+  e.type === "text" ? `${e.id}:${e.text}` : e.type === "arrow" ? e.id
+    : [e.id, e.type, ...[e.x, e.y, e.width, e.height].map(Math.round)].join(":")).sort().join(",");
+const hasDrawing = wb => !!wb && (wb.drawn ?? (wb.shapes > 0 || wb.labels.length > 0));
 
 function renderWhiteboard(slide) {
   const state = slideState(slide);
   let latest = null;
   let root = null;
+  let seedShape;
   const status = el("p", { className: "pb-wb-status" });
   const showSaved = () => {
     const wb = state.whiteboard;
@@ -606,12 +774,18 @@ function renderWhiteboard(slide) {
     const file = `whiteboards/${slide.id}.excalidraw`;
     const res = await fetch(file, { method: "POST", body: WHITEBOARD.file(elements) });
     if (!res.ok) { status.textContent = "Board not saved — is the server running?"; return false; }
-    state.whiteboard = { file, ...WHITEBOARD.summary(elements), savedAt: new Date().toISOString() };
+    if (seedShape === undefined) {
+      const seeded = await fetch(`whiteboards/${slide.id}.seed.excalidraw`).then(r => (r.ok ? r.text() : "")).catch(() => "");
+      seedShape = seeded ? sceneShape(WHITEBOARD.parse(seeded) || []) : null;
+    }
+    const drawn = elements.length > 0 && sceneShape(elements) !== seedShape;
+    state.whiteboard = { file, ...WHITEBOARD.summary(elements), drawn, savedAt: new Date().toISOString() };
     save(); renderDots(); showSaved();
     return true;
   };
   const seed = () => {
     const elements = WHITEBOARD.seedFromSlide(slide, document.querySelector(".pb-diagram"));
+    seedShape = sceneShape(elements);
     fetch(`whiteboards/${slide.id}.seed.excalidraw`, { method: "POST", body: WHITEBOARD.file(elements) });
     return elements;
   };
@@ -747,7 +921,7 @@ function renderWhiteboard(slide) {
   inlineMode.addEventListener("click", () => { setMode("inline"); save(); });
   liveMode.addEventListener("click", () => { setMode("live"); save(); });
 
-  const panel = el("section", { className: "pb-whiteboard", hidden: !state.whiteboard },
+  const panel = el("section", { className: "pb-whiteboard", hidden: !hasDrawing(state.whiteboard) },
     el("div", { className: "pb-wb-head" },
       el("div", { className: "pb-kinds", role: "group", ariaLabel: "Whiteboard mode" }, inlineMode, liveMode),
       fullScreen),
@@ -813,14 +987,17 @@ function describe(note) {
   return `${note.col ? `${note.col}: ` : ""}${note.done ? "✓ " : ""}${note.text}${rating}`;
 }
 
+const generalLast = notes => [...notes.filter(n => n.col !== GENERAL), ...notes.filter(n => n.col === GENERAL)];
+
 function toMarkdown() {
-  const kept = s => slideState(s).notes.filter(n => !n.draft);
+  const kept = s => generalLast(slideState(s).notes.filter(n => !n.draft));
+  const indent = text => text.replace(/\n/g, "\n  ");
   const line = (s, n) => {
     const rating = n.likelihood || n.impact ? ` (likelihood ${n.likelihood || "?"}, impact ${n.impact || "?"})` : "";
-    const text = `${n.col ? `${n.col}: ` : ""}${n.text}${rating}${n.open ? " _(open)_" : ""}`;
-    return s.board === "checklist" ? `- [${n.done ? "x" : " "}] ${text}` : `- ${text}`;
+    const text = indent(`${n.col ? `${n.col}: ` : ""}${n.text}${rating}${n.open ? " _(open)_" : ""}`);
+    return s.board === "checklist" && n.col !== GENERAL ? `- [${n.done ? "x" : " "}] ${text}` : `- ${text}`;
   };
-  const open = deck.slides.flatMap(s => kept(s).filter(n => n.open).map(n => `- ${s.topic}: ${n.text}`));
+  const open = deck.slides.flatMap(s => kept(s).filter(n => n.open).map(n => `- ${s.topic}: ${indent(n.text)}`));
   const sections = deck.slides.map(s => {
     const notes = kept(s);
     const photos = slideState(s).photos.length;
@@ -863,7 +1040,7 @@ function renderReview() {
   const open = deck.slides.flatMap(s => slideState(s).notes.filter(n => n.open).map(n => `${s.topic}: ${n.text}`));
   const sections = deck.slides.map(s => {
     const { notes, photos } = slideState(s);
-    const kept = notes.filter(n => !n.draft);
+    const kept = generalLast(notes.filter(n => !n.draft));
     return block(s.topic, photos.length > 0 && el("span", { className: "pb-count", textContent: `${photos.length} photo${photos.length > 1 ? "s" : ""}` }),
       kept.length ? el("ul", {}, kept.map(n => el("li", { className: n.open ? "is-open" : "", textContent: describe(n) })))
         : el("p", { className: "pb-empty", textContent: "Nothing captured" }));

@@ -39,6 +39,14 @@ can be relabelled too (it reads "unchanged" by default). Use amber
 strikes its text through, so use it for things that go away or are excluded,
 not for problems. Draw a problem as an amber node, or in `svg`.
 
+## Telling arrows apart: `colorBy`
+
+When several boxes each fan out to shared targets, the lines blur together.
+Add `"colorBy": "source"` to the diagram (or to one side of a `compare`) and
+each source box gets its own colour, shared by its border and every arrow
+leaving it. It applies to plain (`same`) boxes and edges only, so status
+colours still win.
+
 ## `structure`: boxes in layers
 
 Layers run top to bottom in the order given. Keep it to about 12 nodes and
@@ -111,6 +119,18 @@ Ready-made classes:
 
 The presenter validates every diagram when the slide opens and shows any
 problems (an unknown kind, an edge to a missing node) in red instead of the
-diagram. It can't tell whether a diagram is readable, so render-check each
-slide during prep. If one is crowded, split it or move detail into `sub` and
-`note`.
+diagram.
+
+Diagrams never shrink below 90% of their drawn size; a wider one scrolls
+sideways instead. Scrolling still means it's too big, so render-check each
+slide during prep: open it in the presenter and run `diagramCheck()` in the
+page. It returns one entry per diagram:
+
+```json
+[{ "scale": 1.12, "scrolls": false, "crossings": 1, "readable": true }]
+```
+
+Fix any diagram where `readable` is false (it scrolls, or more than three
+pairs of arrows cross): split it into two, swap `structure` for `compare`,
+drop boxes that don't bear on the question, or move detail into `sub` and
+`note`. If several arrows share targets, try `colorBy` too.

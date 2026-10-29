@@ -72,8 +72,19 @@ The owner may move the tier up or down by one. Record their reason.
 
 ### Explain it back
 Before building anything, tell the owner what the task is, as you understand
-it, in no more than three lines plus one diagram. In chat, draw that diagram
-with your visual tool if you have one. Otherwise use plain Mermaid. Ask: "Is this the task?" Correct it until they agree. This is
+it, in no more than three lines plus one diagram. Chat doesn't render
+Mermaid, so draw that diagram with your visual tool if you have one.
+Otherwise draw it as plain text with box-drawing characters, inside a code
+block:
+
+```
+Drawing set PDF ──┬──▶ Top
+                  ├──▶ Front
+                  ├──▶ Left ──▶ hidden by a passive object
+                  └┄┄▶ Right?  (new, the card's ask)
+```
+
+Ask: "Is this the task?" Correct it until they agree. This is
 the first check, and it catches misunderstandings before the teammate is in
 the room. If you're building from a breakdown, use its one-line form instead
 (see Look for a breakdown).
@@ -97,7 +108,8 @@ Rules for slides:
 - **One question per slide.** Point it at the evidence, e.g. "Which of these…",
   "What breaks if…". Never ask anything as vague as "Any thoughts on scope?".
 - **A diagram on every slide** where there's something to draw. Read
-  `references/diagrams.md` before writing the first one.
+  `references/diagrams.md` before writing the first one, and render-check
+  every slide with its `diagramCheck()` before showing the owner the deck.
 - **Facts:** two to four per slide, each verified and with a `ref`. Tag each
   `gap`, `constraint` or `context` (defined in `references/deck.md`). A gap is
   anything that would make the owner say "huh, I didn't account for that".
@@ -143,7 +155,7 @@ with `open` if not. Tell the owner:
 - For anything you can't settle alone, pick **? Open question** in the box
   under each board before writing it (it goes back to Note after each one).
   For an existing note, hover over it and press `?`. Press Enter or **Add**
-  to add a note; anything still typed when you change slides is added too.
+  to add a note (Shift+Enter for a new line); anything still typed when you change slides is added too.
 - Use **Add photo** to snap a real whiteboard, or open the **Whiteboard** row above Notes to draw:
   **Inline** in the slide, or a **Live session** on excalidraw.com for a remote
   teammate (see `references/whiteboard.md`).
