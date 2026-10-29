@@ -98,9 +98,9 @@ Slides, in order (include the ones the tier calls for):
 | id | Topic | Context to show | `board` |
 |---|---|---|---|
 | `picture` | The task in one picture | The corrected explain-back diagram, before and after | `stickies` (corrections) |
-| `approach` | Approach | The files and classes that change, and the existing pattern it follows | `steps` |
+| `approach` | Approach | The files and classes that change, and the existing pattern it follows | `stickies` |
 | `scope` | Scope | The affected areas, with the boundary drawn | `columns` In / Out |
-| `done` | Done when | Specs and screens touched, plus the acceptance criteria | `checklist` |
+| `done` | Done when | Specs and screens touched, plus the acceptance criteria | `stickies` |
 | `risks` | Risks and edge cases | Messy or legacy data, shared code, ordering, scale | `risks` |
 | `deps` | Dependencies | Related cards and what must land first | `stickies` |
 

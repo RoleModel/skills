@@ -165,8 +165,6 @@
   .pb-column[data-tone="bad"] .pb-item { border-left-color: var(--bad-line); }
   .pb-grow { display: block; resize: none; overflow: hidden; font: inherit; line-height: 1.45; overflow-wrap: anywhere; }
   .pb-item .pb-grow { flex: 1; min-width: 0; border: 0; background: transparent; padding: 4px 0; outline: none; font-size: 14px; color: var(--text); }
-  .pb-item.is-done .pb-grow { text-decoration: line-through; color: var(--muted); }
-  .pb-item input[type="checkbox"] { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--good-line); }
   .pb-item select { border: 1px solid var(--border); border-radius: 6px; background: var(--inset); color: var(--muted); font-size: 12px; padding: 2px 4px; }
   .pb-pill { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border: 1px solid; border-radius: 20px; padding: 0 7px; }
   .pb-pill.draft { color: var(--muted); border-color: var(--border-strong); }
@@ -531,9 +529,7 @@ function removeItem(slide, note, li) {
 const GENERAL = "General";
 
 function renderItem(slide, note) {
-  const kind = note.col === GENERAL ? "stickies" : slide.board;
-  const state = slideState(slide);
-  const li = el("li", { className: ["pb-item", note.draft && "is-draft", note.open && "is-open", note.done && "is-done",
+  const li = el("li", { className: ["pb-item", note.draft && "is-draft", note.open && "is-open",
     note.id === freshId && "is-new"].filter(Boolean).join(" ") });
   const draftPill = note.draft ? el("span", { className: "pb-pill draft", textContent: "Draft" }) : null;
   const keep = note.draft ? el("button", { className: "pb-icon", textContent: "✓", title: "Keep this draft" }) : null;
@@ -547,14 +543,8 @@ function renderItem(slide, note) {
   const changed = () => { accept(); save(); renderDots(); };
   keep?.addEventListener("click", changed);
 
-  if (kind === "checklist") {
-    const box = el("input", { type: "checkbox", checked: !!note.done, title: "Done" });
-    box.addEventListener("change", () => { note.done = box.checked; li.classList.toggle("is-done", note.done); changed(); });
-    li.append(box);
-  }
-
   if (slide.board === "columns") li.append(dragGrip(slide, note, li));
-  else if (kind !== "checklist") li.append(el("span", { className: "pb-marker", ariaHidden: "true" }));
+  else li.append(el("span", { className: "pb-marker", ariaHidden: "true" }));
   const text = el("textarea", { className: "pb-grow", rows: 1, value: note.text, ariaLabel: note.open ? "Open question" : "Note" });
   text.addEventListener("input", () => { note.text = text.value; autosize(text); changed(); });
   text.addEventListener("blur", () => { if (!note.text.trim()) removeItem(slide, note, li); });
@@ -563,7 +553,7 @@ function renderItem(slide, note) {
   if (draftPill) li.append(draftPill);
   if (note.from) li.append(el("span", { className: "pb-pill from", textContent: note.from }));
 
-  if (kind === "risks") {
+  if (slide.board === "risks") {
     for (const [key, label] of [["likelihood", "Likelihood"], ["impact", "Impact"]]) {
       const select = el("select", { title: label }, LEVELS.map(l => el("option", { value: l, textContent: `${label}: ${l || "?"}` })));
       select.value = note[key] || "";
@@ -574,21 +564,6 @@ function renderItem(slide, note) {
 
 
   const actions = el("span", { className: "pb-actions" });
-  if (kind === "steps") {
-    for (const [label, delta, title] of [["↑", -1, "Move up"], ["↓", 1, "Move down"]]) {
-      const move = el("button", { className: "pb-icon", textContent: label, title });
-      move.addEventListener("click", () => {
-        const steps = state.notes.filter(n => n.col === note.col);
-        const other = steps[steps.indexOf(note) + delta];
-        if (!other) return;
-        const i = state.notes.indexOf(note), j = state.notes.indexOf(other);
-        [state.notes[i], state.notes[j]] = [state.notes[j], state.notes[i]];
-        freshId = note.id;
-        changed(); renderBoard(slide);
-      });
-      actions.append(move);
-    }
-  }
   const open = el("button", { className: `pb-icon${note.open ? " on" : ""}`, textContent: "?", title: "Mark as open question" });
   open.addEventListener("click", () => {
     note.open = !note.open;
@@ -724,7 +699,7 @@ function renderBoard(slide, focusCol) {
     el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: "Notes" }), addPhoto),
     el("div", { className: "pb-block-body" },
       el("div", { className: `pb-columns pb-${slide.board || "stickies"}` }, columns.map((c, i) => renderColumn(slide, c, tones[i]))),
-      slide.board && slide.board !== "stickies" && el("div", { className: "pb-general" }, renderColumn(slide, GENERAL)),
+      slide.board === "columns" && el("div", { className: "pb-general" }, renderColumn(slide, GENERAL)),
       photos.length > 0 && el("div", { className: "pb-photos" }, photos.map((name, i) =>
         el("a", { href: `photos/${name}`, target: "_blank", rel: "noopener", title: "Open full size" },
           el("img", { src: `photos/${name}`, alt: `Whiteboard photo ${i + 1}` }))))),
@@ -984,7 +959,7 @@ function renderSlide(slide) {
 
 function describe(note) {
   const rating = note.likelihood || note.impact ? ` · L:${note.likelihood || "?"} I:${note.impact || "?"}` : "";
-  return `${note.col ? `${note.col}: ` : ""}${note.done ? "✓ " : ""}${note.text}${rating}`;
+  return `${note.col ? `${note.col}: ` : ""}${note.text}${rating}`;
 }
 
 const generalLast = notes => [...notes.filter(n => n.col !== GENERAL), ...notes.filter(n => n.col === GENERAL)];
@@ -992,10 +967,9 @@ const generalLast = notes => [...notes.filter(n => n.col !== GENERAL), ...notes.
 function toMarkdown() {
   const kept = s => generalLast(slideState(s).notes.filter(n => !n.draft));
   const indent = text => text.replace(/\n/g, "\n  ");
-  const line = (s, n) => {
+  const line = n => {
     const rating = n.likelihood || n.impact ? ` (likelihood ${n.likelihood || "?"}, impact ${n.impact || "?"})` : "";
-    const text = indent(`${n.col ? `${n.col}: ` : ""}${n.text}${rating}${n.open ? " _(open)_" : ""}`);
-    return s.board === "checklist" && n.col !== GENERAL ? `- [${n.done ? "x" : " "}] ${text}` : `- ${text}`;
+    return `- ${indent(`${n.col ? `${n.col}: ` : ""}${n.text}${rating}${n.open ? " _(open)_" : ""}`)}`;
   };
   const open = deck.slides.flatMap(s => kept(s).filter(n => n.open).map(n => `- ${s.topic}: ${indent(n.text)}`));
   const sections = deck.slides.map(s => {
@@ -1003,7 +977,7 @@ function toMarkdown() {
     const photos = slideState(s).photos.length;
     return [
       `**${s.topic}**`,
-      ...(notes.length ? notes.map(n => line(s, n)) : ["- _Nothing captured_"]),
+      ...(notes.length ? notes.map(line) : ["- _Nothing captured_"]),
       ...(photos ? [`- _${photos} whiteboard photo${photos > 1 ? "s" : ""}_`] : []),
     ...(slideState(s).whiteboard ? [`- _Whiteboard: ${slideState(s).whiteboard.shapes} shapes (${slideState(s).whiteboard.file})_`] : []),
     ].join("\n");

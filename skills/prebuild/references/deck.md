@@ -48,16 +48,13 @@ while a session is running.
 - `facts`: two to four. Each is `{text, ref, kind}`.
 - `board`: what the team writes on.
   - `stickies`: a plain list
-  - `steps`: an ordered list that can be reordered
   - `columns`: one list per entry in `columns` (default `["In", "Out"]`).
     With two columns they're tinted green and red, unless `tones` says
-    otherwise. Notes can be dragged between columns by their ⠿ grip.
-  - `checklist`: items with a tickbox
+    otherwise. Underneath is a plain **General notes** list for anything
+    that fits no column; its notes have `"col": "General"`, so `seed` and
+    `notes` can put things there too. Notes can be dragged between all of
+    these by their ⠿ grip.
   - `risks`: items with likelihood and impact ratings (L, M or H)
-
-  Every board except `stickies` also gets a plain **General notes** list
-  underneath, for anything that doesn't fit its shape. Its notes have
-  `"col": "General"`, so `seed` and `notes` can put things there too.
 - `consider`: `nudge` assist level only. A hint that stays hidden until someone
   opens it.
 - `seed`: `strawman` assist level only. `[{"text", "col"}]`, shown as dashed
