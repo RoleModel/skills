@@ -82,12 +82,21 @@
   .pb-diagram { overflow-x: auto; background: var(--inset); border-radius: 0 0 8px 8px; }
   .pb-diagram .dbody { overflow-x: auto; }
   .pb-diagram .dexpand { display: none; }
-  .pb-diagram-block { --fit: max(100%, min(calc(100% + var(--grow, 0px)), calc(100vw - 48px))); width: var(--fit); margin-left: calc((100% - var(--fit)) / 2); }
   .pb-diagram .dsvg { width: 100%; height: auto; animation: pb-fade .3s ease both; }
+  .pb-lightbox { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: #000c; }
+  .pb-lightbox[hidden] { display: none; }
+  .pb-lightbox-panel { width: 96vw; height: 94vh; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .pb-lightbox .pb-diagram { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; border-radius: 0; }
+  .pb-lightbox .dbody { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: auto; }
+  .pb-lightbox .dcompare { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .pb-lightbox .dside { display: flex; flex-direction: column; min-height: 0; }
+  .pb-lightbox .dsvg { flex: 1 1 0; min-height: 0; width: 100%; height: auto; max-width: none !important; }
+  .pb-lightbox .dlegend, .pb-lightbox .pb-diagram-caption { flex: none; }
+  .pb-lightbox .dside > .dbody { position: relative; padding-bottom: 28px; }
+  .pb-lightbox .dside .dlegend { position: absolute; left: 0; bottom: 0; }
   .pb-diagram-caption { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
   .pb-diagram-problems { margin: 0; padding-left: 18px; color: var(--bad); font: 12px/1.6 var(--mono); }
   .dcompare { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
-  .dcompare.is-stacked { grid-template-columns: 1fr; }
   .dside { border: 1px dashed var(--border); border-radius: 6px; padding: 8px; min-width: 0; overflow-x: auto; }
   .dsidet { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
   .dside.after .dsidet { color: var(--accent); }
@@ -440,8 +449,6 @@ function colourBySource(svg) {
   });
 }
 
-const MIN_SCALE = 0.9;
-
 // For the prep render check: how far each diagram on screen is scaled, and how many of its edges cross.
 function diagramCheck() {
   const sample = path => {
@@ -452,7 +459,7 @@ function diagramCheck() {
     const turn = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
     return turn(a, b, c) * turn(a, b, d) < 0 && turn(c, d, a) * turn(c, d, b) < 0;
   };
-  return [...document.querySelectorAll(".pb-diagram svg.dsvg")].map(svg => {
+  return [...document.querySelectorAll("#main .pb-diagram svg.dsvg")].map(svg => {
     const lines = [...svg.querySelectorAll("path.de")].map(sample);
     let crossings = 0;
     lines.forEach((a, i) => lines.slice(i + 1).forEach(b => {
@@ -460,10 +467,7 @@ function diagramCheck() {
       if (hit) crossings++;
     }));
     const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
-    let scrolls = false;
-    for (let box = svg.parentElement; box && !scrolls; box = box.closest(".pb-diagram") === box ? null : box.parentElement)
-      scrolls = box.scrollWidth > box.clientWidth + 1;
-    return { scale: Math.round(scale * 100) / 100, scrolls, crossings, readable: !scrolls && crossings <= 3 };
+    return { scale: Math.round(scale * 100) / 100, crossings, readable: scale >= 0.9 && crossings <= 3 };
   });
 }
 window.diagramCheck = diagramCheck;
@@ -480,7 +484,7 @@ function renderDiagram(d) {
   svgs.forEach((svg, i) => {
     if ((sides[i] || d).colorBy === "source" || d.colorBy === "source") colourBySource(svg);
     const width = svg.viewBox.baseVal?.width;
-    if (width) Object.assign(svg.style, { minWidth: `${width * MIN_SCALE}px`, maxWidth: `${width * 1.5}px` });
+    if (width) svg.style.maxWidth = `${width * 1.5}px`;
   });
   for (const [status, text] of Object.entries(d.legend || {})) {
     body.querySelectorAll(`.dk.${status}`).forEach(key => key.replaceChildren(el("i"), text));
@@ -490,34 +494,38 @@ function renderDiagram(d) {
     d.caption && el("p", { className: "pb-diagram-caption", textContent: d.caption }));
 }
 
-// Widens a diagram's block past the column until its diagram fits; the rest of the slide keeps the column width.
-// A side-by-side pair that can't fit even at the window's width is stacked instead.
-function fitDiagrams() {
-  const over = box => box.scrollWidth - box.clientWidth;
-  document.querySelectorAll(".pb-diagram-block").forEach(block => {
-    block.style.removeProperty("--grow");
-    const body = block.querySelector(".pb-diagram");
-    const pair = body.querySelector(".dcompare");
-    pair?.classList.remove("is-stacked");
-    const overflow = () => {
-      const sides = [...body.querySelectorAll(".dside")].map(side => Math.max(over(side), ...[...side.querySelectorAll(".dbody")].map(over)));
-      const sideBySide = pair && pair.children.length === 2 && pair.children[0].offsetTop === pair.children[1].offsetTop;
-      return Math.max(...[body, ...body.querySelectorAll(".dbody")].map(over),
-        sideBySide ? sides.reduce((a, b) => a + Math.max(b, 0), 0) : Math.max(0, ...sides));
-    };
-    let grow = overflow();
-    if (pair && grow > innerWidth - 48 - block.offsetWidth) {
-      pair.classList.add("is-stacked");
-      grow = overflow();
-    }
-    if (grow > 1) block.style.setProperty("--grow", `${grow}px`);
+// The expanded view draws the diagram again to fill the window, with a compare pair kept side by side.
+const lightbox = el("div", { className: "pb-lightbox", hidden: true });
+const closeLightbox = () => { lightbox.hidden = true; lightbox.replaceChildren(); };
+lightbox.addEventListener("click", e => { if (e.target === lightbox || e.target.closest(".pb-lightbox-close")) closeLightbox(); });
+
+// Hand-written svg and html diagrams have no viewBox to scale by, so they're zoomed to fit instead.
+function fitRaw() {
+  lightbox.querySelectorAll(".dbody > .draw").forEach(raw => {
+    raw.style.zoom = "";
+    const box = raw.parentElement, w = raw.scrollWidth, h = raw.scrollHeight;
+    if (w && h) raw.style.zoom = String(Math.max(1, Math.min(box.clientWidth / w, box.clientHeight / h, 3)));
   });
 }
-addEventListener("resize", fitDiagrams);
+addEventListener("resize", () => { if (!lightbox.hidden) fitRaw(); });
+
+function expandButton(d) {
+  const button = el("button", { className: "pb-link", type: "button", textContent: "Expand ⤢", title: "Expand (Esc to close)" });
+  button.addEventListener("click", () => {
+    const panel = el("div", { className: "pb-lightbox-panel", role: "dialog", ariaLabel: d.title || "Diagram" },
+      el("div", { className: "pb-block-head" }, el("p", { className: "pb-label", textContent: d.title || "Diagram" }),
+        el("button", { className: "pb-link pb-lightbox-close", type: "button", textContent: "Close ×" })),
+      renderDiagram(d));
+    lightbox.replaceChildren(panel);
+    lightbox.hidden = false;
+    fitRaw();
+  });
+  return button;
+}
 
 function renderContext(slide) {
   return [
-    slide.diagram && Object.assign(block(slide.diagram.title || "Diagram", null, renderDiagram(slide.diagram)), { className: "pb-block pb-diagram-block" }),
+    slide.diagram && block(slide.diagram.title || "Diagram", expandButton(slide.diagram), renderDiagram(slide.diagram)),
     ...FACT_KINDS.map(([kind, heading]) => {
       const facts = (slide.facts || []).filter(f => (FACT_KINDS.some(([k]) => k === f.kind) ? f.kind : "context") === kind);
       if (!facts.length) return null;
@@ -1078,7 +1086,7 @@ function render() {
   main.classList.remove("is-entering");
   void main.offsetWidth;
   main.classList.add("is-entering");
-  if (!onReview) { fitDiagrams(); renderWhiteboardRow(slide); renderBoard(slide); }
+  if (!onReview) { renderWhiteboardRow(slide); renderBoard(slide); }
   document.getElementById("progress").textContent = deck.issue.tier || "";
   document.getElementById("back").disabled = index === 0;
   const next = document.getElementById("next");
@@ -1111,6 +1119,7 @@ function go(i) {
 document.getElementById("back").addEventListener("click", () => go(index - 1));
 document.getElementById("next").addEventListener("click", () => go(index + 1));
 document.addEventListener("keydown", e => {
+  if (!lightbox.hidden) { if (e.key === "Escape") closeLightbox(); return; }
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
   // Excalidraw uses the arrow keys to nudge shapes, so they mustn't change slides while it has focus.
   if (e.target.closest?.(".pb-excalidraw") || document.activeElement?.closest?.(".pb-excalidraw")) return;
@@ -1118,6 +1127,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") go(index - 1);
 });
 
+document.body.append(lightbox);
 load();
 </script>
 </body>

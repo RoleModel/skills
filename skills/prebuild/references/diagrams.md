@@ -121,18 +121,17 @@ The presenter validates every diagram when the slide opens and shows any
 problems (an unknown kind, an edge to a missing node) in red instead of the
 diagram.
 
-Diagrams never shrink below 90% of their drawn size. A wider one widens its
-block past the slide's column, up to the window's edge, and scrolls sideways
-only beyond that. A `compare` pair too wide to sit side by side even then is
-stacked instead. Scrolling means it's too big, so render-check each slide
-during prep: open it in the presenter and run `diagramCheck()` in the
+Diagrams shrink to fit the slide's column, and **Expand ⤢** opens one to
+fill the window (a `compare` pair stays side by side there). Expand is for
+looking closer, not a fix for a diagram that's too big, so render-check each
+slide during prep: open it in the presenter and run `diagramCheck()` in the
 page. It returns one entry per diagram:
 
 ```json
-[{ "scale": 1.12, "scrolls": false, "crossings": 1, "readable": true }]
+[{ "scale": 1.12, "crossings": 1, "readable": true }]
 ```
 
-Fix any diagram where `readable` is false (it scrolls, or more than three
-pairs of arrows cross): split it into two, swap `structure` for `compare`,
+Fix any diagram where `readable` is false (it's shown below 90% of its
+drawn size, or more than three pairs of arrows cross): split it into two,
 drop boxes that don't bear on the question, or move detail into `sub` and
 `note`. If several arrows share targets, try `colorBy` too.
