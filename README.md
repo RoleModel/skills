@@ -39,6 +39,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[turbo-modals](skills/turbo-modals)** | RoleModel's Turbo Frame modal and panel pattern from `rolemodel_rails`: `modal_link_to`, `render layout: 'modal'`, 422 on errors, redirect on success, and never the `layout` class method. |
 | **[soft-destroyable](skills/soft-destroyable)** | Soft-delete models with the `SoftDestroyable` concern from `rolemodel_rails` — `kept`/`only_deleted` instead of a default scope, cascading soft destroy and timestamp-matched restore, and the shared example. |
 | **[polymorphic-parent-resources](skills/polymorphic-parent-resources)** | Serve a child resource that hangs off many different parents (comments, reports, duplications, attachments) from a single controller, using a route concern plus `resource_for` from `rolemodel_rails`. Includes a retrofit guide for consolidating existing per-parent controllers. |
+| **[rake-tasks](skills/rake-tasks)** | Rake tasks with `Rolemodel::Utility::TaskTools` from `rolemodel_rails`: `say_with_time` output, `indicate_progress`, `DRY_RUN` previews, and `sanitize_arguments` for optional positional arguments. |
 | **[tdd](skills/tdd)** | Test-driven development for Rails — outside-in with RSpec, Capybara, and FactoryBot. Covers the red-green loop, spec plans, and the Prove-It pattern for bugs. |
 
 ### Developer Workflow
