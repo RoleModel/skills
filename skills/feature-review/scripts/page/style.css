@@ -742,3 +742,12 @@ background:rgba(20,20,24,.7);border:1px solid rgba(255,255,255,.2);color:#fff;z-
 .lbnav:hover{background:rgba(20,20,24,.9);color:#fff;border-color:#fff}
 .lbnav.prev{left:18px}.lbnav.next{right:18px}
 .lbcount{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;background:rgba(20,20,24,.7);padding:3px 10px;border-radius:20px}
+
+/* Check kinds: what the change does, and what it should do but doesn't. */
+.ktag{flex:none;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 6px}
+.ktag.does{color:var(--add-b);background:color-mix(in srgb,var(--add-b) 14%,transparent)}
+.ktag.should{color:var(--warn);background:color-mix(in srgb,var(--warn) 16%,transparent)}
+/* The remembered width setting drives every reading column. */
+:root{--colw:1120px}
+.ovcol,#recsview{max-width:var(--colw)}
+#submitview{max-width:var(--colw)}

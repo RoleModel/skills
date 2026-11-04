@@ -15,8 +15,11 @@ submit did.
   code** in the header (or `c`) opens it, and the same button takes you back.
   Number keys jump to a step; `#overview` still opens Story. Each rail step shows only its
   own progress (checks done, recommendations decided, lines read).
-- **Checks** are expectations: each is labelled **Should**, and the reviewer
-  confirms it holds. A walkthrough step's screens sit, folded, with its checks.
+- **Checks** are tagged **Does** (behaviour the change implements; the default)
+  or **Should** (behaviour it ought to have but doesn't), from each check's
+  `kind`. A walkthrough step's screens sit, folded, with its checks.
+- **Width.** The header's **Width** button cycles Narrow, Normal, Wide and Full
+  for the reading columns, remembered across reviews.
 - **Images and diagrams** that sit together open as a gallery: arrow keys or
   the side buttons move through a description's screenshots, a step's visuals,
   or a compare's two sides.
