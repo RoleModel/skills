@@ -16,15 +16,17 @@ license: MIT
 
 # Feature Review
 
-Turns a diff into an offline HTML page that reviews a change in three steps,
-with comments that can be posted to the PR as one review:
+Turns a diff into an offline HTML page that reviews a change in steps, with
+comments that can be posted to the PR as one review:
 
-1. **Overview**: what the PR's author said (a digest, their screenshots, and
-   the full description folded away), the feature (what it does for the user,
-   and checks to confirm it does it well), the **feature overview** (the
-   flow end to end, each step pairing screenshots or recordings with what runs
-   underneath, the groups that do it, and its checks), and the shape of the change (layers, objects, departures
-   from the architecture, and how the codebase's shape moved), with diagrams.
+1. **Understand**, in three steps. **Story**: what the PR's author said (a
+   digest, their screenshots, the full description folded away), the feature,
+   and how it comes together step by step with screenshots. **Checks**: the
+   behaviour to confirm, each tagged Does or Should. These two are about the
+   outcome and the concepts, in product language with no code in them (see
+   `references/overview.md`). **Shape**: the technical picture: layers,
+   objects, departures from the architecture, where the lines landed, with
+   diagrams.
 2. **Code**, in two modes switched in the header (or `r`):
    - **Recommendations** (the default): each reading-guide group as a short
      gist with its visuals (diagrams, screenshots, screen recordings) and the
@@ -157,6 +159,11 @@ The page opens on the overview when there is one (and afterwards on whichever
 step the reviewer was last on). It has four parts, written by you under
 `overview` in the groups file:
 
+The Story and Checks steps (`author`, `feature`, `connection`) are about the
+outcome and the concepts: write them in product language, with no class,
+method, file or route names. The technical detail goes in the shape, the groups
+and the recommendations.
+
 - **From the PR description** (`author`): your digest of what the author said
   and why, and where the code differs from it. The page adds the description's
   screenshots and the full text, folded away.
@@ -164,10 +171,9 @@ step the reviewer was last on). It has four parts, written by you under
   **feature checks**: behaviour for the reviewer to confirm, each marked Looks
   right or Concern. Concerns and their notes are added to the review summary.
 - **Feature overview** (`connection`): how it all comes together. A short
-  end-to-end summary, how it works technically, then the flow step by step:
-  each step pairs what the user sees (screenshots, recordings) with a short,
-  optional "Under the hood" note (folded by default), links the groups and
-  files that do it, and holds the checks that test it. Make it as visual as you can.
+  end-to-end summary, then the flow step by step: each step is what the user
+  sees or does (with screenshots or recordings) and links the groups that do
+  it; its checks show with it on the Checks step. Make it as visual as you can.
 - **The shape**: the shape of this change (layers, objects, new dependencies,
   departures from the architecture instructions) and how it moves the shape
   of the codebase as a whole, always with a `structure` diagram that marks
