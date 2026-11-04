@@ -18,8 +18,9 @@ submit did.
 - **Checks** are tagged **Does** (behaviour the change implements; the default)
   or **Should** (behaviour it ought to have but doesn't), from each check's
   `kind`. A walkthrough step's screens sit, folded, with its checks.
-- **Width.** The header's **Width** button cycles Narrow, Normal, Wide and Full
-  for the reading columns, remembered across reviews.
+- **Settings.** The gear in the header opens a small panel. **Page width**
+  (Narrow, Normal, Wide, Full) sets how wide the reading columns run,
+  remembered across reviews.
 - **Images and diagrams** that sit together open as a gallery: arrow keys or
   the side buttons move through a description's screenshots, a step's visuals,
   or a compare's two sides.
