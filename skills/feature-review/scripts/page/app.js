@@ -1103,7 +1103,10 @@
       return '<div class="chk ' + (k.s || '') + '" data-k="' + esc(c.kid) + '"><div class="chkbtns">' +
         '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">&#10003; Looks right</button>' +
         '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">! Concern</button></div>' +
-        '<div class="chktext"><span class="should" title="What the change should do. Confirm that it does.">Should</span><span class="md">' + mdHtml(c.text) + '</span></div>' +
+        (c.kind === 'should'
+          ? '<div class="chktext"><span class="ktag should" title="Behaviour the change should have but doesn\'t yet">Should</span>'
+          : '<div class="chktext"><span class="ktag does" title="Behaviour the change implements. Confirm it works and is wanted.">Does</span>') +
+        '<span class="md">' + mdHtml(c.text) + '</span></div>' +
         (c.how ? '<div class="chkhow md"><b>How to check:</b> ' + mdHtml(c.how) + '</div>' : '') +
         (c.path ? '<div class="chkfile">' + fileLink(c.path, '<code>' + esc(c.path) + '</code>') + '</div>' : '') +
         (k.s === 'concern' ? '<textarea class="chknote" placeholder="What is wrong? This goes into the review summary.">' + esc(k.note || '') + '</textarea>' : '') +
@@ -1961,6 +1964,17 @@
     else if (was !== 'code') window.scrollTo(0, ys.code || 0);
   }
   addEventListener('hashchange', setView);
+  // How wide the reading columns run, remembered across reviews.
+  const WIDTHS = [['Narrow', '880px'], ['Normal', '1120px'], ['Wide', '1440px'], ['Full', '100%']];
+  const setWidth = (i) => {
+    const w = WIDTHS[i] || WIDTHS[1];
+    document.documentElement.style.setProperty('--colw', w[1]);
+    $('widthbtn').textContent = 'Width: ' + w[0];
+    store.set('frwidth', String(i));
+  };
+  let widthAt = +(store.get('frwidth') ?? 1);
+  setWidth(widthAt);
+  $('widthbtn').onclick = () => setWidth(widthAt = (widthAt + 1) % WIDTHS.length);
   const goStep = (step) => { if (location.hash === '#' + step) setView(); else location.hash = step; };
   document.addEventListener('click', (e) => {
     // A group link from the story opens the Recommendations at that group's gist.

@@ -477,6 +477,7 @@ if (groupsPath) {
     const titles = new Set(guide.groups.map((g) => g.title));
     const checks = (ov.feature && ov.feature.checks) || [];
     checks.forEach((c, i) => { if (!(c && (typeof c === 'string' || c.text))) { console.error(`overview: check ${i + 1} has no text`); bad++; } });
+    checks.forEach((c, i) => { if (c && typeof c === 'object' && c.kind && !['does', 'should'].includes(c.kind)) { console.error(`overview: check ${i + 1} kind must be "does" or "should"`); bad++; } });
     checks.forEach((c) => { if (c && c.path && !byName.has(c.path)) { console.error(`overview: check names a file not in the diff: ${c.path}`); bad++; } });
     (ov.diagrams || []).forEach((d, i) => {
       for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`)) { console.error(`overview: ${p}`); bad++; }

@@ -73,10 +73,15 @@ about: an empty section is better than filler.
   the most valuable thing the overview can surface.
 - **`behavior`**: the walkthrough, before and after, from the user's side.
   Markdown. Use it when the change alters a flow; skip it for a pure refactor.
-- **`checks`**: the behaviour worth confirming. Each is an *expectation*: word it
-  as what should happen ("A placed order can't be reopened from a second tab"),
-  never as a claim that the code already does it; the page labels every check
-  "Should" and the reviewer confirms whether it holds. Things a reviewer can verify
+- **`checks`**: the behaviour worth confirming, each with a `kind`:
+  - `"does"` (the default): behaviour the change actually implements, read from
+    the code ("The old /projects URL now 404s"). The page tags it **Does**; the
+    reviewer confirms it works and is wanted.
+  - `"should"`: behaviour the change ought to have but doesn't, a gap you found
+    ("A placed order should not be reopened from a second tab, but nothing
+    stops it"). The page tags it **Should**. Usually pair it with a
+    recommendation that names the fix.
+  Never write a `does` check for something you haven't seen in the code. Things a reviewer can verify
   in the app or by reasoning, not code-style remarks. Edge cases the change
   touches (empty, the largest case, undo, permissions, a second user, an
   existing record created before this change), interactions with neighbouring
