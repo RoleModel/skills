@@ -406,51 +406,14 @@ const asset = (f) => fs.readFileSync(path.join(PAGE, f), 'utf8');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // JSON islands escape "<" so nothing inside them can close the script tag.
 const island = (id, value) => `<script id="${id}" type="application/json">${JSON.stringify(value).replace(/</g, '\\u003c')}</script>`;
-const js = [fs.readFileSync(path.join(__dirname, 'lib', 'diff-parse.cjs'), 'utf8'), asset('highlight.js'), asset('markdown.js'),
-  asset('diagrams.js'), asset('app.js')]
-  .join('\n;\n').replace(/<\/script/gi, '<\\/script');
 const event = (opt('--event') || 'COMMENT').toUpperCase().replace(/[\s-]+/g, '_');
 if (!['COMMENT', 'APPROVE', 'REQUEST_CHANGES'].includes(event)) die('--event must be comment, approve or request_changes');
 const meta = { title, slug, range, commitId, pr, event, headRev, baseRev, blobs, sizes, lastReview, since,
   repoRoot: headRev ? git(['rev-parse', '--show-toplevel']).trim() : null };
 
-const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="darkreader-lock">
-<title>${esc(title)}</title>
-<style>
-${asset('style.css')}
-</style></head><body>
-<header>
-<span class="steps" id="steps"><button data-step="overview"><b>1</b> Overview</button><button data-step="code"><b>2</b> Code</button><button data-step="submit"><b>3</b> Submit</button></span>
-<span class="steps modes diffonly" id="modes" title="Recommendations or code (r)"><button data-mode="recs">Recommendations</button><button data-mode="diff">Code</button></span>
-<h1>${esc(title)}</h1>
-<span class="stats" id="stats"></span>
-<button id="expand" class="diffonly codeonly">Expand all</button>
-<button id="collapse" class="diffonly codeonly">Collapse all</button>
-<button id="reset" class="diffonly codeonly">Reset viewed</button>
-<button id="hltoggle" class="diffonly codeonly">Syntax highlighting: on</button>
-<button id="wstoggle" class="diffonly codeonly">Whitespace: shown</button>
-<button id="splittoggle" class="diffonly codeonly">View: unified</button>
-<button id="keys" title="Keyboard shortcuts (?)">?</button>
-<input type="search" id="q" class="diffonly codeonly" placeholder="Filter files…">
-<button id="gosubmit" class="primary diffonly">Finish review</button>
-</header>
-<div class="layout"><nav><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
-<section id="overviewview"></section>
-<section id="submitview"></section>
-<section id="doneview"></section>
-${island('diff-src', diff)}
-${island('ws-src', wsMap)}
-${island('threads-src', threads)}
-${island('guide-src', guide)}
-${island('meta-src', meta)}
-${island('desc-src', description)}
-<script id="server-src" type="application/json">null</script>
-<script>
-${js}
-</script></body></html>`;
+const html = require('./lib/page.cjs').render({ titleHtml: esc(title), islands: [
+  island('diff-src', diff), island('ws-src', wsMap), island('threads-src', threads), island('guide-src', guide),
+  island('meta-src', meta), island('desc-src', description)].join('\n') });
 
 fs.writeFileSync(out, html);
 

@@ -531,3 +531,214 @@ details.cxtech[open]>summary{margin-bottom:4px}
   border:1px solid var(--border);border-radius:20px;padding:1px 9px;background:var(--bg);overflow-wrap:anywhere}
 .chkfile a:hover{border-color:var(--accent)}
 .chkfile a code{font:inherit;background:none;border:0;padding:0;color:inherit}
+
+/* =============================================================================
+   The guided layout: a step rail in the header, one focused view per step, and
+   an outline in the sidebar. Calm neutrals, one accent, type doing the work.
+   ========================================================================== */
+:root{--bg:#0e1014;--panel:#15181d;--raised:#1b1f25;--border:#272c34;--text:#e4e6ea;--muted:#8b919c;--accent:#7f9cf5;--accent-bg:rgba(127,156,245,.12);
+--warn:#e3b341;--hunk:#17202e;--r:10px;--sans:"Inter",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+@media(prefers-color-scheme:light){:root{--bg:#f6f6f4;--panel:#fff;--raised:#fafaf9;--border:#e3e3df;--text:#1b1d21;--muted:#666b74;--accent:#3d5bd9;
+--accent-bg:rgba(61,91,217,.08);--warn:#9a6700;--hunk:#eef2fd}}
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button{border-radius:8px;padding:6px 12px;font:500 12.5px var(--sans);transition:border-color .15s,background .15s,color .15s}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{color:#fff;filter:brightness(1.08)}
+button:disabled{opacity:.45;cursor:default}
+kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--muted);margin-left:4px}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.lede{font-size:15px;color:var(--muted);margin:6px 0 0;max-width:68ch}
+.sp{flex:1}
+
+/* --- header: who and what, then the steps ---------------------------------- */
+header{display:block;padding:0;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--border)}
+.hbar{display:flex;align-items:center;gap:24px;padding:12px 24px;flex-wrap:wrap}
+.hid{min-width:0;flex:1 1 320px}
+.hrepo{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hrepo a{color:var(--muted);text-decoration:none;font-weight:600}
+.hrepo a:hover{color:var(--accent)}
+.hrepo .pillnote{border:1px solid var(--border);border-radius:20px;padding:0 8px;font-size:11px}
+header h1{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hend{display:flex;gap:10px;align-items:center}
+.hend .stats{max-width:360px}
+.rail{list-style:none;margin:0;padding:3px;display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:12px}
+.rail li.sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.rail button{border:0;border-radius:9px;display:flex;align-items:center;gap:7px;padding:6px 10px;color:var(--muted)}
+.rail button:hover{color:var(--text);background:var(--raised)}
+.rail .rn{width:18px;height:18px;border-radius:50%;border:1px solid var(--border);display:inline-grid;place-items:center;font-size:10.5px;font-weight:600}
+.rail .rs{font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted);opacity:.85}
+.rail li.on button{background:var(--accent-bg);color:var(--text)}
+.rail li.on .rn{background:var(--accent);border-color:var(--accent);color:#fff}
+.rail li.done .rn{border-color:var(--add-b);color:var(--add-b)}
+.rail li.on.done .rn{background:var(--add-b);color:#fff}
+.rail li.bad .rs{color:var(--del-b)}
+.codebar{display:none;gap:8px;align-items:center;padding:8px 24px;border-top:1px solid var(--border);flex-wrap:wrap}
+body[data-view=code] .codebar{display:flex}
+body[data-view=submit] #gosubmit,body[data-view=done] #gosubmit{display:none}
+
+/* --- sidebar: progress for this step, then the outline -------------------- */
+nav{width:300px;flex-basis:300px;padding:20px 8px 20px 20px}
+.meta{border-radius:var(--r);padding:14px;background:var(--panel)}
+.meta .prog{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+.ring{width:44px;height:44px;transform:rotate(-90deg);flex:none}
+.ring circle{fill:none;stroke-width:3.5}
+.ring .rt{stroke:var(--border)}.ring .rf{stroke:var(--accent);stroke-linecap:round;transition:stroke-dasharray .3s}
+.meta .pnum{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.meta .pnum span{font-size:13px;color:var(--muted);font-weight:500}
+.meta .plbl{font-size:12px;color:var(--muted)}
+.meta .pfoot{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:4px}
+.meta .pfoot .yes{color:var(--add-b)}.meta .pfoot .no{color:var(--muted)}
+#navlist{padding-top:6px}
+.og{margin:2px 0;border-radius:8px}
+.og>summary{list-style:none;cursor:pointer;margin:0;padding:8px 10px;border:0;border-radius:8px;background:transparent}
+.og>summary::-webkit-details-marker{display:none}
+.og>summary:hover{background:var(--panel)}
+.og>summary h2{font-size:12.5px;text-transform:none;letter-spacing:0;font-weight:600}
+nav .og>summary a{color:var(--text)}
+.og.cur>summary{background:var(--panel)}
+.og.done>summary .gct{color:var(--add-b)}
+.orecs{display:none;padding:2px 0 6px 8px}
+body.recs .orecs{display:block}
+.recsonly{display:none}body.recs .recsonly{display:block}
+nav a.orec{display:flex;gap:8px;align-items:flex-start;font:12.5px/1.4 var(--sans);color:var(--muted);padding:5px 8px;word-break:normal}
+nav a.orec i{flex:none;width:7px;height:7px;border-radius:50%;margin-top:5px;border:1.5px solid var(--muted)}
+nav a.orec.yes i{background:var(--add-b);border-color:var(--add-b)}
+nav a.orec.no i{background:var(--muted);border-color:var(--muted)}
+nav a.orec.mixed i{background:linear-gradient(90deg,var(--add-b) 50%,transparent 50%);border-color:var(--add-b)}
+nav a.orec.on{background:var(--accent-bg);color:var(--text)}
+nav a.orec span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ofiles>summary{font-size:11.5px;color:var(--muted);cursor:pointer;padding:3px 10px 3px 16px}
+body:not(.recs) .ofiles>summary{display:none}
+body:not(.recs) .ofl{padding-left:4px}
+
+/* --- the understand steps: one reading column ------------------------------ */
+#overviewview{padding:40px 24px 96px}
+.ovcol{max-width:920px;margin:0 auto}
+.ovhead{display:block;margin:0 0 28px}
+.ovhead h2{font-size:28px;line-height:1.2;letter-spacing:-.02em;margin:0;font-weight:650}
+.ovblock{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin:0 0 18px}
+.ovblock h3{font-size:16px;letter-spacing:-.01em;margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.ovfoot{display:flex;justify-content:flex-end;margin-top:28px}
+button.big{padding:10px 18px;font-size:14px;border-radius:10px}
+.chkct{font-size:13px;color:var(--muted);margin:-12px 0 16px}
+.cxn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent-bg);color:var(--accent);font-size:12px}
+a.cxchk{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent);text-decoration:none}
+.ovtotal{color:var(--muted);margin:0 0 12px}
+.lands{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.land+.land{border-top:1px solid var(--border)}
+.land>summary{display:grid;grid-template-columns:minmax(120px,1.2fr) 70px 2fr 110px 90px;gap:14px;align-items:center;padding:10px 14px;cursor:pointer;list-style:none}
+.land>summary::-webkit-details-marker{display:none}
+.land>summary:hover,.land[open]>summary{background:var(--raised)}
+.land .ln{color:var(--muted);font-size:12px}
+.land .ovbar>span{display:flex;height:8px;border-radius:4px;background:var(--border);overflow:hidden}
+.land .ovbar i{display:block;height:100%}.land .ovbar i.a{background:var(--add-b)}.land .ovbar i.d{background:var(--del-b)}
+.land .ovnum{text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px}
+.land .lnet{color:var(--muted)}.land .lnet.add{color:var(--add-b)}.land .lnet.del{color:var(--del-b)}
+.land table.ovsizes{margin:0;font-family:var(--sans);font-size:12.5px;background:var(--bg)}
+.land table.ovsizes td{padding:6px 14px;border-top:1px solid var(--border);white-space:nowrap}
+.land td.muted{color:var(--muted)}
+.land td.ovsize{width:30%}
+.land td.ovsize i{display:block;height:4px;border-radius:2px;margin:2px 0}
+.land td.ovsize i.b{background:var(--muted);opacity:.5}.land td.ovsize i.a{background:var(--accent)}
+
+/* --- recommendations: one thing at a time ----------------------------------- */
+#recsview{max-width:900px;margin:0 auto;padding:20px 8px 80px}
+.fhero{margin:12px 0 22px}
+.fhero h2{font-size:26px;letter-spacing:-.02em;margin:0;font-weight:650}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.pill{min-width:32px;padding:4px 10px;border-radius:20px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pill.yes{border-color:var(--add-b);color:var(--add-b)}
+.pill.no{color:var(--muted);text-decoration:line-through}
+.pill.mixed{border-color:var(--warn);color:var(--warn)}
+.pill.on{background:var(--text);border-color:var(--text);color:var(--bg);text-decoration:none}
+.fstage{animation:rise .22s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.fstage{animation:none}}
+.gist,.rec{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px 26px}
+.gist .md,.gist li{font-size:14.5px}
+.gist .gfiles{margin-top:18px}
+.gist .gnext{color:var(--muted);margin:18px 0 0;font-size:13px}
+.rec{margin:0}
+.rec.yes{border-color:color-mix(in srgb,var(--add-b) 55%,var(--border))}
+.rec.no{opacity:.75}
+.rec .rectop{display:block;margin-bottom:16px}
+.rec .rectitle{font-size:19px;line-height:1.35;letter-spacing:-.01em;font-weight:600;margin:6px 0 0}
+.rec .recparts{display:grid;grid-template-columns:1fr;gap:0;margin:0;border-left:2px solid var(--border)}
+.rec .recpart{padding:6px 0 10px 16px;display:block}
+.rec .recpart dt{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.rec .recpart dd{margin:0;font-size:14.5px}
+.rec .recpart.problem dt{color:var(--del-b)}
+.rec .recpart.proposal{background:var(--accent-bg);border-radius:0 8px 8px 0;margin-left:-2px;border-left:2px solid var(--accent)}
+.rec .recpart.proposal dt{color:var(--accent)}
+.rec .reccomments{margin-top:18px}
+.rec .recc{border:1px solid var(--border);border-radius:var(--r);margin-top:8px;overflow:hidden;background:var(--bg)}
+.recdecide{display:flex;align-items:center;gap:10px;margin:22px -26px -24px;padding:14px 26px;border-top:1px solid var(--border);background:var(--raised);border-radius:0 0 14px 14px}
+.recwhat{font-size:12.5px;color:var(--muted)}
+.recdecide button{padding:8px 16px;font-size:13px}
+.recdecide button.yes.on{background:var(--add-b);border-color:var(--add-b);color:#fff}
+.recdecide button.no.on{background:var(--text);border-color:var(--text);color:var(--bg)}
+.recdecide button.on kbd{color:inherit;border-color:currentColor;opacity:.7}
+.fnav{display:flex;align-items:center;gap:12px;margin-top:18px}
+.fnext{font-size:12.5px;color:var(--muted);max-width:50ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fnext b{color:var(--text);font-weight:500}
+.fnav button.primary kbd{color:#fff;border-color:rgba(255,255,255,.5)}
+
+/* --- diff and submit pick up the same surfaces --------------------------------- */
+.file{border-radius:var(--r)}
+.fhead{border-radius:var(--r) var(--r) 0 0}
+.ghead{border-left-width:2px}
+#submitview{padding-top:40px}
+.pills{align-items:center}
+.pill{height:28px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+nav .og>summary a{display:inline;padding:0;font:inherit;color:var(--text);word-break:normal}
+nav .og>summary h2{font-family:var(--sans)}
+.gfiles .cxlbl a{color:var(--accent);text-decoration:none;text-transform:none;letter-spacing:0}
+.land>summary{grid-template-columns:minmax(140px,1.3fr) 64px minmax(120px,2fr) 96px 72px}
+.land .ovnum{white-space:nowrap}
+.land .lk code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+
+/* --- round 2 ------------------------------------------------------------------ */
+/* Wider reading columns. */
+.ovcol{max-width:1120px}
+#recsview{max-width:1120px}
+/* Key hints sit quietly inside buttons, and take the button's own colour. */
+button kbd{border:0;background:color-mix(in srgb,currentColor 14%,transparent);color:inherit;opacity:.75;padding:1px 5px;margin-left:6px;font-size:10.5px}
+button:hover kbd{opacity:1}
+#gocode .hpct{font-size:11px;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+/* Story steps: the pictures at one size on the left, the words beside them. */
+.cxsteps .cxbody{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+.cxsteps .cxstep.novis .cxbody{grid-template-columns:1fr}
+.cxsteps .cxvis{display:grid;gap:10px}
+.cxvis .dmedia img,.cxvis .dmedia video{width:100%;height:260px;object-fit:contain;background:var(--bg);border-radius:8px}
+.cxvis figure.diagram{margin:0}
+.cxtext h4{margin-top:0}
+@media(max-width:900px){.cxsteps .cxbody{grid-template-columns:1fr}}
+/* Checks: an expectation, worded as one. */
+.chktext{display:flex;gap:10px;align-items:baseline}
+.chktext .md>p:first-child{margin-top:0}.chktext .md>p:last-child{margin-bottom:0}
+.should{flex:none;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-bg);border-radius:4px;padding:2px 6px}
+.chk{padding:12px 14px}
+.chkstep .cxuser{color:var(--muted);margin:-4px 0 10px}
+details.chkvis{margin:0 0 12px}
+details.chkvis>summary,details.recchecks>summary,details.gfiles>summary{cursor:pointer;font-size:12.5px;color:var(--muted);padding:4px 0}
+details.chkvis[open]>.cxvis{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:8px}
+details.recchecks{margin-top:16px}
+details.gfiles{margin-top:18px}
+.gfiles .rgfiles{margin-top:8px}
+a.gcode{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent);text-decoration:none}
+.rec .recvis{margin:0 0 16px}
+/* Code: fold a group, fold expanded context. */
+.ghead h2 .gfold{margin-left:10px;font-size:11px;padding:2px 8px;font-weight:500}
+.xfold{font-size:11px;padding:2px 8px}
+.xfold.hidden{display:none}
+/* A flash is a toast, not a change to the header. */
+#toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,12px);opacity:0;pointer-events:none;z-index:70;max-width:min(560px,90vw);
+padding:10px 16px;border-radius:10px;background:var(--text);color:var(--bg);font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.25);transition:opacity .2s,transform .2s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.err{background:var(--del-b);color:#fff}
+/* Gallery: arrows either side, a count underneath. */
+.lbnav{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;font-size:26px;line-height:1;padding:0;
+background:rgba(20,20,24,.7);border:1px solid rgba(255,255,255,.2);color:#fff;z-index:2}
+.lbnav:hover{background:rgba(20,20,24,.9);color:#fff;border-color:#fff}
+.lbnav.prev{left:18px}.lbnav.next{right:18px}
+.lbcount{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;background:rgba(20,20,24,.7);padding:3px 10px;border-radius:20px}

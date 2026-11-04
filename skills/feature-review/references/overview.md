@@ -73,7 +73,10 @@ about: an empty section is better than filler.
   the most valuable thing the overview can surface.
 - **`behavior`**: the walkthrough, before and after, from the user's side.
   Markdown. Use it when the change alters a flow; skip it for a pure refactor.
-- **`checks`**: the behaviour worth confirming, as things a reviewer can verify
+- **`checks`**: the behaviour worth confirming. Each is an *expectation*: word it
+  as what should happen ("A placed order can't be reopened from a second tab"),
+  never as a claim that the code already does it; the page labels every check
+  "Should" and the reviewer confirms whether it holds. Things a reviewer can verify
   in the app or by reasoning, not code-style remarks. Edge cases the change
   touches (empty, the largest case, undo, permissions, a second user, an
   existing record created before this change), interactions with neighbouring
@@ -137,10 +140,8 @@ sequence or structure diagram for the steps they can't.
 - **`steps`**: the flow in order, usually 2 to 6. Each step has:
   - `title`: the step, in the user's words where there is a user;
   - `user`: what the person sees or does (Markdown);
-  - `tech` (optional): what runs, folded under "Under the hood" and closed by
-    default. One plain sentence naming the object or two that do the work, not
-    a walk through the code. Leave it out when the step's groups and files
-    already say enough;
+  - `tech`: no longer shown. The step's group links lead to the
+    recommendations and the code, which carry the technical detail; leave it out;
   - `visuals`: diagrams or media for this step (any diagram kind, including
     `image` and `video`). Screenshots from the PR description are often the
     right picture here. A step with no visuals takes the full width;
