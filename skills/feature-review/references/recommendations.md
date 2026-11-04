@@ -80,11 +80,14 @@ build inlines it as a data URL, so the page stays one offline file; it warns
 over 8 MB a file and fails over 60 MB in total. Keep clips short (5 to 20
 seconds) and crop screenshots to the part that changed.
 
-Reach for a visual when it saves reading: a UI change (before and after
-screenshots in a `compare`, or a short recording of the flow), a flow through
-several objects (`sequence`), responsibility moving (`structure` with new and
-removed nodes), geometry (`svg`). One or two good visuals per complex group;
-none for a simple one.
+Prose alone often fails to show what a recommendation is about, so lean toward
+a visual: the page shows a recommendation's visuals before its text. Default to
+one for any recommendation that changes structure, flow or UI, and prefer a
+before/after `compare` (the code or diagram as it is, then as proposed). Other
+good fits: a short recording of the flow, a flow through several objects
+(`sequence`), responsibility moving (`structure` with new and removed nodes),
+geometry (`svg`). Skip it only for one-line fixes. The user's preferences
+(`Recommendation visuals`) can turn this down.
 
 ### Capturing screenshots and recordings
 
