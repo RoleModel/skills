@@ -1386,7 +1386,7 @@
     if (dir > 0) {
       if (pos.i < n - 1) moveTo(pos.g, pos.i + 1);
       else if (pos.g < recGroups.length - 1) moveTo(pos.g + 1, 0);
-      else goStep('code');
+      else goStep('submit');
     } else if (pos.i > 0) moveTo(pos.g, pos.i - 1);
     else if (pos.g > 0) moveTo(pos.g - 1, itemsOf(recGroups[pos.g - 1]).length - 1);
   }
@@ -1423,7 +1423,7 @@
     const titled = sections.filter((x) => x.title).length;
     const eyebrow = G.key === 'gen' ? 'Before the groups' : G.sec.title ? 'Group ' + (G.gi + 1) + ' of ' + titled : 'The change';
     const nx = items[pos.i + 1], ng = recGroups[pos.g + 1];
-    const upNext = nx ? (nx === 'gist' ? 'Summary' : inlineMd(nx.title)) : ng ? 'Next group: ' + esc(ng.title) : 'The code';
+    const upNext = nx ? (nx === 'gist' ? 'Summary' : inlineMd(nx.title)) : ng ? 'Next group: ' + esc(ng.title) : 'Submit your review';
     rv.innerHTML = '<div class="fhero"><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2><div class="pills">' + pillsHtml() + '</div></div>' +
       '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>' +
       '<div class="fnav"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
