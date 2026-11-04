@@ -50,7 +50,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[cloudflare-tunnel](skills/cloudflare-tunnel)** | Expose locally-running apps to stable public HTTPS URLs with a single per-developer Cloudflare Tunnel (cloudflared). For receiving webhooks, testing OAuth callbacks, or sharing a work-in-progress. Covers named-tunnel setup, per-project hostnames, host allowlisting, and running cloudflared as a launchd service. |
 | **[create-pr](skills/create-pr)** | Open a pull request and assign the author, after showing the drafted title and body for approval. Reads the linked ticket when a tracker tool is available. Follows the repo's PR template when there is one; otherwise uses **Why**, **What Changed**, and optional **Post-merge** and **Screenshots** sections. Targets the branch this one was cut from, including another open PR's branch. For UI changes, asks whether it should take screenshots, the user will, or there are none. Updates the existing PR in place when the branch already has one. Refuses to commit on the default branch and stages named paths only, never `git add -A`. |
 | **[dependabot-stack](skills/dependabot-stack)** | Group all open Dependabot PRs on a repository into one ordered stack with `gh-stack`, so the week's dependency updates land as a single reviewable chain instead of N PRs that conflict on shared lockfiles. Orders by lockfile overlap, rebases in a scratch worktree, and registers the stack on GitHub. |
-| **[document-this](skills/document-this)** | Generate multi-audience documentation from any codebase — workflows for non-technical readers, architecture for developers, and AI orientation for agents. Deterministic JS scripts handle structural extraction; the agent writes the prose. Use when the user asks to "document this project", runs `/document-this`, runs `/document`, or wants fresh documentation reflecting the current codebase state. |
+| **[document-this](skills/document-this)** | Generate multi-audience documentation from any codebase — workflows for non-technical readers, architecture for developers, and AI orientation for agents. Deterministic JS scripts handle structural extraction; the agent writes the prose. Use when the user asks to "document this project", runs `/document-this` (optionally with a file path or `--focus "<Feature Name>"`), or wants fresh documentation reflecting the current codebase state. |
 | **[feature-review](skills/feature-review)** | Review a commit, branch, or PR as a feature first and code second, on one self-contained HTML page. Opens on an overview of the feature (what it does, checks to confirm, screenshots and recordings of the flow) and the shape of the change (layers, objects, departures from the architecture). The code step leads with recommendations you answer yes or no, then the diff with a reading guide, viewed checkboxes, existing PR threads, and a re-review mode. Reviews against the guides a repo lists in `REVIEW.md`, and posts everything as one PR review. |
 | **[generate-conventions](skills/generate-conventions)** | Fill an empty `docs/conventions/` with rules worth writing — taste calls, facts the code won't announce, and corrections that recur across past PR review comments — not what a survey of the codebase already tells you. Confirms candidates with the user one at a time and writes three to seven lines each. Rejects most of them. |
 | **[ruby-version](skills/ruby-version)** | Check which Ruby versions actually exist before claiming one does or doesn't, and install a specific Ruby through rbenv. |
@@ -74,16 +74,26 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 
 ## Installation
 
-There are three ways to add these skills to your project. Choose the one that best fits your workflow.
+There are four ways to add these skills to your project. Choose the one that best fits your workflow.
 
-### Option 0: Claude Code plugin (recommended for Claude Code)
+### Option 0: Claude Code plugins (recommended for Claude Code)
 
-    /plugin marketplace add RoleModel/claude-plugins
-    /plugin install rolemodel-skills@rolemodel
+This repo is a plugin marketplace. Add it once, then install only the skills you want:
 
-Installs every skill plus the subagents `make-it-right` uses. Don't also copy
-or symlink these skills into `.claude/skills/`: you'd get each one twice, and
-the copied `make-it-right` can't see the plugin's subagents.
+    /plugin marketplace add RoleModel/skills
+    /plugin install create-pr@rolemodel-skills
+    /plugin install trace@rolemodel-skills
+
+Each skill is its own plugin, named after the skill, except for two groups whose skills don't work apart:
+
+| Plugin | Skills |
+|--------|--------|
+| `make-it-right` | `make-it-right`, `make-it-fast`, `made-it-wrong-retro`, and the reviewer, tester, and verifier subagents they launch |
+| `sentry` | `sentry-top-issue`, `rm-sentry-issue-fixer` |
+
+Run `/plugin` to browse the rest. Don't also copy or symlink an installed
+skill into `.claude/skills/`: you'd get it twice, and a copied `make-it-right`
+can't see the plugin's subagents.
 
 ### Option 1: Copy individual skills (simplest)
 
@@ -119,7 +129,7 @@ Add this repo as a git submodule, then point your AI agent at the skills directo
 
 ```bash
 # Add the submodule
-git submodule add https://github.com/RoleModel/rolemodel-skills.git .rolemodel-skills
+git submodule add https://github.com/RoleModel/skills.git .rolemodel-skills
 
 # Initialize (for teammates cloning the repo)
 git submodule update --init
@@ -209,7 +219,7 @@ After updating, check for symlinks or `CLAUDE.md` / `copilot-instructions.md` li
 [skills.sh](https://skills.sh) is a community directory and CLI for discovering and installing agent skills. If these skills are published there, you can install them with:
 
 ```bash
-npx skills add RoleModel/rolemodel-skills
+npx skills add RoleModel/skills
 ```
 
 This installs skills into the appropriate directory for your agent automatically. You can also browse [skills.sh](https://skills.sh) to discover additional skills from the community.
@@ -217,7 +227,7 @@ This installs skills into the appropriate directory for your agent automatically
 ## Structure
 
 ```
-.claude-plugin/plugin.json
+.claude-plugin/marketplace.json   # One plugin entry per skill or skill group
 agents/
   {skill-name}/
     {agent-name}.md   # Subagent definition with YAML frontmatter + markdown
@@ -266,9 +276,8 @@ maxTurns: 40
 - **Rails Conventions + Polymorphic Parent Resources + Dynamic Forms** — Rails Conventions holds the house rules and points to the other two: Polymorphic Parent Resources for a child resource that hangs off several parents, and Dynamic Forms for forms that change as they are filled in.
 - **Scaffold Docs + Generate Conventions + Wrap Up** — Scaffold Docs installs the doc structure; Generate Conventions fills `docs/conventions/`; Wrap Up keeps the docs current at the end of each session.
 - **Sentry Top Issue + Sentry Issue Fixer** — Top Issue selects the highest-priority Sentry issue; Issue Fixer runs the full diagnosis-and-fix workflow. Run together or invoke the fixer directly with a known issue.
-- **Explain + Trace** — Explain orients you to a feature area or concept; Trace follows a specific code path through the stack. Use Explain first to build context, then Trace to dig into a specific flow.
-- **Explain + Document This** — Explain answers questions interactively; Document This generates persistent reference docs. Use Explain while exploring, Document This when you want to capture the results for the team.
-- **File PR + Split Stack + Babysit PR** — File PR opens or updates a single PR. Split Stack is what you reach for when that PR turns out to cover more than one concern: it carves each concern into its own stacked PR, then File PR writes the description for each. Babysit PR takes over once a PR is open, driving it to mergeable while you work on something else.
+- **Make It Right + Make It Fast + Made It Wrong Retro** — Make It Right is the pass after code works; Make It Fast optionally follows it for measured performance fixes; Made It Wrong Retro turns a bad Make It Right run into a proven edit to the skill.
+- **Create PR + Split Stack + Babysit PR** — Create PR opens or updates a single PR. Split Stack is what you reach for when that PR turns out to cover more than one concern: it carves each concern into its own stacked PR, then Create PR writes the description for each. Babysit PR takes over once a PR is open, driving it to mergeable while you work on something else.
 - **BRAVE Breakdown + Standup Prep** — Both interview one question at a time and lean on Linear. BRAVE Breakdown runs before you pick up a card, to validate the plan. Standup Prep runs the next morning, to report on it — pulling from git, GitHub, Almanac, and Slack in addition to Linear, and flagging Linear/GitHub inconsistencies along the way.
 
 ## License

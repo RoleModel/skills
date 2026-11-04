@@ -9,7 +9,7 @@ This is a collection of **AI agent skills** for RoleModel Software. Skills are r
 ## Structure
 
 ```
-.claude-plugin/plugin.json
+.claude-plugin/marketplace.json   # Plugin entries: one per skill, or per group of skills that depend on each other
 agents/
   {skill-name}/
     {agent-name}.md       # Subagent definition with YAML frontmatter + markdown
@@ -24,6 +24,8 @@ skills/
 Each skill has YAML frontmatter defining `name`, `description`, and `metadata.triggers` (keywords that activate the skill).
 
 Skills may also include a `references/` directory for supporting markdown files that are loaded selectively during skill execution (rather than always being in context).
+
+When adding a skill, add its plugin entry to `.claude-plugin/marketplace.json` (`source: "./"`, `skills: ["./skills/<name>"]`) and its row to README.md.
 
 Each agent has YAML frontmatter defining `name`, `description`, `tools`, `model`, `effort`, and `maxTurns`.
 

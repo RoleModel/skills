@@ -110,7 +110,7 @@ contents into `.agents/skills/` first, then bridge.
 project through `git submodule update --remote`:
 
 ```sh
-git submodule add https://github.com/RoleModel/rolemodel-skills.git .github/rolemodel-skills
+git submodule add https://github.com/RoleModel/skills.git .github/rolemodel-skills
 ln -s ../../.github/rolemodel-skills/skills/wrap-up .agents/skills/wrap-up
 ```
 
