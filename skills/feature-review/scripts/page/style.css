@@ -762,3 +762,20 @@ background:rgba(20,20,24,.7);border:1px solid rgba(255,255,255,.2);color:#fff;z-
 .seg{display:flex;border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
 .seg button{flex:1;border:0;padding:5px 8px;border-radius:6px}
 .seg button.on{background:var(--accent-bg);color:var(--text)}
+/* Story steps: words across the top (links on the right), then the pictures, centred at one size.
+   A step with no pictures has the same top row, so steps line up either way. */
+.cxsteps .cxbody,.cxsteps .cxstep.novis .cxbody{display:flex;flex-direction:column;gap:16px}
+.cxsteps .cxtext{order:-1;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:24px;align-items:start}
+.cxsteps .cxtext>*{grid-column:1}
+.cxsteps .cxtext h4{margin:0 0 4px}
+.cxsteps .cxtext .cxuser>:first-child{margin-top:0}.cxsteps .cxtext .cxuser>:last-child{margin-bottom:0}
+.cxsteps .cxtext .cxlinks{grid-column:2;grid-row:1 / span 2;justify-self:end;margin:0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.cxsteps .cxvis{display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+.cxsteps .cxvis>figure{width:min(560px,100%);flex:0 1 560px;margin:0}
+@media(max-width:700px){.cxsteps .cxtext{grid-template-columns:1fr}.cxsteps .cxtext .cxlinks{grid-column:1;grid-row:auto;justify-self:start;margin-top:8px}}
+.cxsteps .cxbody,.cxsteps .cxstep.novis .cxbody{align-items:stretch}
+.cxsteps .cxvis{align-items:flex-start;width:100%}
+.cxsteps .cxvis>figure{height:auto;min-height:0}
+.cxsteps .cxvis .dmedia{display:flex;justify-content:center;height:auto}
+.cxsteps .cxvis .dmedia img,.cxsteps .cxvis .dmedia video{width:100%;height:300px;object-fit:contain}
+.cxsteps .cxvis{flex-direction:row}
