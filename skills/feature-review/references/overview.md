@@ -1,12 +1,32 @@
-# Writing the overview (step 1)
+# Writing the overview (the Story, Checks and Shape steps)
 
-The page reviews in three steps: **Overview**, **Code**, **Submit**. The
-overview comes first and is about the *feature* and the *shape* of the change,
-not lines of code. It reads top to bottom: what the PR's author said, the
-feature and its checks, the **feature overview** (how it all fits together,
-with visuals), then the shape. A reviewer who reads only the overview should know what the
-change does for the user, whether it does it well, and how it rearranges the
-code. The diff is the fallback: the place to confirm what the overview says.
+The page reviews in steps: **Story**, **Checks**, **Shape**, **Recommendations**
+and **Submit**, with the code one button away. The overview feeds the first
+three. A reviewer who reads them should know what the change does for the
+user, whether it does it right, and how it rearranges the code. The diff is the
+fallback: the place to confirm what the overview says.
+
+## Story and Checks: concepts, not code
+
+The first two steps are about the *outcome*: does the change produce the right
+result, and does it behave correctly? The reviewer is building a picture of the
+concepts at play (who does what, what they see, what happens next), not of the
+implementation. So everything that shows in them is written in product
+language:
+
+- **No code.** No class, method, file, table, column, route, param, job or
+  gem names, no backticks, no file paths. Say "the order's shipping method",
+  not `Order#shipping_mode`; "the Projects page", not `ProjectsController#index`;
+  "saving the order", not "the PATCH to `update`".
+- **Outcomes and behaviour.** What a person can now do, what they see, what
+  changes for them, what happens at the edges (a second tab, no permission, an
+  empty list, an existing record).
+- **The technical story goes later.** Objects, layers and structure belong in
+  the **Shape** step (`shape`, structure diagrams); how a piece is built, and
+  what to change, belongs in the groups and recommendations.
+
+This covers `author`, `feature` (with its checks and `"section": "feature"`
+diagrams) and `connection`. Where those keys below mention code, leave it out.
 
 It goes in the same `tmp/review/<slug>.groups.json` as the reading guide, under
 `overview`. Every key is optional. Leave out what you have nothing true to say
@@ -71,11 +91,13 @@ about: an empty section is better than filler.
   ticket or PR body, then check it against the diff: if the code does more,
   less, or something else than the ticket says, say so here. That mismatch is
   the most valuable thing the overview can surface.
-- **`behavior`**: the walkthrough, before and after, from the user's side.
+- **`behavior`**: the walkthrough, before and after, from the user's side, in
+  product language.
   Markdown. Use it when the change alters a flow; skip it for a pure refactor.
 - **`checks`**: the behaviour worth confirming, each with a `kind`:
   - `"does"` (the default): behaviour the change actually implements, read from
-    the code ("The old /projects URL now 404s"). The page tags it **Does**; the
+    the code but written as what a person sees ("Opening the old All Projects
+    page now shows a not-found page"). The page tags it **Does**; the
     reviewer confirms it works and is wanted.
   - `"should"`: behaviour the change ought to have but doesn't, a gap you found
     ("A placed order should not be reopened from a second tab, but nothing
@@ -87,8 +109,10 @@ about: an empty section is better than filler.
   existing record created before this change), interactions with neighbouring
   features, and anything the ticket asked for that you couldn't find in the
   diff. 3 to 7 is the usual range; zero is fine for a trivial change. Each has
-  `text` (Markdown), optional `how` (steps to check), and optional `path` (a file
-  in the diff, linked). The reviewer marks each **Looks right** or **Concern**;
+  `text` (Markdown, product language, no code) and optional `how` (steps to
+  check in the app, as a person would: "Open the order in two tabs, place it in
+  one, edit it in the other"). Leave out `path`: the file behind a check is a
+  code detail, and the recommendations link to it. The reviewer marks each **Looks right** or **Concern**;
   concerns and their notes are added to the review summary when it is posted.
 
   Write checks you actually have reason to raise. Follow the user's
@@ -113,7 +137,7 @@ shows them in a strip, and keeps the full description folded away under them.
 You write the digest above them under `author`:
 
 - **`summary`**: what the author says the change does and why, condensed to a
-  sentence or two. Keep their reasoning and any context the diff can't show:
+  sentence or two, in product language even when the author wrote in code. Keep their reasoning and any context the diff can't show:
   the feedback that prompted it, what they tested, what they left for later.
 - **`points`**: up to four short bullets for the rest worth keeping (testing
   notes, known gaps, follow-ups, deploy steps).
@@ -131,17 +155,18 @@ cache. If the description is empty, there is nothing to digest: leave `author` o
 (It goes under the `connection` key, its name before it was renamed.)
 
 The section that pulls it all together: how the feature works end to end, for
-the person using it and in the code, in one place. A reviewer who reads it
+the person using it, in one place. A reviewer who reads it
 should be able to say how the pieces connect, and the checks should read as
 part of that story rather than a separate list. Make it **as visual as you
-can**: a screenshot or short recording for each step a person can see, and a
-sequence or structure diagram for the steps they can't.
+can**: a screenshot or short recording for each step a person can see. For a
+step that happens out of sight (a sync, an email, a background job), draw it
+as what the person would notice, in plain words, not as objects calling each
+other; object diagrams belong in the shape.
 
 - **`summary`**: the whole flow in one or two sentences, from the user's
   action to the result.
-- **`technical`**: how it works underneath, at overview height: the entry
-  point, the objects that do the work, where the data lives, in a short
-  paragraph. Not a file list.
+- **`technical`**: leave it out. How it works underneath belongs in the shape
+  and the recommendations.
 - **`steps`**: the flow in order, usually 2 to 6. Each step has:
   - `title`: the step, in the user's words where there is a user;
   - `user`: what the person sees or does (Markdown);
@@ -152,7 +177,7 @@ sequence or structure diagram for the steps they can't.
     right picture here. A step with no visuals takes the full width;
   - `groups`: reading-guide group titles that implement it. They link to the
     group's Recommendations card;
-  - `files`: files in the diff, linked to their diff;
+  - `files`: leave out; the group links lead to the code;
   - `checks`: ids of feature checks (give those checks an `id`). They show in
     the step instead of under the feature.
 - Diagrams with `"section": "connection"` show above the steps: the place for
