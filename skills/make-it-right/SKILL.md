@@ -110,8 +110,8 @@ against each principle file that applies, then do the verifier's checks from
 
 **Otherwise**, launch every principle that applies except `ui-ux` (step 6) in
 **one message**, giving each only the **packet**. Launch review principles as
-`make-it-right:make-it-right:reviewer` and test principles as
-`make-it-right:make-it-right:tester` when those types are listed. Otherwise,
+`make-it:reviewer` and test principles as
+`make-it:tester` when those types are listed. Otherwise,
 such as when this skill was copied in rather than installed as a plugin,
 or the host isn’t Claude Code, use parallel general-purpose subagents.
 
@@ -140,7 +140,7 @@ return, unedited, to `$OUT/findings.md`. The run ends when the list is
 empty, every open item names its blocker, or round 2 is done. Don't end a turn
 by announcing the next step; take it.
 
-Launch one subagent, as `make-it-right:make-it-right:verifier` when
+Launch one subagent, as `make-it:verifier` when
 that type is listed, with the packet, the principle file replaced by
 `<SKILL_DIR>/references/verifier.md`, the review agents' read-only line, and
 every finding. It merges, checks,

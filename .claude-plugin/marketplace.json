@@ -8,7 +8,7 @@
   },
   "plugins": [
     {
-      "name": "make-it-right",
+      "name": "make-it",
       "source": "./",
       "description": "The pass after code works: make-it-right, the optional make-it-fast pass, and made-it-wrong-retro, with their reviewer, tester, and verifier subagents.",
       "skills": [
@@ -17,9 +17,9 @@
         "./skills/made-it-wrong-retro"
       ],
       "agents": [
-        "./agents/make-it-right/reviewer.md",
-        "./agents/make-it-right/tester.md",
-        "./agents/make-it-right/verifier.md"
+        "./skills/make-it-right/agents/reviewer.md",
+        "./skills/make-it-right/agents/tester.md",
+        "./skills/make-it-right/agents/verifier.md"
       ]
     },
     {

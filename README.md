@@ -88,7 +88,7 @@ Each skill is its own plugin, named after the skill, except for two groups whose
 
 | Plugin | Skills |
 |--------|--------|
-| `make-it-right` | `make-it-right`, `make-it-fast`, `made-it-wrong-retro`, and the reviewer, tester, and verifier subagents they launch |
+| `make-it` | `make-it-right`, `make-it-fast`, `made-it-wrong-retro`, and the reviewer, tester, and verifier subagents they launch |
 | `sentry` | `sentry-top-issue`, `rm-sentry-issue-fixer` |
 
 Run `/plugin` to browse the rest. Don't also copy or symlink an installed
@@ -228,12 +228,10 @@ This installs skills into the appropriate directory for your agent automatically
 
 ```
 .claude-plugin/marketplace.json   # One plugin entry per skill or skill group
-agents/
-  {skill-name}/
-    {agent-name}.md   # Subagent definition with YAML frontmatter + markdown
 skills/
   {skill-name}/
     SKILL.md          # Skill definition with YAML frontmatter + markdown instructions
+    agents/           # Optional subagent definitions the skill launches
     references/       # Optional detail, loaded only when SKILL.md points to it
     scripts/          # Optional deterministic helpers the agent runs instead of reading
     templates/        # Optional files the skill copies or fills in
