@@ -1,0 +1,235 @@
+{
+  "name": "rolemodel-skills",
+  "owner": {
+    "name": "RoleModel Software"
+  },
+  "metadata": {
+    "description": "RoleModel Software's agent skills, one plugin per skill or per group of skills that depend on each other"
+  },
+  "plugins": [
+    {
+      "name": "make-it",
+      "source": "./",
+      "description": "The pass after code works: make-it-right, the optional make-it-fast pass, and made-it-wrong-retro, with their reviewer, tester, and verifier subagents.",
+      "skills": [
+        "./skills/make-it-right",
+        "./skills/make-it-fast",
+        "./skills/made-it-wrong-retro"
+      ],
+      "agents": [
+        "./skills/make-it-right/agents/reviewer.md",
+        "./skills/make-it-right/agents/tester.md",
+        "./skills/make-it-right/agents/verifier.md"
+      ]
+    },
+    {
+      "name": "sentry",
+      "source": "./",
+      "description": "Pick the top unresolved Sentry issue and run the full diagnose-and-fix workflow on it.",
+      "skills": [
+        "./skills/sentry-top-issue",
+        "./skills/rm-sentry-issue-fixer"
+      ]
+    },
+    {
+      "name": "agentation",
+      "source": "./",
+      "description": "Add the Agentation visual feedback toolbar to a project so you can point at UI problems in the browser and hand them to an agent.",
+      "skills": [
+        "./skills/agentation"
+      ]
+    },
+    {
+      "name": "babysit-pr",
+      "source": "./",
+      "description": "Shepherd an open PR to mergeable — poll CI, verify review findings against the source, push fixes, rebase onto the base when needed.",
+      "skills": [
+        "./skills/babysit-pr"
+      ]
+    },
+    {
+      "name": "bem-structure",
+      "source": "./",
+      "description": "CSS guidance using BEM (Block Element Modifier) methodology.",
+      "skills": [
+        "./skills/bem-structure"
+      ]
+    },
+    {
+      "name": "brave-breakdown",
+      "source": "./",
+      "description": "Interactive BRAVE framework thought partner for breaking down a Linear card before starting work.",
+      "skills": [
+        "./skills/brave-breakdown"
+      ]
+    },
+    {
+      "name": "cloudflare-tunnel",
+      "source": "./",
+      "description": "Expose locally-running apps to stable public HTTPS URLs with a single per-developer Cloudflare Tunnel (cloudflared).",
+      "skills": [
+        "./skills/cloudflare-tunnel"
+      ]
+    },
+    {
+      "name": "create-pr",
+      "source": "./",
+      "description": "Open a pull request and assign the author, after showing the drafted title and body for approval.",
+      "skills": [
+        "./skills/create-pr"
+      ]
+    },
+    {
+      "name": "dependabot-stack",
+      "source": "./",
+      "description": "Group all open Dependabot PRs on a repository into one ordered stack with `gh-stack`, so the week's dependency updates land as a single reviewable chain instead of N PRs that conflict on shared lockfiles.",
+      "skills": [
+        "./skills/dependabot-stack"
+      ]
+    },
+    {
+      "name": "document-this",
+      "source": "./",
+      "description": "Generate multi-audience documentation from any codebase — workflows for non-technical readers, architecture for developers, and AI orientation for agents.",
+      "skills": [
+        "./skills/document-this"
+      ]
+    },
+    {
+      "name": "dynamic-forms",
+      "source": "./",
+      "description": "Forms that change as they are filled in (dependent dropdowns, conditional fields, dynamic option lists) with the `turbo_form` gem, RoleModel's mechanism for dynamic form interaction.",
+      "skills": [
+        "./skills/dynamic-forms"
+      ]
+    },
+    {
+      "name": "feature-review",
+      "source": "./",
+      "description": "Review a commit, branch, or PR as a feature first and code second, on one self-contained HTML page.",
+      "skills": [
+        "./skills/feature-review"
+      ]
+    },
+    {
+      "name": "generate-conventions",
+      "source": "./",
+      "description": "Fill an empty `docs/conventions/` with rules worth writing — taste calls, facts the code won't announce, and corrections that recur across past PR review comments — not what a survey of the codebase already tells you.",
+      "skills": [
+        "./skills/generate-conventions"
+      ]
+    },
+    {
+      "name": "optics-context",
+      "source": "./",
+      "description": "RoleModel's Optics design system: components, `--op-` design tokens, and theming.",
+      "skills": [
+        "./skills/optics-context"
+      ]
+    },
+    {
+      "name": "polymorphic-parent-resources",
+      "source": "./",
+      "description": "Serve a child resource that hangs off many different parents (comments, reports, duplications, attachments) from a single controller, using a route concern plus `resource_for` from `rolemodel_rails`.",
+      "skills": [
+        "./skills/polymorphic-parent-resources"
+      ]
+    },
+    {
+      "name": "rails-audit",
+      "source": "./",
+      "description": "Audit a whole Rails app against thoughtbot's best practices and write a markdown report grouped by category (Testing, Security, Models, Controllers, Code Design, Views) with severity levels.",
+      "skills": [
+        "./skills/rails-audit"
+      ]
+    },
+    {
+      "name": "rails-conventions",
+      "source": "./",
+      "description": "RoleModel's Rails conventions where they differ from what an agent writes by default: flash wording, `:unprocessable_content`, Simple Form for every form, `parent_resource.name.classify` in route concerns, and gotchas for `params.expect` with nested attributes and Lexxy change events.",
+      "skills": [
+        "./skills/rails-conventions"
+      ]
+    },
+    {
+      "name": "ruby-version",
+      "source": "./",
+      "description": "Check which Ruby versions actually exist before claiming one does or doesn't, and install a specific Ruby through rbenv.",
+      "skills": [
+        "./skills/ruby-version"
+      ]
+    },
+    {
+      "name": "scaffold-docs",
+      "source": "./",
+      "description": "Install the agent-documentation structure in a project — a minimal `AGENTS.md`, a `docs/` tree with `CONVENTIONS.md` and `INDEX.md`, the convention-surfacing PreToolUse hook, and a symlinked `wrap-up`.",
+      "skills": [
+        "./skills/scaffold-docs"
+      ]
+    },
+    {
+      "name": "soft-destroyable",
+      "source": "./",
+      "description": "Soft-delete models with the `SoftDestroyable` concern from `rolemodel_rails` — `kept`/`only_deleted` instead of a default scope, cascading soft destroy and timestamp-matched restore, and the shared example.",
+      "skills": [
+        "./skills/soft-destroyable"
+      ]
+    },
+    {
+      "name": "split-stack",
+      "source": "./",
+      "description": "Split one PR that does too much into a stack of PRs, one per concern, without changing the combined diff.",
+      "skills": [
+        "./skills/split-stack"
+      ]
+    },
+    {
+      "name": "standup-prep",
+      "source": "./",
+      "description": "Interview-style prep for a daily standup call.",
+      "skills": [
+        "./skills/standup-prep"
+      ]
+    },
+    {
+      "name": "tdd",
+      "source": "./",
+      "description": "Test-driven development for Rails — outside-in with RSpec, Capybara, and FactoryBot.",
+      "skills": [
+        "./skills/tdd"
+      ]
+    },
+    {
+      "name": "trace",
+      "source": "./",
+      "description": "Trace a method, class, route, file, or snippet up to every real entry point and down to the data it touches, including calls made from inside installed packages.",
+      "skills": [
+        "./skills/trace"
+      ]
+    },
+    {
+      "name": "turbo-modals",
+      "source": "./",
+      "description": "RoleModel's Turbo Frame modal and panel pattern from `rolemodel_rails`: `modal_link_to`, `render layout: 'modal'`, 422 on errors, redirect on success, and never the `layout` class method.",
+      "skills": [
+        "./skills/turbo-modals"
+      ]
+    },
+    {
+      "name": "ux-review",
+      "source": "./",
+      "description": "Review UI code against Nielsen's 10 heuristics and the Laws of UX, reported as a severity-ranked issue log with file-and-line evidence and Optics-based fixes.",
+      "skills": [
+        "./skills/ux-review"
+      ]
+    },
+    {
+      "name": "wrap-up",
+      "source": "./",
+      "description": "End a work session by routing what was learned into the right doc layer — convention, subsystem, guide, or architecture — and pruning what the session proved stale.",
+      "skills": [
+        "./skills/wrap-up"
+      ]
+    }
+  ]
+}
