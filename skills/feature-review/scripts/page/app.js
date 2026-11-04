@@ -1966,15 +1966,28 @@
   addEventListener('hashchange', setView);
   // How wide the reading columns run, remembered across reviews.
   const WIDTHS = [['Narrow', '880px'], ['Normal', '1120px'], ['Wide', '1440px'], ['Full', '100%']];
-  const setWidth = (i) => {
-    const w = WIDTHS[i] || WIDTHS[1];
-    document.documentElement.style.setProperty('--colw', w[1]);
-    $('widthbtn').textContent = 'Width: ' + w[0];
-    store.set('frwidth', String(i));
-  };
   let widthAt = +(store.get('frwidth') ?? 1);
+  const setWidth = (i) => {
+    widthAt = WIDTHS[i] ? i : 1;
+    document.documentElement.style.setProperty('--colw', WIDTHS[widthAt][1]);
+    store.set('frwidth', String(widthAt));
+    $('setpanel').innerHTML = '<div class="setlbl">Page width</div><div class="seg">' + WIDTHS.map((w, j) =>
+      '<button type="button" data-width="' + j + '" class="' + (j === widthAt ? 'on' : '') + '">' + w[0] + '</button>').join('') + '</div>';
+  };
   setWidth(widthAt);
-  $('widthbtn').onclick = () => setWidth(widthAt = (widthAt + 1) % WIDTHS.length);
+  // The settings panel: a gear in the header opens it; a click elsewhere or Esc closes it.
+  const setPanel = (open) => {
+    $('setpanel').classList.toggle('hidden', !open);
+    $('setbtn').setAttribute('aria-expanded', String(open));
+  };
+  $('setbtn').onclick = (e) => { e.stopPropagation(); setPanel($('setpanel').classList.contains('hidden')); };
+  $('setpanel').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const b = e.target.closest('[data-width]');
+    if (b) setWidth(+b.dataset.width);
+  });
+  document.addEventListener('click', () => setPanel(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });
   const goStep = (step) => { if (location.hash === '#' + step) setView(); else location.hash = step; };
   document.addEventListener('click', (e) => {
     // A group link from the story opens the Recommendations at that group's gist.

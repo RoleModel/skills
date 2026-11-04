@@ -751,3 +751,14 @@ background:rgba(20,20,24,.7);border:1px solid rgba(255,255,255,.2);color:#fff;z-
 :root{--colw:1120px}
 .ovcol,#recsview{max-width:var(--colw)}
 #submitview{max-width:var(--colw)}
+
+/* Settings: a gear, and a small panel under it. */
+.setwrap{position:relative;display:inline-flex}
+#setbtn{padding:5px 7px;display:inline-grid;place-items:center;color:var(--muted)}
+#setbtn[aria-expanded=true]{color:var(--text);border-color:var(--accent)}
+#setpanel{position:absolute;top:calc(100% + 8px);right:0;z-index:40;min-width:260px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#setpanel.hidden{display:none}
+.setlbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.seg button{flex:1;border:0;padding:5px 8px;border-radius:6px}
+.seg button.on{background:var(--accent-bg);color:var(--text)}
