@@ -75,7 +75,8 @@ function saveReview(review, outDir) {
   return { json: path.resolve(`${base}.review.json`), markdown: path.resolve(`${base}.review.md`), attachments: Object.values(saved) };
 }
 
-// Write each diagram PNG and post them all in one PR comment, each under its recommendation's title.
+// Write each diagram PNG and post them all in one PR comment, each under its recommendation's title and
+// labelled "Diagram N: …" with the number the review's comments point at.
 // A failure here leaves the review posted and says where the images are.
 function postDiagrams(review, { repo, number, outDir, run, notes }) {
   const list = (review.diagrams || []).filter((d) => d && /^data:image\/png;base64,/.test(d.data || ''));
@@ -85,11 +86,11 @@ function postDiagrams(review, { repo, number, outDir, run, notes }) {
   const parts = ['### Diagrams for this review'], args = ['pr', 'comment', String(number), '--repo', repo, '--body-file', '-'];
   let lastTitle = null;
   list.forEach((d, i) => {
-    const file = path.join(dir, `diagram-${i + 1}.png`);
+    const n = d.n || i + 1, file = path.join(dir, `diagram-${n}.png`);
     fs.writeFileSync(file, Buffer.from(d.data.split(',')[1], 'base64'));
-    const alt = String(d.alt || d.title || d.rec || `Diagram ${i + 1}`).replace(/[\[\]#\n]/g, ' ').trim();
+    const alt = String(d.alt || d.title || d.rec || `Diagram ${n}`).replace(/[\[\]#\n]/g, ' ').trim();
     if (d.rec !== lastTitle) { parts.push(`**${d.rec || 'Across the change'}**`); lastTitle = d.rec; }
-    parts.push(`![${alt}](${file})`);
+    parts.push(`**Diagram ${n}:** ${alt}`, `![${alt}](${file})`);
     args.push('--attach', `${file}#${alt}`);
   });
   try {
