@@ -629,7 +629,7 @@
       const pct = n ? Math.round(decided / n * 100) : 100;
       $('meta').innerHTML = '<div class="prog">' + ring(pct) + '<div><div class="pnum">' + decided + '<span> / ' + n + '</span></div>' +
         '<div class="plbl">recommendations decided</div></div></div>' +
-        (n ? '<div class="pfoot"><span class="yes">' + by('yes') + ' yes</span><span class="no">' + by('no') + ' no</span>' +
+        (n ? '<div class="pfoot"><span class="yes">' + by('yes') + ' added</span><span class="no">' + by('no') + ' ignored</span>' +
           (by('mixed') ? '<span>' + by('mixed') + ' in part</span>' : '') + '</div>' : '');
     } else {
       const openThreads = threads.filter((t) => !t.resolved).length;
@@ -1264,7 +1264,7 @@
       }
       redrawRec(r);
     });
-    if (said.length) flash('Said yes to ' + said.map((t) => '“' + t + '”').join(', ') + '. Change it under Recommendations.');
+    if (said.length) flash('Added ' + said.map((t) => '“' + t + '”').join(', ') + '. Change it under Recommendations.');
   }
   function onCheckNote(e) {
     if (!e.target.classList.contains('chknote')) return;
@@ -1328,8 +1328,8 @@
   function recHtml(r) {
     const st = recStatus(r), sugs = suggestions.filter((s) => r.sids.includes(s.sid)), n = sugs.length;
     const inReview = sugs.filter((s) => accepted(s.sid)).length;
-    const what = !n ? { open: 'A yes adds it to your summary', yes: 'In your summary', no: 'Left out' }[st]
-      : { open: 'A yes adds ' + plural(n, 'comment') + ' to your review', yes: plural(n, 'comment') + ' in your review', no: 'Left out',
+    const what = !n ? { open: 'Add puts it in your summary', yes: 'In your summary', no: 'Ignored' }[st]
+      : { open: 'Add puts ' + plural(n, 'comment') + ' in your review', yes: plural(n, 'comment') + ' in your review', no: 'Ignored',
         mixed: inReview + ' of ' + plural(n, 'comment') + ' in your review' }[st];
     const parts = partsHtml(r), mine = (r.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
     return '<article class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop">' +
@@ -1339,7 +1339,7 @@
       ((r.visuals || []).length ? '<div class="recvis" data-recvis="' + esc(r.rid) + '"></div>' : '') +
       (parts || (r.why ? '<div class="recwhy md">' + mdHtml(r.why) + '</div>' : '')) +
       principleHtml(r) +
-      (state.autoYes[r.rid] && st !== 'open' ? '<div class="recauto">Yes because you raised a concern on its feature check. Change it here if that is not what you meant.</div>' : '') +
+      (state.autoYes[r.rid] && st !== 'open' ? '<div class="recauto">Added because you raised a concern on its feature check. Change it here if that is not what you meant.</div>' : '') +
       // Related checks stay folded, unless one is a concern: then it is why this was flagged.
       (mine.length ? '<details class="recchecks"' + (mine.some((c) => checkOf(c).s === 'concern') ? ' open' : '') + '><summary>' +
         plural(mine.length, 'related feature check') + (mine.some((c) => checkOf(c).s === 'concern') ? ' &middot; <span class="del">concern raised</span>' : '') +
@@ -1347,8 +1347,9 @@
       // In the focused view the comments are the evidence, so they show open.
       (n ? '<div class="reccomments"><div class="cxlbl">' + (n === 1 ? 'The comment' : 'The ' + n + ' comments') + '</div>' + sugs.map(recCommentHtml).join('') + '</div>' : '') +
       '<div class="recdecide">' + (n ? goLink(sugs[0], 'Show in code', 'btn recgo') : '') + '<span class="recwhat">' + what + '</span><span class="sp"></span>' +
-      '<button type="button" data-rec="no" class="no' + (st === 'no' ? ' on' : '') + '">&#10007; No <kbd>n</kbd></button>' +
-      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">&#10003; Yes <kbd>y</kbd></button></div></article>';
+      // A lit button reads as the decision made ("Added", "Ignored"); pressing it again takes it back.
+      '<button type="button" data-rec="no" class="no' + (st === 'no' ? ' on' : '') + '">' + (st === 'no' ? 'Ignored' : 'Ignore') + ' <kbd>i</kbd></button>' +
+      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">' + (st === 'yes' ? '&#10003; Added' : '+ Add') + ' <kbd>a</kbd></button></div></article>';
   }
 
   // The flow: one group at a time, its gist first, then each of its recommendations. Recommendations
@@ -1426,7 +1427,7 @@
     const eyebrow = G.key === 'gen' ? 'Before the groups' : G.sec.title ? 'Group ' + (G.gi + 1) + ' of ' + titled : 'The change';
     const nx = items[pos.i + 1], ng = recGroups[pos.g + 1];
     const upNext = nx ? (nx === 'gist' ? 'Summary' : inlineMd(nx.title)) : ng ? 'Next group: ' + esc(ng.title) : 'Submit your review';
-    // Yes and No already move on, so on a recommendation the flow buttons step back to quiet links;
+    // Add and Ignore already move on, so on a recommendation the flow buttons step back to quiet links;
     // only the gist, which has nothing to decide, keeps Next as its main action.
     const onRec = it && it !== 'gist';
     const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
@@ -2137,7 +2138,7 @@
   // --- keyboard -------------------------------------------------------------
   const KEYS = [['j / k', 'Next / previous file'], ['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
-    ['w', 'Show or hide whitespace changes'], ['y / n', 'Yes or no to the recommendation in view'], ['← / →', 'Previous / next in Recommendations (also k / j)'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
+    ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['← / →', 'Previous / next in Recommendations (also k / j)'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');
   help.id = 'keyhelp'; help.className = 'hidden';
   help.innerHTML = '<div class="kbox"><h3>Keyboard shortcuts</h3><table>' +
@@ -2189,7 +2190,8 @@
       const it = curItem();
       if (k === 'j' || k === 'ArrowRight') stepFlow(1);
       else if (k === 'k' || k === 'ArrowLeft') stepFlow(-1);
-      else if ((k === 'y' || k === 'n') && it && it !== 'gist') decideAndAdvance(it, k === 'y' ? 'yes' : 'no');
+      // a / i, with y / n kept for hands that learned them.
+      else if ('aiyn'.includes(k) && k.length === 1 && it && it !== 'gist') decideAndAdvance(it, k === 'a' || k === 'y' ? 'yes' : 'no');
       else if (k === 'r' || k === 'c') goStep('code');
       else return;
       e.preventDefault();

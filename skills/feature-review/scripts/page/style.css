@@ -55,7 +55,7 @@ nav .ghead:first-child{margin-top:0}
 nav .ghead h2{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 nav .ghead a{color:var(--text);text-decoration:none}
 nav .ghead a:hover{color:var(--accent)}
-nav a.viewed{opacity:.5;text-decoration:line-through}
+nav a.viewed{opacity:.5}
 .fname{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;word-break:break-all;flex:1}
 .badge{font-size:11px;border:1px solid var(--border);border-radius:20px;padding:1px 8px;color:var(--muted)}
 .chev{color:var(--muted);transition:transform .15s}
@@ -360,7 +360,7 @@ body.recs header .codeonly{display:none}
 .rfile .add,.rfile .del{font-size:11px}
 .rfile.added{border-color:var(--add-b)}.rfile.deleted{border-color:var(--del-b)}
 .rfile.auto{border-style:dashed;color:var(--muted)}
-.rfile.viewed{opacity:.55;text-decoration:line-through}
+.rfile.viewed{opacity:.55}
 .rgrecs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .rec{border:1px solid var(--border);border-left:3px solid #d29922;border-radius:6px;background:var(--bg);padding:8px 12px}
 .rec.yes{border-left-color:var(--add-b)}
@@ -403,7 +403,7 @@ td.goflash{box-shadow:inset 0 0 0 999px #f5d90a44}
 .stag.bug,.stag.risk{border-color:var(--del-b);color:var(--del-b)}
 .stag.design,.stag.tests{border-color:#d29922;color:#d29922}
 .stag.question,.stag.style{border-color:var(--accent);color:var(--accent)}
-.svrecs li.no{color:var(--muted);text-decoration:line-through}
+.svrecs li.no{color:var(--muted)}
 .svrecs li.yes{color:var(--add-b)}
 .svrecs li.yes code,.svrecs li.no code{color:inherit}
 /* --- screenshots and recordings ------------------------------------------ */
@@ -648,7 +648,7 @@ a.cxchk{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent)
 .pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
 .pill{min-width:32px;padding:4px 10px;border-radius:20px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .pill.yes{border-color:var(--add-b);color:var(--add-b)}
-.pill.no{color:var(--muted);text-decoration:line-through}
+.pill.no{color:var(--muted)}
 .pill.mixed{border-color:var(--warn);color:var(--warn)}
 .pill.on{background:var(--text);border-color:var(--text);color:var(--bg);text-decoration:none}
 .fstage{animation:rise .22s ease-out}
@@ -675,8 +675,10 @@ a.cxchk{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent)
 .recdecide{display:flex;align-items:center;gap:10px;margin:22px -26px -24px;padding:14px 26px;border-top:1px solid var(--border);background:var(--raised);border-radius:0 0 14px 14px}
 .recwhat{font-size:12.5px;color:var(--muted)}
 .recdecide button{padding:8px 16px;font-size:13px}
-.recdecide button.yes.on{background:var(--add-b);border-color:var(--add-b);color:#fff}
-.recdecide button.no.on{background:var(--text);border-color:var(--text);color:var(--bg)}
+.recdecide button.no:not(.on){background:none;border-color:transparent;color:var(--muted)}
+.recdecide button.no:not(.on):hover{color:var(--text);border-color:var(--border)}
+.recdecide button.yes.on{background:var(--add-bg);border-color:var(--add-b);color:var(--add-b)}
+.recdecide button.no.on{background:var(--raised);border-color:var(--border);color:var(--muted)}
 .recdecide button.on kbd{color:inherit;border-color:currentColor;opacity:.7}
 .fnav{display:flex;align-items:center;gap:12px;margin-top:18px}
 .fnav.quiet{margin-top:10px}

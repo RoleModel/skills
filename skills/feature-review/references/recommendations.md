@@ -109,7 +109,7 @@ captures under `tmp/review/<slug>/`.
 
 A recommendation is one decision you want the reviewer to make, phrased as an
 action: "Keep the same-organization check", "Extract the label map", "Add a
-spec for a user from another org". The reviewer answers **Yes** or **No**.
+spec for a user from another org". The reviewer chooses **Add** or **Ignore**.
 
 - **From comments to recommendations.** Write the comments you would leave,
   then group them by the call they ask for. Three comments that all say the
@@ -118,10 +118,10 @@ spec for a user from another org". The reviewer answers **Yes** or **No**.
   one to one, and usually several comments fold into one.
 - **`comments`** have the same shape as `suggestions` (`path`, `line`,
   `start_line`, `side`, `body`) and are checked against the diff the same way.
-  A yes puts them all in the review as line comments, and they also show
-  inline in the Code mode as suggested comments. A no leaves them out.
+  Add puts them all in the review as line comments, and they also show
+  inline in the Code mode as suggested comments. Ignore leaves them out.
 - **No comments**: a general point (release notes, a follow-up ticket, a
-  question about scope). A yes adds `body`, or else `title: why`, to the review
+  question about scope). Add puts `body`, or else `title: why`, to the review
   summary under **Recommendations**.
 - **`group`**: the group title it belongs to, so it shows on that card. Leave
   it out for points that span the change; they show first, under "Across the
@@ -200,14 +200,14 @@ instead whenever two or more ask for the same thing.
   "decided" count all track recommendations. A group is done once every
   recommendation on it is decided. The Code mode keeps its line-based progress,
   and the sidebar links across to it ("Code read").
-- Pressing the lit button again takes a decision back. Taking back a yes keeps
+- Pressing the lit button again takes a decision back. Taking back an add keeps
   any comment the reviewer edited since.
 - Each comment under **The comments** has its own buttons: **Accept**,
   **Edit** (an editor opens in place; saving puts it in the review) and
   **Dismiss**, then **Edit** / **Remove** once in the review, or **Restore**
   once dismissed. Its file path (and the `file:line` chips above it) open the
   diff at that line.
-- Deciding comments one by one, or a yes and a later edit or dismiss in the
+- Deciding comments one by one, or an add and a later edit or dismiss in the
   Code mode, shows the recommendation as partly accepted ("2 of 3 comments in
   your review").
 - The submit page lists every recommendation with its decision, and the open
