@@ -789,3 +789,17 @@ background:rgba(20,20,24,.7);border:1px solid rgba(255,255,255,.2);color:#fff;z-
 /* Group links match the check file links: a quiet border that lights up on hover. */
 .cxgroup{border-color:var(--border);color:var(--accent);transition:border-color .15s}
 .cxgroup:hover{border-color:var(--accent)}
+/* The understand steps end on Back and Next, the same pair Recommendations has. */
+.ovfoot{display:flex;align-items:center;gap:12px}
+.ovfoot .sp{flex:1}
+.ovfoot button.quiet{background:none;border-color:transparent;color:var(--muted)}
+.ovfoot button.quiet:hover{color:var(--text);border-color:var(--border)}
+.ovfoot button.primary kbd{color:#fff;border-color:rgba(255,255,255,.5)}
+
+/* Recommendations with room to spare: the column stays centred like every other step, and the
+   sidebar hangs in the gutter to its left (placeSidebar in app.js decides when it fits). */
+body.recs.gutter .layout{display:block}
+body.recs.gutter nav{position:fixed;left:var(--navx);width:var(--navw);flex-basis:var(--navw);top:var(--hh);height:calc(100vh - var(--hh));z-index:5}
+body.recs.gutter main{padding:28px 24px 60px}
+body.recs.gutter #recsview{margin:0 auto}
+body.recs:not(.gutter) #recsview{margin:0 auto}

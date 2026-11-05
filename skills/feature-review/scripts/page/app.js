@@ -1186,8 +1186,9 @@
   const stepHead = (eyebrow, title, note) => '<div class="ovhead"><div class="eyebrow">' + eyebrow + '</div><h2>' + title + '</h2>' +
     (note ? '<p class="lede">' + note + '</p>' : '') + '</div>';
   const stepFoot = (cur) => {
-    const n = STEPS[STEPS.findIndex((s) => s.id === cur) + 1];
-    return n ? '<div class="ovfoot"><button type="button" class="primary big" data-step="' + n.id + '">Next: ' + n.label + ' &rarr;</button></div>' : '';
+    const at = STEPS.findIndex((s) => s.id === cur), b = STEPS[at - 1], n = STEPS[at + 1];
+    return '<div class="ovfoot">' + (b ? '<button type="button" class="quiet" data-across="-1">&larr; ' + b.label + ' <kbd>k</kbd></button>' : '') +
+      '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' &rarr; <kbd>j</kbd></button>' : '') + '</div>';
   };
   function checksByStep() {
     const block = (title, list) => list.length ? '<section class="ovblock">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
@@ -1394,6 +1395,20 @@
       else goStep('submit');
     } else if (pos.i > 0) moveTo(pos.g, pos.i - 1);
     else if (pos.g > 0) moveTo(pos.g - 1, itemsOf(recGroups[pos.g - 1]).length - 1);
+    else stepAcross(-1);
+  }
+  // j and k walk the whole review: through each step, and item by item inside Recommendations.
+  // Coming into Recommendations from behind starts at its last item, so k retraces j exactly.
+  function stepAcross(dir) {
+    const at = STEPS.findIndex((st) => st.id === document.body.dataset.view), next = STEPS[at + dir];
+    if (at === -1 || !next) return;
+    if (next.id === 'recs') {
+      const g = dir > 0 ? 0 : recGroups.length - 1;
+      pos = { g, i: dir > 0 ? 0 : Math.max(0, itemsOf(recGroups[g]).length - 1) };
+      store.set(POS_KEY, JSON.stringify(pos));
+      store.set(KEY + ':recsseen', '1');
+    }
+    goStep(next.id);
   }
   function focusRec(r) {
     recGroups.forEach((G, g) => { const i = itemsOf(G).indexOf(r); if (i !== -1) pos = { g, i }; });
@@ -1435,7 +1450,7 @@
     rv.innerHTML = '<div class="fhero"><div class="ftitle"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
       '<div class="pills">' + pillsHtml() + '</div></div>' +
       '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>' +
-      '<div class="fnav' + (onRec ? ' quiet' : '') + '"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
+      '<div class="fnav' + (onRec ? ' quiet' : '') + '"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
       '<span class="sp"></span><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
       '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div>';
     const gv = rv.querySelector('[data-gvis]');
@@ -1981,6 +1996,21 @@
       '<button type="button" data-width="' + j + '" class="' + (j === widthAt ? 'on' : '') + '">' + w[0] + '</button>').join('') + '</div>';
   };
   setWidth(widthAt);
+  // In Recommendations the reading column stays centred where every other step puts it, and the
+  // sidebar sits in the left gutter beside it. Only when the gutter is too narrow for the sidebar
+  // does the column move over to make room, so nothing ever overlaps.
+  // The sidebar narrows from its full width to a floor before giving up the gutter.
+  const NAV_W = 300, NAV_MIN = 230, NAV_GAP = 16, COL_PAD = 24;
+  function placeSidebar() {
+    const vw = document.documentElement.clientWidth, w = WIDTHS[widthAt][1];
+    const col = w.endsWith('%') ? vw : Math.min(parseInt(w, 10), vw - 2 * COL_PAD);
+    const gutter = (vw - col) / 2, navW = Math.min(NAV_W, gutter - NAV_GAP);
+    document.body.classList.toggle('gutter', navW >= NAV_MIN);
+    document.documentElement.style.setProperty('--navw', navW + 'px');
+    document.documentElement.style.setProperty('--navx', Math.max(0, gutter - navW - NAV_GAP) + 'px');
+  }
+  placeSidebar();
+  addEventListener('resize', placeSidebar);
   // The settings panel: a gear in the header opens it; a click elsewhere or Esc closes it.
   const setPanel = (open) => {
     $('setpanel').classList.toggle('hidden', !open);
@@ -1990,7 +2020,7 @@
   $('setpanel').addEventListener('click', (e) => {
     e.stopPropagation();
     const b = e.target.closest('[data-width]');
-    if (b) setWidth(+b.dataset.width);
+    if (b) { setWidth(+b.dataset.width); placeSidebar(); }
   });
   document.addEventListener('click', () => setPanel(false));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });
@@ -2000,7 +2030,9 @@
     const rg = e.target.closest('[data-rg]');
     if (rg) { e.preventDefault(); focusGroup(+rg.dataset.rg); goStep('recs'); return; }
     const b = e.target.closest('[data-step]');
-    if (b) { e.preventDefault(); goStep(b.dataset.step); }
+    if (b) { e.preventDefault(); goStep(b.dataset.step); return; }
+    const ac = e.target.closest('[data-across]');
+    if (ac) { e.preventDefault(); stepAcross(+ac.dataset.across); }
   });
   $('gocode').onclick = () => goStep(document.body.dataset.view === 'code' ? codeFrom : 'code');
 
@@ -2139,7 +2171,7 @@
   // --- keyboard -------------------------------------------------------------
   const KEYS = [['j / k', 'Next / previous file'], ['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
-    ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['← / →', 'Previous / next in Recommendations (also k / j)'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
+    ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['j / k', 'Next / previous, through every step and each recommendation (also → / ←); files in Code'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');
   help.id = 'keyhelp'; help.className = 'hidden';
   help.innerHTML = '<div class="kbox"><h3>Keyboard shortcuts</h3><table>' +
@@ -2199,6 +2231,7 @@
       return;
     }
     if (k === 'c' && view !== 'code') { goStep('code'); e.preventDefault(); return; }
+    if (view !== 'code' && ['j', 'k', 'ArrowRight', 'ArrowLeft'].includes(k)) { stepAcross(k === 'j' || k === 'ArrowRight' ? 1 : -1); e.preventDefault(); return; }
     if (view !== 'code') return;
     if (k === 'r' || k === 'c') { goStep(codeFrom); e.preventDefault(); return; }
     if (k === 'j') stepFile(1);
