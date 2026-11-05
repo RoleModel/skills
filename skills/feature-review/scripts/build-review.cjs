@@ -304,7 +304,7 @@ if (groupsPath) {
   }));
   guide = {
     groups: g.groups.map((grp) => ({
-      title: grp.title, why: grp.why || '', auto: !!grp.auto, summary: grp.summary || '', points: grp.points || [],
+      title: grp.title, why: grp.why || '', auto: !!grp.auto, summary: grp.summary || '', points: grp.points || [], visuals: grp.visuals || [],
       files: (grp.files || []).map((e) => (typeof e === 'string' ? { path: e } : e)),
     })),
     suggestions: (g.suggestions || []).concat(recommendations.flatMap((r) => r.comments.map((c) => Object.assign({}, c, { rec: r.id })))),
@@ -339,6 +339,7 @@ if (guide.overview) {
   (guide.overview.diagrams || []).forEach(inlineMedia);
   ((guide.overview.connection && guide.overview.connection.steps) || []).forEach((st) => (st.visuals || []).forEach(inlineMedia));
 }
+guide.groups.forEach((g) => g.visuals.forEach(inlineMedia));
 guide.recommendations.forEach((r) => r.visuals.forEach(inlineMedia));
 
 // --- principles ----------------------------------------------------------------
@@ -447,6 +448,8 @@ if (numstat) {
 
 // --- guide check: it must describe files and lines that actually changed ----
 if (groupsPath) {
+  // diagrams.js is browser source, so evaluate its text rather than require() it (see "Constraints").
+  const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
   const seen = new Set();
   let bad = 0, auto = 0, autoLines = 0;
   for (const g of guide.groups) {
@@ -463,6 +466,9 @@ if (groupsPath) {
       }
     }
   }
+  guide.groups.forEach((g, i) => g.visuals.forEach((d, j) => {
+    for (const p of DIAG.problems(d, `groups: group ${i + 1} (${g.title || 'untitled'}) visual ${j + 1}`)) { console.error(p); bad++; }
+  }));
   for (const s of guide.suggestions) {
     const f = byName.get(s.path);
     const problem = !s.body ? 'has no body' : !f ? 'names a file not in the diff'
@@ -472,8 +478,6 @@ if (groupsPath) {
   // The overview: every check has text, every diagram can be drawn and lands somewhere real.
   const ov = guide.overview;
   if (ov) {
-    // diagrams.js is browser source, so evaluate its text rather than require() it (see "Constraints").
-    const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
     const titles = new Set(guide.groups.map((g) => g.title));
     const checks = (ov.feature && ov.feature.checks) || [];
     checks.forEach((c, i) => { if (!(c && (typeof c === 'string' || c.text))) { console.error(`overview: check ${i + 1} has no text`); bad++; } });
@@ -503,7 +507,6 @@ if (groupsPath) {
       console.error('overview: the shape has no structure diagram; add one with "section": "shape" marking what was added, changed and removed');
   }
   const groupTitles = new Set(guide.groups.map((g) => g.title)), rids = new Set();
-  const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
   const checkIds = new Set(((ov && ov.feature && ov.feature.checks) || []).map((c) => c && c.id).filter(Boolean));
   // Keep in step with REC_PARTS in page/app.js.
   const PARTS = ['context', 'problem', 'proposal', 'tradeoffs'];

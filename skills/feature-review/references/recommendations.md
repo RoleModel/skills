@@ -58,6 +58,7 @@ view), a link to its code, and what you add:
   reviewer needs to trust the group: what moved, what was removed, which rule
   changed. Inline code with backticks is fine. Skip points that only restate
   the summary.
+- **`visuals`**: pictures for the gist (any diagram kind). See Visuals below.
 
 Keep the whole card readable in about ten seconds. If a group needs more than
 that, it needs a diagram, not more words. A small mechanical group can have
@@ -65,8 +66,10 @@ neither: its why line and file chips are enough.
 
 ## Visuals
 
-Diagrams pinned to a group (`"group": "<title>"`) show on its card, side by
-side when there are several. `"section": "recs"` puts a visual at the top of
+A group's gist can carry its own pictures: give the group `visuals` (any
+diagram kind), or pin an overview diagram to it with `"group": "<title>"`.
+Either way they show on its card, side by side when there are several, and
+above its code in the Code mode. `"section": "recs"` puts a visual at the top of
 the view, for the one picture of the whole change. See
 `references/overview.md` for the diagram kinds. Two more kinds carry media:
 
