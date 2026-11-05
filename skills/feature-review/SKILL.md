@@ -215,7 +215,11 @@ review comments live here as **recommendations**: one action each, which the
 reviewer adds (its comments go into the review, or a general one into
 the summary) or ignores. Each also has a few short sections (`context`,
 `problem`, `proposal`, `tradeoffs`), one sentence each and two at most, in
-plain words rather than code; its `kind` decides which. A recommendation can
+plain words rather than code; its `kind` decides which. Each also takes a
+`severity` (`blocking`, `should` or `nit`; none for a question), which the
+build adds to its comments as a label. Your comments are a starting point:
+add recommendations for anything else the reviewer should decide, with or
+without comments behind them. A recommendation can
 carry `visuals` (any diagram kind), `checks` (ids of feature checks it bears
 on, which then show on it with their Looks right / Concern buttons; a concern
 says yes to it), and a `principle` (the section of a shared guide it rests on,

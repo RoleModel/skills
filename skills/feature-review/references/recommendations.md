@@ -116,23 +116,38 @@ A recommendation is one decision you want the reviewer to make, phrased as an
 action: "Keep the same-organization check", "Extract the label map", "Add a
 spec for a user from another org". The reviewer chooses **Add** or **Ignore**.
 
-- **From comments to recommendations.** Write the comments you would leave,
-  then group them by the call they ask for. Three comments that all say the
-  permission check got weaker are one recommendation with three `comments`.
-  A comment that stands alone is a recommendation with one comment. It is not
-  one to one, and usually several comments fold into one.
+- **From comments to recommendations.** The line comments you would leave are
+  a starting point, not the limit. Group them by the call they ask for: three
+  comments that all say the permission check got weaker are one recommendation
+  with three `comments`, and a comment that stands alone is a recommendation
+  with one comment. Then step back from the lines and add every other decision
+  the reviewer should make, with or without comments behind it: the approach,
+  the scope, something the feature doesn't handle, a risk that lives between
+  files, a follow-up worth a ticket. Don't drop a point because it has no line
+  to sit on.
 - **`comments`** have the same shape as `suggestions` (`path`, `line`,
   `start_line`, `side`, `body`) and are checked against the diff the same way.
   Add puts them all in the review as line comments, and they also show
   inline in the Code mode as suggested comments. Ignore leaves them out.
-- **No comments**: a general point (release notes, a follow-up ticket, a
-  question about scope). Add puts `body`, or else `title: why`, to the review
-  summary under **Recommendations**.
+- **No comments**: a point that isn't about one line, such as the approach,
+  the scope, a missing case, a cross-file risk, release notes or a follow-up
+  ticket. These are as welcome as the commented ones. Add puts `body`, or
+  else `title: why`, to the review summary under **Recommendations**.
 - **`group`**: the group title it belongs to, so it shows on that card. Leave
   it out for points that span the change; they show first, under "Across the
   change".
 - **`kind`**: `bug`, `risk`, `design`, `tests`, `style` or `question`. It is
   shown as a tag, so pick the honest one.
+- **`severity`**: `blocking`, `should` or `nit`, the project's review labels
+  (see its `REVIEW.md`; these are the defaults when it has none).
+  **Blocking** is a bug, security or data loss, a removal of needed code, or a
+  real gap against the ticket; **should** is worth fixing in this PR but open
+  to discussion; **nit** is a small preference, fine to skip. A `question`
+  takes no severity: the kind is its label. The page shows it as a badge, lists
+  blocking recommendations first, and counts each severity above the verdict
+  buttons. The build adds the label to the front of each comment
+  (`**Blocking:** …`), so leave it out of the comment text. The build warns
+  when a recommendation has none.
 - **`title`** is the action in under about ten words. The comments carry the
   detail.
 - **Sections**: **one sentence each, two at most**, so the reviewer can
@@ -167,7 +182,11 @@ spec for a user from another org". The reviewer chooses **Add** or **Ignore**.
   shape or a flow: a `compare` of the structure before and after the change
   you are proposing, a `sequence` showing where a check goes missing, a
   screenshot of the state the bug produces. A picture there often lets the
-  sections stay one sentence.
+  sections stay one sentence. When the review is submitted, the visuals of every
+  recommendation said yes to (recordings aside) are drawn as PNGs and posted
+  in one PR comment after the review, under each recommendation's title, so
+  the author sees them too. That includes recommendations with no comments,
+  such as questions that go into the summary.
 - **`checks`**: ids of feature checks (`overview.feature.checks`, each with an
   `id`) that this recommendation bears on, such as a check that a user from
   another organization gets a 404 next to the recommendation to keep the
@@ -187,7 +206,7 @@ spec for a user from another org". The reviewer chooses **Add** or **Ignore**.
   recommendation, so the reviewer can read the standard itself; it comes from
   the cache `review-guides.cjs` filled, so run that first. Name a principle
   only when the recommendation really follows from it; a recommendation that
-  stands on judgement alone is fine without one. A yes on a general
+  stands on judgement alone is fine without one. Adding a general
   recommendation adds the principle's name to the summary line, and the
   decisions log records it, so `decision-patterns.cjs` can tell which
   principles a reviewer keeps declining.

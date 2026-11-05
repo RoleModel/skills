@@ -18,6 +18,10 @@
  * GitHub has no API for uploading attachments. Attached files are written to
  * disk and their links replaced with a placeholder; the result lists them so
  * they can be dragged into the posted comments.
+ *
+ * Diagrams on the recommendations the reviewer said yes to come as PNGs the page
+ * drew. After the review posts, they go up in one follow-up PR comment through
+ * `gh pr comment --attach`, the one way gh can upload images.
  */
 const fs = require('fs');
 const path = require('path');
@@ -71,7 +75,47 @@ function saveReview(review, outDir) {
   return { json: path.resolve(`${base}.review.json`), markdown: path.resolve(`${base}.review.md`), attachments: Object.values(saved) };
 }
 
+// Write each diagram PNG and post them all in one PR comment, each under its recommendation's title.
+// A failure here leaves the review posted and says where the images are.
+function postDiagrams(review, { repo, number, outDir, run, notes }) {
+  const list = (review.diagrams || []).filter((d) => d && /^data:image\/png;base64,/.test(d.data || ''));
+  if (!list.length) return null;
+  const dir = path.join(outDir, `${slugOf(review)}-diagrams`);
+  fs.mkdirSync(dir, { recursive: true });
+  const parts = ['### Diagrams for this review'], args = ['pr', 'comment', String(number), '--repo', repo, '--body-file', '-'];
+  let lastTitle = null;
+  list.forEach((d, i) => {
+    const file = path.join(dir, `diagram-${i + 1}.png`);
+    fs.writeFileSync(file, Buffer.from(d.data.split(',')[1], 'base64'));
+    const alt = String(d.alt || d.title || d.rec || `Diagram ${i + 1}`).replace(/[\[\]#\n]/g, ' ').trim();
+    if (d.rec !== lastTitle) { parts.push(`**${d.rec || 'Across the change'}**`); lastTitle = d.rec; }
+    parts.push(`![${alt}](${file})`);
+    args.push('--attach', `${file}#${alt}`);
+  });
+  try {
+    const out = run('gh', args, parts.join('\n\n') + '\n');
+    return (out.match(/https:\/\/\S+/) || [null])[0];
+  } catch (e) {
+    notes.push(`The review posted, but the diagrams comment failed (${cmdError(e).split('\n')[0]}). The images are in ${dir}.`);
+    return null;
+  }
+}
+
 function submitReview(review, opts = {}) {
+  const result = postReview(review, opts);
+  if (result.dryRun) {
+    const n = (review.diagrams || []).length;
+    if (n) result.notes.push(`${n} diagram(s) will be posted as images in one PR comment after the review.`);
+    return result;
+  }
+  const { cwd = process.cwd(), outDir = path.join(cwd, 'tmp', 'review') } = opts;
+  const run = (cmd, args, input) => execFileSync(cmd, args, { cwd, encoding: 'utf8', input, maxBuffer: 1 << 28, stdio: ['pipe', 'pipe', 'pipe'] });
+  result.diagramsUrl = postDiagrams(review, { repo: `${review.pr.owner}/${review.pr.repo}`, number: review.pr.number, outDir, run, notes: result.notes });
+  if (result.diagramsUrl) result.notes.push(`Diagrams posted in a comment: ${result.diagramsUrl}`);
+  return result;
+}
+
+function postReview(review, opts = {}) {
   const { dryRun = false, cwd = process.cwd(), outDir = path.join(cwd, 'tmp', 'review') } = opts;
   const pr = review.pr;
   if (!pr) throw new Error('This review has no pull request linked, so there is nothing to post. Copy it as Markdown or save it instead.');

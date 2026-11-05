@@ -429,10 +429,13 @@
     const t = line.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/^[>#\s]+/, '').replace(/\*\*|__/g, '').trim();
     return t.length > 90 ? t.slice(0, 88) + '…' : t;
   };
+  // Blocking first, then should, then nits; a question or an unmarked one keeps its place after them.
+  const SEV = { blocking: 'Blocking', should: 'Should', nit: 'Nit' };
+  const SEV_RANK = (r) => ({ blocking: 0, should: 1, nit: 2 })[r.severity] ?? 3;
   const recs = (GUIDE.recommendations || []).map((r) => Object.assign({}, r, {
     rid: r.id, group: sections.some((g) => g.title && g.title === r.group) ? r.group : null,
     sids: suggestions.filter((s) => s.rec === r.id).map((s) => s.sid),
-  })).concat(suggestions.filter((s) => !s.rec).map((s) => ({ rid: 'r' + s.sid, title: headline(s.body), why: '', group: groupOf(s.path), sids: [s.sid] })));
+  })).sort((a, b) => SEV_RANK(a) - SEV_RANK(b)).concat(suggestions.filter((s) => !s.rec).map((s) => ({ rid: 'r' + s.sid, title: headline(s.body), why: '', group: groupOf(s.path), sids: [s.sid] })));
   const accepted = (sid) => state.comments.some((c) => c.sid === sid);
   function recStatus(r) {
     if (!r.sids.length) return state.recs[r.rid] || 'open';
@@ -1336,6 +1339,7 @@
     const parts = partsHtml(r), mine = (r.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
     return '<article class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop">' +
       (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span>' : '') +
+      (SEV[r.severity] ? '<span class="sevtag ' + esc(r.severity) + '">' + SEV[r.severity] + '</span>' : '') +
       '<h3 class="rectitle">' + inlineMd(r.title) + '</h3></div>' +
       // A picture often says what the prose can't, so it comes first.
       ((r.visuals || []).length ? '<div class="recvis" data-recvis="' + esc(r.rid) + '"></div>' : '') +
@@ -1443,16 +1447,17 @@
     const eyebrow = G.key === 'gen' ? 'Before the groups' : G.sec.title ? 'Group ' + (G.gi + 1) + ' of ' + titled : 'The change';
     const nx = items[pos.i + 1], ng = recGroups[pos.g + 1];
     const upNext = nx ? (nx === 'gist' ? 'Summary' : inlineMd(nx.title)) : ng ? 'Next group: ' + esc(ng.title) : 'Submit your review';
+    // Back and Next sit in the header row with the pills, so they stay put however tall the card is.
     // Add and Ignore already move on, so on a recommendation the flow buttons step back to quiet links;
     // only the gist, which has nothing to decide, keeps Next as its main action.
     const onRec = it && it !== 'gist';
     const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
     rv.innerHTML = '<div class="fhero"><div class="ftitle"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
-      '<div class="pills">' + pillsHtml() + '</div></div>' +
-      '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>' +
-      '<div class="fnav' + (onRec ? ' quiet' : '') + '"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
-      '<span class="sp"></span><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
-      '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div>';
+      '<div class="fbar"><div class="pills">' + pillsHtml() + '</div>' +
+      '<div class="fnav' + (onRec ? ' quiet' : '') + '"><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
+      '<button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
+      '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div></div></div>' +
+      '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>';
     const gv = rv.querySelector('[data-gvis]');
     if (gv) { if (G.diags.length) gv.replaceWith(figures(G.diags)); else gv.remove(); }
     mountRecVisuals(rv);
@@ -1612,7 +1617,7 @@
   sv.innerHTML =
     '<div class="svhead"><div><h2>Finish your review</h2><div class="svtarget" id="svtarget"></div></div></div>' +
     '<div class="svready" id="svready"></div>' +
-    '<div class="svblock svcompose"><div id="svbody"></div><div class="svposts" id="svposts"></div>' +
+    '<div class="svblock svcompose"><div id="svbody"></div><div class="svposts" id="svposts"></div><div class="svsev" id="svsev"></div>' +
     (PR ? '<div class="svverdicts">' + VERDICTS.map((v, i) => '<button type="button" class="' + v.cls + '" data-verdict="' + i + '" title="' +
       esc(v.tip) + '">' + v.label + '</button>').join('') + '</div>'
       : '<div class="svverdicts"><button type="button" class="primary" id="svmd2">Copy review as Markdown</button></div>') +
@@ -1743,11 +1748,31 @@
     return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + (i.bad ? '&#10007; ' : i.warn ? '&#9675; ' : '&#10003; ') + i.html + '</span>').join('');
   }
 
+  // How much of what is going out blocks merging: the comments of each severity, plus summary-only
+  // recommendations said yes to, which count as one each.
+  function severityTally() {
+    const recOf = new Map(recs.flatMap((r) => r.sids.map((sid) => [sid, r])));
+    const n = { blocking: 0, should: 0, nit: 0, question: 0 };
+    state.comments.forEach((c) => {
+      const r = recOf.get(c.sid);
+      if (r && n[r.severity] != null) n[r.severity]++;
+      else if (r && r.kind === 'question') n.question++;
+    });
+    recs.filter((r) => !r.sids.length && recStatus(r) === 'yes').forEach((r) => {
+      if (n[r.severity] != null) n[r.severity]++;
+      else if (r.kind === 'question') n.question++;
+    });
+    const LABEL = Object.assign({ question: 'Question' }, SEV);
+    const parts = Object.keys(n).filter((k) => n[k]).map((k) => '<span class="sevtag ' + k + '"><b>' + n[k] + '</b> ' + LABEL[k] + '</span>');
+    return parts.length ? parts.join('') : '';
+  }
+
   function refreshSubmit() {
     $('svready').innerHTML = readiness();
     const n = state.comments.length, nr = state.comments.filter((c) => c.subject === 'reply').length;
     $('svposts').innerHTML = n || fullBody() ? 'Posts ' + [fullBody() ? 'your summary' : '', n - nr ? plural(n - nr, 'line comment') : '', nr ? plural(nr, 'reply', 'replies') : '']
       .filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' and $1') + '.' : 'Nothing written yet.';
+    $('svsev').innerHTML = severityTally();
     if (!PR) { $('svhelp').innerHTML = ''; return; }
     const stale = state.comments.filter(isStale).length;
     // GitHub takes an Approve with nothing else, but a Comment or Request changes needs a summary or a comment.
@@ -1792,7 +1817,7 @@
     const data = { version: 1, title: META.title, slug: META.slug, range: META.range || null, pr: PR, commit_id: META.commitId || null,
       event: PR ? ev : null, shipit: shipit || undefined, body: bodyFor(shipit), attachments: (state.bodyAttachments || []).map(strip), comments,
       feature_checks: checks.map((c) => ({ text: c.text, status: checkOf(c).s || 'open', note: checkOf(c).note || undefined })),
-      recommendations: recs.map((r) => ({ id: r.rid, title: r.title, kind: r.kind || null, status: recStatus(r), comments: r.sids.length,
+      recommendations: recs.map((r) => ({ id: r.rid, title: r.title, kind: r.kind || null, severity: r.severity || null, status: recStatus(r), comments: r.sids.length,
         principle: r.principle && r.principle.name ? { name: r.principle.name, guide: r.principle.guide || null } : null,
         from_concern: !!state.autoYes[r.rid] || undefined })),
       auto_reviewed: files.filter((f) => f.auto).map((f) => ({ path: f.name, summary: f.auto.summary || '' })) };
@@ -1873,6 +1898,7 @@
     try {
       state.event = v.ev;
       const data = reviewData(v);
+      if (diagramList().length) { status('Drawing diagrams…'); data.diagrams = await diagramPngs(); status('Submitting…'); }
       const r = await post('/api/submit', data);
       const nr = data.comments.filter((c) => c.subject === 'reply').length;
       state.submitted = { url: r.url, at: Date.now(), event: data.event, shipit: !!v.shipit, comments: data.comments.length - nr, replies: nr, notes: r.notes || [] };
@@ -1890,11 +1916,65 @@
       status(e.message, 'err');
     }
   }
+  // Diagrams on the recommendations going out (said yes to, or partly) are posted as images in one
+  // comment after the review. Each is drawn off screen with the page's own styles, then rasterized.
+  const diagramList = () => recs.filter((r) => ['yes', 'mixed'].includes(recStatus(r)))
+    .flatMap((r) => (r.visuals || []).filter((d) => d && d.kind !== 'video').map((d) => ({ rec: r.title, d })));
+  const nextFrame = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  async function rasterize(src, w, h) {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const k = 2, c = document.createElement('canvas');
+    c.width = Math.ceil((w || img.naturalWidth) * k); c.height = Math.ceil((h || img.naturalHeight) * k);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--panel') || '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.scale(k, k);
+    ctx.drawImage(img, 0, 0, w || img.naturalWidth, h || img.naturalHeight);
+    return c.toDataURL('image/png');
+  }
+  async function diagramPng(d) {
+    if (d.kind === 'image') return /^data:image\/png;/.test(d.data || '') ? d.data : d.data ? rasterize(d.data) : null;
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:-20000px;top:0;width:880px;padding:16px;background:var(--panel)';
+    host.appendChild(DIAG.render(d, mdHtml));
+    document.body.appendChild(host);
+    try {
+      await nextFrame();
+      const box = host.getBoundingClientRect(), w = Math.ceil(box.width), h = Math.ceil(box.height);
+      // A clone loses shadow roots, so a raw diagram's markup is copied in as plain children.
+      const clone = host.cloneNode(true), shadows = Array.from(host.querySelectorAll('.draw')), copies = Array.from(clone.querySelectorAll('.draw'));
+      shadows.forEach((el, i) => { if (el.shadowRoot && copies[i]) copies[i].innerHTML = el.shadowRoot.innerHTML; });
+      clone.querySelectorAll('.dexpand').forEach((b) => b.remove());
+      clone.style.cssText = 'width:' + w + 'px;padding:16px;box-sizing:border-box';
+      const css = Array.from(document.querySelectorAll('style')).map((x) => x.textContent).join('\n');
+      const cs = getComputedStyle(document.documentElement);
+      const vars = Array.from(new Set(css.match(/--[\w-]+(?=\s*:)/g) || [])).map((v) => v + ':' + cs.getPropertyValue(v)).join(';');
+      const wrap = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + esc(vars) + ';background:var(--panel);color:var(--text);' +
+        'font:14px -apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,sans-serif"><style><![CDATA[' + css + ']]></style>' +
+        new XMLSerializer().serializeToString(clone) + '</div>';
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject x="0" y="0" width="100%" height="100%">' +
+        wrap + '</foreignObject></svg>';
+      return await rasterize('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), w, h);
+    } finally { host.remove(); }
+  }
+  async function diagramPngs() {
+    const out = [];
+    for (const { rec, d } of diagramList()) {
+      try {
+        const data = await diagramPng(d);
+        if (data) out.push({ rec, alt: d.title || rec, data });
+      } catch (e) { console.warn('could not draw diagram', d.title || rec, e); }
+    }
+    return out;
+  }
+
   // With the server up, ask it what GitHub will do before the reviewer commits to it.
   async function precheck() {
     if (!SERVER || !PR || !state.comments.length) return;
     try {
-      const r = await post('/api/check', reviewData());
+      const r = await post('/api/check', Object.assign(reviewData(), { diagrams: diagramList().map((x) => ({ rec: x.rec })) }));
       if (r.notes && r.notes.length) status(r.notes.join('\n'));
     } catch (e) { status(e.message, 'err'); }
   }
@@ -1976,6 +2056,13 @@
     if (step !== 'done') store.set(STEP_KEY, step);
     if (step === 'submit') { renderSubmit(); precheck(); }
     if (OVERVIEW.includes(step)) renderOverview(step);
+    // The first visit always opens on the first group's overview, wherever earlier clicks left the
+    // position; after that it comes back to where the reviewer was.
+    if (step === 'recs' && !store.get(KEY + ':recsseen')) {
+      store.set(KEY + ':recsseen', '1');
+      pos = { g: 0, i: 0 };
+      store.set(POS_KEY, JSON.stringify(pos));
+    }
     if (step === 'recs') renderRecs();
     if (step === 'recs' || step === 'code') syncOutline();
     render();

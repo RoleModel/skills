@@ -296,9 +296,14 @@ if (groupsPath) {
   if (!g || !Array.isArray(g.groups)) die('--groups must be an array of groups or {groups: [...], suggestions: [...]}');
   // A recommendation bundles the line comments it stands for. They ride as ordinary suggestions
   // tagged with the recommendation's id, so the code view still shows each one at its line.
+  // The severity rides on each comment as a label too, so the author sees what blocks merging.
+  const SEV_LABEL = { blocking: 'Blocking', should: 'Should', nit: 'Nit' };
+  const labelled = (sev, c) => (SEV_LABEL[sev] && c.body && !/^\*\*(Blocking|Should|Nit):\*\*/.test(c.body)
+    ? Object.assign({}, c, { body: '**' + SEV_LABEL[sev] + ':** ' + c.body }) : c);
   const recommendations = (g.recommendations || []).map((r, i) => ({
     id: String(r.id || 'r' + (i + 1)), title: r.title, why: r.why || '', kind: r.kind || '', group: r.group || null,
-    body: r.body || '', comments: r.comments || [],
+    severity: r.kind === 'question' ? '' : r.severity || '',
+    body: r.body || '', comments: (r.comments || []).map((c) => labelled(r.kind === 'question' ? '' : r.severity, c)),
     context: r.context || '', problem: r.problem || '', proposal: r.proposal || '', tradeoffs: r.tradeoffs || '',
     visuals: r.visuals || [], checks: r.checks || [], principle: r.principle || null,
   }));
@@ -519,6 +524,8 @@ if (groupsPath) {
     rids.add(r.id);
     if (r.group && !groupTitles.has(r.group)) { console.error(`${at} names an unknown group "${r.group}"`); bad++; }
     if (r.kind && !REC_PARTS[r.kind]) { console.error(`${at} has unknown kind "${r.kind}" (bug, risk, design, tests, style or question); it shows every section`); }
+    if (r.severity && !['blocking', 'should', 'nit'].includes(r.severity)) console.error(`${at} has unknown severity "${r.severity}" (blocking, should or nit)`);
+    if (!r.severity && r.kind !== 'question') console.error(`${at} has no severity (blocking, should or nit)`);
     // The kind decides which short sections a recommendation has; the page only shows those.
     const extra = PARTS.filter((p) => r[p] && r.kind && REC_PARTS[r.kind] && !REC_PARTS[r.kind].includes(p));
     if (extra.length) console.error(`${at}: a ${r.kind} recommendation doesn't show ${extra.join(', ')}; it will be hidden`);
