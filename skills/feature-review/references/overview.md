@@ -230,11 +230,37 @@ numbers show a file doubling, `codebase` should say why that's fine or not.
 
 ## Diagrams
 
-Draw a diagram where it explains something faster than prose: a flow through
-several objects, a responsibility moving from one place to another, geometry,
-a state machine, a before/after. Prefer one or two good diagrams to many. Every
-diagram has `kind`, optional `title` and `caption` (Markdown), and where it
-shows:
+**Draw the picture that's missing.** Wherever a reader would have to build an
+image in their head from your words, draw it for them instead. There is no
+quota and no required form: a diagram is any picture that makes a section
+quicker to understand, and the right one is whatever suits that section.
+
+- **Mock what you can't capture.** No screenshot of the new dialog, the PDF
+  page, the email, the error state? Sketch it: a rough screen with the changed
+  part outlined beats a paragraph describing it. Same for a before/after of a
+  screen when only one side can be captured.
+- **Draw the data, not just the code.** A record before and after the
+  migration, the rows a query now returns, the JSON a request sends, a
+  permissions matrix: a small table or a pair of boxes says it at a glance.
+- **Draw time.** What happens on save, which job runs when, the order of
+  retries: a timeline or a sequence.
+- **Draw space.** Geometry, layout, positions, sizes: an SVG with the real
+  shapes, old dashed and new solid.
+- **Draw amounts.** A query count that drops, a file that doubles, a limit
+  that moves: a few bars.
+- **Draw the argument.** For a recommendation, the risk or the proposal as a
+  picture: the two paths that now disagree, the box that has two jobs, the
+  case nobody handles marked with a pin and a note.
+
+Boxes, lines, arrows, labels and notes in any arrangement are fine. Mix forms in
+one picture when that's clearer (a sketch of a screen with a note pointing at
+the button, next to the request it sends). The `structure` and `sequence`
+kinds are shortcuts for two common shapes, not the menu; reach for `html` or
+`svg` whenever they don't fit. Keep each picture to one idea, with a title
+that says what to notice, and let the caption carry anything it can't show.
+
+Every diagram has `kind`, optional `title` and `caption` (Markdown), and where
+it shows:
 
 - `section`: `"feature"`, `"connection"` or `"shape"`, in the overview, or `"recs"`, at the
   top of the code step's Recommendations view. Default `"feature"`.
@@ -299,8 +325,9 @@ label.
 
 ### `html` and `svg`: anything else
 
-Hand-written markup in `html` or `svg`, for geometry, layouts, state machines,
-tables, or UI sketches. It renders in a shadow root, so it can't break the
+Hand-written markup in `html` or `svg`: UI mockups, records and tables,
+timelines, geometry, state machines, annotated sketches, little charts, or
+anything else. It renders in a shadow root, so it can't break the
 page, and it is static: `<script>` and `on*` attributes are removed. The page's
 colour variables inherit, so use them and it works in light and dark mode:
 `var(--text)`, `var(--muted)`, `var(--border)`, `var(--panel)`, `var(--bg)`,
@@ -311,6 +338,18 @@ Ready-made classes:
 - Layout: `.row` (flex row), `.col`, `.grid` (set `--cols`), `.box` (with
   `.new`, `.changed`, `.removed`), `.arrow` (→), `.down` (↓), `.tag`, `.title`,
   `.muted`, `.small`, `.add`, `.del`, `.accent`, plain `table`.
+- Sketching:
+  - `.screen` with a `.bar` (window title) and a `.body`: a rough app window.
+    Inside it, `.ui-btn` (`.primary`), `.ui-input`, `.ui-line` (a grey text
+    placeholder; set `--w`), `.ui-img` (an image placeholder).
+  - `.hl` outlines what to look at (`.hl.new`, `.hl.removed` recolour it);
+    `.ghost` fades something that isn't there yet or is going away; `.cross`
+    strikes out a removed value.
+  - `.note`: a sticky note; `.pin`: a numbered dot to tie a spot to a note.
+  - `.timeline`: its children become points on a line (`.new`, `.removed`,
+    `.ghost` colour the dot).
+  - `.meter`: a three-column grid of label, `<i style="--v:40%">` bar, value,
+    for amounts before and after.
 - SVG: strokes `.s-new`, `.s-old` (red dashed), `.s-changed`, `.s-muted`,
   `.s-accent`; fills `.f-new`, `.f-old`, `.f-panel`, `.f-accent`. Text is
   already themed. Give the `<svg>` a `viewBox` and it scales to fit.
@@ -322,6 +361,20 @@ Ready-made classes:
 
 For drawing domain geometry (a floor plan, a shape, a row of points), an SVG
 like this beats any box diagram: show the actual before and after positions.
+
+A mocked screen, for a dialog the review couldn't capture:
+
+```json
+{ "kind": "html", "title": "Archiving now asks first", "caption": "Sketch; the app wasn't running.",
+  "html": "<div class='row' style='align-items:flex-start'><div class='screen' style='width:260px'><div class='bar'>Archive project?</div><div class='body'><div class='ui-line' style='--w:90%'></div><div class='ui-line' style='--w:70%'></div><div class='row hl new' style='justify-content:flex-end'><span class='ui-btn'>Cancel</span><span class='ui-btn primary'>Archive</span></div></div></div><span class='note'><span class='pin'>1</span> New: Cancel is the default, so Enter no longer archives.</span></div>" }
+```
+
+A record before and after, and a timeline:
+
+```json
+{ "kind": "html", "title": "What a re-sync does to an order",
+  "html": "<div class='grid'><table><tr><th>status</th><td>shipped</td></tr><tr><th>synced_at</th><td class='cross'>2 days ago</td></tr></table><table><tr><th>status</th><td>shipped</td></tr><tr><th>synced_at</th><td class='add'>now</td></tr></table></div><div class='timeline' style='margin-top:12px'><div>Webhook arrives</div><div class='new'>Lock the order</div><div>Update</div><div class='ghost'>Email (skipped)</div></div>" }
+```
 
 ## Checking it
 

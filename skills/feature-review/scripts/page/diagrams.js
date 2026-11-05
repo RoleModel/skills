@@ -243,7 +243,29 @@ const DIAG = (function () {
     'svg{max-width:100%;height:auto;overflow:visible}svg text{fill:var(--text);font:12px -apple-system,BlinkMacSystemFont,sans-serif}' +
     'svg .muted{fill:var(--muted)}svg .s-new{stroke:var(--add-b)}svg .s-old{stroke:var(--del-b);stroke-dasharray:5 4}' +
     'svg .s-changed{stroke:#d29922}svg .s-muted{stroke:var(--muted)}svg .s-accent{stroke:var(--accent)}' +
-    'svg .f-new{fill:var(--add-bg)}svg .f-old{fill:var(--del-bg)}svg .f-panel{fill:var(--panel)}svg .f-accent{fill:var(--accent)}';
+    'svg .f-new{fill:var(--add-bg)}svg .f-old{fill:var(--del-bg)}svg .f-panel{fill:var(--panel)}svg .f-accent{fill:var(--accent)}' +
+    // Sketching: rough UI, notes and marks for drawing the picture a review is missing (a screen that
+    // can't be captured, a record before and after, a timeline). Deliberately plain, so it reads as a sketch.
+    '.screen{border:1px solid var(--border);border-radius:8px;background:var(--bg);overflow:hidden}' +
+    '.screen>.bar{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--border);background:var(--panel);font-size:11px;color:var(--muted)}' +
+    '.screen>.bar::before{content:"";width:28px;height:7px;flex:none;background:radial-gradient(circle,var(--border) 3px,transparent 3.5px) 0 0/10px 7px repeat-x}' +
+    '.screen>.body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}' +
+    '.ui-btn{display:inline-block;border:1px solid var(--border);border-radius:6px;padding:2px 10px;font-size:12px;background:var(--panel)}' +
+    '.ui-btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}' +
+    '.ui-input{display:inline-block;min-width:90px;border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:12px;color:var(--muted);background:var(--bg)}' +
+    '.ui-line{height:7px;border-radius:4px;background:var(--border);width:var(--w,60%)}' +
+    '.ui-img{border:1px dashed var(--border);border-radius:6px;min-height:40px;display:grid;place-items:center;color:var(--muted);font-size:11px}' +
+    '.hl{outline:2px dashed var(--accent);outline-offset:3px;border-radius:4px}.hl.new{outline-color:var(--add-b)}.hl.removed{outline-color:var(--del-b)}' +
+    '.ghost{opacity:.45}.box.ghost,.ui-btn.ghost,.ui-img.ghost,.screen.ghost{border-style:dashed}' +
+    '.note{display:inline-block;max-width:28ch;padding:5px 9px;border-radius:6px;font-size:12px;background:color-mix(in srgb,#d29922 16%,var(--bg));border:1px solid color-mix(in srgb,#d29922 45%,var(--border))}' +
+    '.pin{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--bg);font-size:11px;font-weight:600;vertical-align:middle}' +
+    '.timeline{display:flex;align-items:flex-start}.timeline>*{flex:1;position:relative;padding:16px 8px 0;font-size:12px}' +
+    '.timeline>*::before{content:"";position:absolute;top:4px;left:8px;width:9px;height:9px;border-radius:50%;background:var(--accent)}' +
+    '.timeline>*::after{content:"";position:absolute;top:8px;left:20px;right:-4px;height:1px;background:var(--border)}.timeline>:last-child::after{display:none}' +
+    '.timeline>.new::before{background:var(--add-b)}.timeline>.removed::before{background:var(--del-b)}.timeline>.ghost::before{background:var(--muted)}' +
+    '.meter{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}' +
+    '.meter>i{display:block;height:10px;border-radius:3px;background:var(--accent);width:var(--v,50%)}.meter>i.new{background:var(--add-b)}.meter>i.removed{background:var(--del-b)}' +
+    '.cross{text-decoration:line-through;color:var(--del-b)}';
   function raw(markup) {
     const host = document.createElement('div');
     host.className = 'draw';

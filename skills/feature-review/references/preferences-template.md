@@ -10,7 +10,7 @@ on conflicts.
 
 ## Overview (step 1)
 
-- Diagrams: {{"only for complex flows" | "whenever more than ~3 objects interact" | "none"}}
+- Diagrams: {{"wherever a picture beats words, mocks included (default)" | "only for complex flows" | "none"}}
 - Feature checks: {{e.g. "edge cases and undo/redo only", "include permission checks", "3-5 max"}}
 - Shape: {{e.g. "call out any file that grows past 300 lines", "flag logic in views"}}
 
