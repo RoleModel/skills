@@ -481,7 +481,8 @@
   };
   const fullBody = () => [state.body.trim(), recsMd(), concernsMd()].filter(Boolean).join('\n\n');
   // Diagrams can sit in the overview, in a reading-guide group (shown under its header in the code step), or both.
-  const diagrams = (OV && OV.diagrams) || [];
+  // A group's own visuals are diagrams pinned to it, so they show on its gist and above its code.
+  const diagrams = ((OV && OV.diagrams) || []).concat((GUIDE.groups || []).flatMap((g) => (g.title ? g.visuals || [] : []).map((d) => Object.assign({ group: g.title }, d))));
   const diagramsIn = (section) => diagrams.filter((d) => (d.section || (d.group ? null : 'feature')) === section);
 
   // --- render the diff ----------------------------------------------------
