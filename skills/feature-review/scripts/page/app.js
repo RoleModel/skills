@@ -464,10 +464,12 @@
   const oneLine = (t) => String(t || '').trim().replace(/\s*\n\s*/g, ' ');
   // The kind decides whether a recommendation has a proposal at all (a question doesn't).
   const shownProposal = (r) => (!r.kind || !REC_PARTS[r.kind] || REC_PARTS[r.kind].includes('proposal') ? r.proposal : '') || '';
-  const recsMd = () => {
+  // refs maps a recommendation's id to the numbers of its diagrams in the diagrams comment, when they are posted.
+  const recsMd = (refs = {}) => {
     const list = recs.filter((r) => !r.sids.length && recStatus(r) === 'yes');
     return list.length ? '**Recommendations**\n\n' + list.map((r) => '- ' + oneLine(r.body || r.title + (shownProposal(r) || r.why ? ': ' + (shownProposal(r) || r.why) : '')) +
-      (r.principle && r.principle.name ? ' _(' + oneLine(r.principle.name) + (r.principle.title ? ', ' + r.principle.title : '') + ')_' : '')).join('\n') : '';
+      (r.principle && r.principle.name ? ' _(' + oneLine(r.principle.name) + (r.principle.title ? ', ' + r.principle.title : '') + ')_' : '') +
+      (refs[r.rid] ? ' ' + seeDiagrams(refs[r.rid]) : '')).join('\n') : '';
   };
 
   // Feature checks: behaviour the agent thinks is worth confirming. The reviewer marks each one
@@ -482,7 +484,7 @@
     return '**Feature concerns**\n\n' + list.map((c) => '- ' + c.text.replace(/\s*\n\s*/g, ' ') +
       (checkOf(c).note && checkOf(c).note.trim() ? ': ' + checkOf(c).note.trim().replace(/\s*\n\s*/g, ' ') : '')).join('\n');
   };
-  const fullBody = () => [state.body.trim(), recsMd(), concernsMd()].filter(Boolean).join('\n\n');
+  const fullBody = (refs) => [state.body.trim(), recsMd(refs), concernsMd()].filter(Boolean).join('\n\n');
   // Diagrams can sit in the overview, in a reading-guide group (shown under its header in the code step), or both.
   // A group's own visuals are diagrams pinned to it, so they show on its gist and above its code.
   const diagrams = ((OV && OV.diagrams) || []).concat((GUIDE.groups || []).flatMap((g) => (g.title ? g.visuals || [] : []).map((d) => Object.assign({ group: g.title }, d))));
@@ -1631,7 +1633,7 @@
 
   // The whole review as GitHub will show it: the summary, then what the page adds to it, then a
   // line on what rides along as line comments. Ship it adds the squirrel.
-  const bodyFor = (shipit) => [fullBody(), shipit ? SHIPIT : ''].filter(Boolean).join('\n\n');
+  const bodyFor = (shipit, refs) => [fullBody(refs), shipit ? SHIPIT : ''].filter(Boolean).join('\n\n');
   function fullPreview() {
     const body = bodyFor(false), n = state.comments.length;
     const nr = state.comments.filter((c) => c.subject === 'reply').length;
@@ -1797,6 +1799,14 @@
   function reviewData(verdict) {
     const ev = verdict ? verdict.ev : state.event, shipit = !!(verdict && verdict.shipit);
     const strip = (a) => ({ id: a.id, name: a.name, type: a.type, data: a.data });
+    // Submitting posts the diagrams after the review, so the first comment of each recommendation points at its own.
+    const refs = verdict && PR ? diagramRefs() : {}, pointed = new Set();
+    const withRefs = (c) => {
+      const r = c.sid && recOfSid(c.sid);
+      if (!r || !refs[r.rid] || pointed.has(r.rid)) return c.body;
+      pointed.add(r.rid);
+      return c.body.trimEnd() + '\n\n' + seeDiagrams(refs[r.rid]);
+    };
     const comments = ordered(state.comments).map((c) => {
       const span = rowsOf(c), f = byName.get(c.path);
       const t = c.subject === 'reply' ? threadById.get(c.thread_id) : null;
@@ -1809,13 +1819,13 @@
         in_reply_to: t ? t.comments[0].id : undefined,
         replying_to: replyingTo(c) || undefined,
         label: locLabel(c),
-        body: c.body,
+        body: withRefs(c),
         attachments: (c.attachments || []).map(strip),
         snippet: span ? f.rows.slice(span[0], span[1] + 1).map((r) => SIGN[r.t] + r.text) : [],
       };
     });
     const data = { version: 1, title: META.title, slug: META.slug, range: META.range || null, pr: PR, commit_id: META.commitId || null,
-      event: PR ? ev : null, shipit: shipit || undefined, body: bodyFor(shipit), attachments: (state.bodyAttachments || []).map(strip), comments,
+      event: PR ? ev : null, shipit: shipit || undefined, body: bodyFor(shipit, refs), attachments: (state.bodyAttachments || []).map(strip), comments,
       feature_checks: checks.map((c) => ({ text: c.text, status: checkOf(c).s || 'open', note: checkOf(c).note || undefined })),
       recommendations: recs.map((r) => ({ id: r.rid, title: r.title, kind: r.kind || null, severity: r.severity || null, status: recStatus(r), comments: r.sids.length,
         principle: r.principle && r.principle.name ? { name: r.principle.name, guide: r.principle.guide || null } : null,
@@ -1919,7 +1929,10 @@
   // Diagrams on the recommendations going out (said yes to, or partly) are posted as images in one
   // comment after the review. Each is drawn off screen with the page's own styles, then rasterized.
   const diagramList = () => recs.filter((r) => ['yes', 'mixed'].includes(recStatus(r)))
-    .flatMap((r) => (r.visuals || []).filter((d) => d && d.kind !== 'video').map((d) => ({ rec: r.title, d })));
+    .flatMap((r) => (r.visuals || []).filter((d) => d && d.kind !== 'video').map((d) => ({ rid: r.rid, rec: r.title, d })));
+  // Diagrams are numbered in the order they are posted: "Diagram 2: …" in the diagrams comment, "See diagram 2" where it belongs.
+  const diagramRefs = () => diagramList().reduce((m, x, i) => Object.assign(m, { [x.rid]: (m[x.rid] || []).concat(i + 1) }), {});
+  const seeDiagrams = (ns) => 'See diagram' + (ns.length > 1 ? 's ' + ns.slice(0, -1).join(', ') + ' and ' + ns[ns.length - 1] : ' ' + ns[0]) + ' below.';
   const nextFrame = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
   async function rasterize(src, w, h) {
     const img = new Image();
@@ -1961,10 +1974,10 @@
   }
   async function diagramPngs() {
     const out = [];
-    for (const { rec, d } of diagramList()) {
+    for (const [i, { rec, d }] of diagramList().entries()) {
       try {
         const data = await diagramPng(d);
-        if (data) out.push({ rec, alt: d.title || rec, data });
+        if (data) out.push({ rec, n: i + 1, alt: d.title || rec, data });
       } catch (e) { console.warn('could not draw diagram', d.title || rec, e); }
     }
     return out;
