@@ -85,11 +85,13 @@ seconds) and crop screenshots to the part that changed.
 
 Prose alone often fails to show what a recommendation is about, so lean toward
 a visual: the page shows a recommendation's visuals before its text. Default to
-one for any recommendation that changes structure, flow or UI, and prefer a
-before/after `compare` (the code or diagram as it is, then as proposed). Other
-good fits: a short recording of the flow, a flow through several objects
-(`sequence`), responsibility moving (`structure` with new and removed nodes),
-geometry (`svg`). Skip it only for one-line fixes. The user's preferences
+one for any recommendation that changes structure, flow, data or UI, and
+prefer a before/after `compare` (as it is, then as proposed). The picture can
+take any form that makes the point: a sketched screen with the problem
+outlined, a table of the inputs that break it, a short recording, a
+`sequence`, a `structure` with new and removed nodes, geometry in `svg`. When
+the thing to show can't be captured, mock it (`references/overview.md`,
+"Diagrams"). Skip it only for one-line fixes. The user's preferences
 (`Recommendation visuals`) can turn this down.
 
 ### Capturing screenshots and recordings

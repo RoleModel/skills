@@ -100,7 +100,9 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
      (`summary`, `points`), and the **recommendations** that carry your
      comments: read `references/recommendations.md` for the format and how to
      fold comments into recommendations;
-   - then **visuals**: diagrams for the complex groups, and screenshots or
+   - then **visuals**: a picture wherever one would explain faster than
+     words (a group's gist, a recommendation, a feature step), mocked up in
+     `html`/`svg` when there is nothing to capture, and screenshots or
      short screen recordings of any UI change, captured with Playwright or the
      Chrome extension (recipes in `references/recommendations.md`). Skip
      captures when the app can't run, and say so in the report.
@@ -181,9 +183,10 @@ and the recommendations.
   blocks, from git: lines changed per area, and every touched file's length
   before and after.
 
-Diagrams (`structure`, `sequence`, `compare`, or hand-written `html`/`svg`) go
-in either part, and can also be pinned to a reading-guide group so they show
-next to the complex code they explain. Full format, guidance and examples:
+Diagrams go in either part, on a group's gist, and on recommendations. Draw
+the picture that's missing, in whatever form fits: `structure` and `sequence`
+are shortcuts, and hand-written `html`/`svg` (with a small sketching kit for
+mock screens, notes, timelines and bars) covers everything else. Full format, guidance and examples:
 `references/overview.md`. Without an overview the page opens on the code, and
 the Overview step shows only the computed shape.
 
