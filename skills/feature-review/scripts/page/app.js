@@ -1346,7 +1346,7 @@
         '</summary>' + checksHtml(mine) + '</details>' : '') +
       // In the focused view the comments are the evidence, so they show open.
       (n ? '<div class="reccomments"><div class="cxlbl">' + (n === 1 ? 'The comment' : 'The ' + n + ' comments') + '</div>' + sugs.map(recCommentHtml).join('') + '</div>' : '') +
-      '<div class="recdecide"><span class="recwhat">' + what + '</span><span class="sp"></span>' +
+      '<div class="recdecide">' + (n ? goLink(sugs[0], 'Show in code', 'btn recgo') : '') + '<span class="recwhat">' + what + '</span><span class="sp"></span>' +
       '<button type="button" data-rec="no" class="no' + (st === 'no' ? ' on' : '') + '">&#10007; No <kbd>n</kbd></button>' +
       '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">&#10003; Yes <kbd>y</kbd></button></div></article>';
   }
@@ -1410,8 +1410,7 @@
       (G.summary ? '<div class="md">' + mdHtml(G.summary) + '</div>' : '') +
       (G.points.length ? '<ul class="rgpoints">' + G.points.map((p) => '<li class="md">' + inlineMd(p) + '</li>').join('') + '</ul>' : '') +
       '<div data-gvis></div>' +
-      (G.files.length ? '<details class="gfiles"><summary>' + plural(G.files.length, 'file') + '</summary><div class="rgfiles">' + fileChips(G.files) + '</div>' +
-        (G.sec && G.sec.title ? '<a class="gcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '') + '</details>' : '') +
+      (G.files.length ? '<details class="gfiles"><summary>' + plural(G.files.length, 'file') + '</summary><div class="rgfiles">' + fileChips(G.files) + '</div></details>' : '') +
       '<p class="gnext">' + (G.recs.length ? plural(G.recs.length, 'recommendation') + ' to decide next.' : 'Nothing to decide in this group.') + '</p></article>';
   }
   function pillsHtml() {
@@ -1427,11 +1426,16 @@
     const eyebrow = G.key === 'gen' ? 'Before the groups' : G.sec.title ? 'Group ' + (G.gi + 1) + ' of ' + titled : 'The change';
     const nx = items[pos.i + 1], ng = recGroups[pos.g + 1];
     const upNext = nx ? (nx === 'gist' ? 'Summary' : inlineMd(nx.title)) : ng ? 'Next group: ' + esc(ng.title) : 'Submit your review';
-    rv.innerHTML = '<div class="fhero"><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2><div class="pills">' + pillsHtml() + '</div></div>' +
+    // Yes and No already move on, so on a recommendation the flow buttons step back to quiet links;
+    // only the gist, which has nothing to decide, keeps Next as its main action.
+    const onRec = it && it !== 'gist';
+    const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
+    rv.innerHTML = '<div class="fhero"><div class="fhead"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
+      '<div class="pills">' + pillsHtml() + '</div></div>' +
       '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>' +
-      '<div class="fnav"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
+      '<div class="fnav' + (onRec ? ' quiet' : '') + '"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
       '<span class="sp"></span><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
-      '<button type="button" class="primary" data-flow="1">Next <kbd>j</kbd></button></div>';
+      '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div>';
     const gv = rv.querySelector('[data-gvis]');
     if (gv) { if (G.diags.length) gv.replaceWith(figures(G.diags)); else gv.remove(); }
     mountRecVisuals(rv);

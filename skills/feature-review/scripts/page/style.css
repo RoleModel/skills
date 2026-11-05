@@ -679,6 +679,12 @@ a.cxchk{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent)
 .recdecide button.no.on{background:var(--text);border-color:var(--text);color:var(--bg)}
 .recdecide button.on kbd{color:inherit;border-color:currentColor;opacity:.7}
 .fnav{display:flex;align-items:center;gap:12px;margin-top:18px}
+.fnav.quiet{margin-top:10px}
+.fnav.quiet button{background:none;border-color:transparent;color:var(--muted)}
+.fnav.quiet button:hover:not(:disabled){color:var(--text);border-color:var(--border)}
+.fhead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.fcode{white-space:nowrap}
+.recgo{font-size:13px}
 .fnext{font-size:12.5px;color:var(--muted);max-width:50ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fnext b{color:var(--text);font-weight:500}
 .fnav button.primary kbd{color:#fff;border-color:rgba(255,255,255,.5)}
@@ -725,7 +731,6 @@ details.chkvis[open]>.cxvis{grid-template-columns:repeat(auto-fill,minmax(260px,
 details.recchecks{margin-top:16px}
 details.gfiles{margin-top:18px}
 .gfiles .rgfiles{margin-top:8px}
-a.gcode{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent);text-decoration:none}
 .rec .recvis{margin:0 0 16px}
 /* Code: fold a group, fold expanded context. */
 .ghead h2 .gfold{margin-left:10px;font-size:11px;padding:2px 8px;font-weight:500}
