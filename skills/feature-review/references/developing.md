@@ -70,9 +70,16 @@ to run a review.
 - An editor opened from a recommendation (`editInRecs`) is the one `editing`
   draft with `inRecs` set. `renderFile` leaves it alone, and `mountRecEditor`
   puts it back in its card after every redraw of the Recommendations view.
-- The step views are body classes (`overviewing`, `submitting`, `done`) plus
-  `body.dataset.view`; the code view is the absence of the others. The last
-  step is remembered under `<KEY>:step`.
+- The step views are `body.dataset.view` (`story`, `checks`, `shape`, `recs`,
+  `code`, `submit`, `done`) plus the body classes the older CSS keys on
+  (`overviewing` for the first three, `recs`, `submitting`, `done`). The last
+  step is remembered under `<KEY>:step`, the place in the Recommendations flow
+  under `<KEY>:recpos`.
+- **The page is assembled by `lib/page.cjs`** from `page/shell.html` and the
+  other `page/` assets. The build writes a self-contained file; the server calls
+  `fromBuilt()` on every load, which keeps the built file's JSON islands and
+  swaps in the current shell, CSS and JS. So app.js must keep working against
+  islands from older builds: treat any field it newly reads as optional.
 
 ## Syntax highlighting
 

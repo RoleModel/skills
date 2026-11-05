@@ -76,8 +76,13 @@ function serve(htmlPath, { port = 4823, keepAlive = false, onListening = null } 
     if (host !== `127.0.0.1:${bound}` && host !== `localhost:${bound}`) return send(res, 403, { error: 'bad host' });
     const url = new URL(req.url, `http://${host}`);
     if (req.method === 'GET' && url.pathname === '/') {
-      // Re-read each time so a rebuilt page (new reading guide) shows up on refresh.
-      const html = fs.readFileSync(htmlPath, 'utf8').replace(PLACEHOLDER,
+      // Re-read each time so a rebuilt page (new reading guide) shows up on refresh, and rebuild the
+      // shell from the skill's current page/ assets so an updated skill does too.
+      const built = fs.readFileSync(htmlPath, 'utf8');
+      let fresh = built;
+      try { delete require.cache[require.resolve('./lib/page.cjs')]; fresh = require('./lib/page.cjs').fromBuilt(built); }
+      catch (e) { console.error(`page: serving the built page as is (${e.message})`); }
+      const html = fresh.replace(PLACEHOLDER,
         `<script id="server-src" type="application/json">${JSON.stringify({ token })}</script>`);
       if (!opened) { opened = true; events.emit(pr, 'opened'); }
       return send(res, 200, html, 'text/html; charset=utf-8');

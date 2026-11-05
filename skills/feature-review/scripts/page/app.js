@@ -6,12 +6,11 @@
  * reading guide, auto-reviewed files, suggested comments) and #meta-src (title,
  * slug, PR, commit, file blobs and sizes, last review).
  *
- * The review runs in three steps, one view each: Overview (#overview: the
- * feature and the shape of the change, with diagrams), Code (#code, or a file
- * or group anchor) and Submit (#submit), then #done once posted. The code step
- * has two modes: Recommendations (the default: each reading-guide group as a
- * short gist with its visuals, and the agent's recommendations to say yes or no
- * to) and Code (the diff). #server-src is null from file:// and carries a token
+ * The review runs in steps, one view each: Story (#story: the PR description and
+ * how the feature comes together), Checks (#checks), Shape (#shape: diagrams and
+ * where the lines landed), Recommendations (#recs: one group at a time, its gist
+ * then each recommendation to say yes or no to), Code (#code, or a file or group
+ * anchor) and Submit (#submit), then #done once posted. #server-src is null from file:// and carries a token
  * when serve-review.cjs serves the page, which is what enables Submit and
  * expanding context.
  */
@@ -129,12 +128,16 @@
     const old = (c.side === 'LEFT') ? ' (old)' : '';
     return c.start_line != null && c.start_line !== c.line ? 'Lines ' + c.start_line + '–' + c.line + old : 'Line ' + c.line + old;
   };
+  // A line comment on expanded context sits outside the diff, where GitHub can't anchor it: submitting
+  // moves it into the summary with its file and line.
+  const outside = (c) => c.subject === 'line' && !c.tid && byName.has(c.path) && !byName.get(c.path).fullAt[c.side || 'RIGHT'].has(c.line);
   const orphanNote = (c) => {
+    if (outside(c) && !isStale(c)) return ' &middot; outside the diff: posts in the summary';
     if (isStale(c)) return ' &middot; the file changed since you wrote this: check the line, then Edit and save to keep it';
     if (c.subject !== 'line' || rowsOf(c)) return '';
     const f = byName.get(c.path);
     if (hideWs && f && f.fullAt[c.side || 'RIGHT'].has(c.line)) return ' &middot; hidden with whitespace changes';
-    return c.tid ? (threadsInline ? '' : ' &middot; at the PR head') : ' &middot; not in this diff';
+    return c.tid ? (threadsInline ? '' : ' &middot; at the PR head') : '';
   };
   // The new-side text a suggestion replaces, so previews can show before/after.
   const originalOf = (c) => {
@@ -294,7 +297,7 @@
     cols = cols || 3;
     if (r.t === 'h' || r.t === 'm') return '<tr class="' + r.t + '"><td colspan="' + cols + '">' + esc(r.text) + '</td></tr>';
     if (r.t === 'g') return '<tr class="g"><td colspan="' + cols + '">' + gapHtml(r, i) + '</td></tr>';
-    const k = TYPE[r.t], d = i != null && r.t !== 'x' ? ' data-r="' + i + '"' : '';
+    const k = TYPE[r.t], d = i != null ? ' data-r="' + i + '"' : '';
     return '<tr class="' + r.t + '"' + d + '><td class="n ' + k + '"' + d + '>' + (r.n1 ?? '') + '</td><td class="n ' + k + '"' + d + '>' +
       (r.n2 ?? '') + '</td><td class="c ' + k + '">' + codeHtml(r) + '</td></tr>';
   }
@@ -315,7 +318,7 @@
   }
   const halfHtml = (r, i, left) => {
     if (!r) return '<td class="n re"></td><td class="c re"></td>';
-    const k = TYPE[r.t], d = r.t !== 'x' ? ' data-r="' + i + '"' : '';
+    const k = TYPE[r.t], d = ' data-r="' + i + '"';
     return '<td class="n ' + k + '"' + d + '>' + ((left ? r.n1 : r.n2) ?? '') + '</td><td class="c ' + k + '"' + d + '>' + codeHtml(r) + '</td>';
   };
 
@@ -323,7 +326,7 @@
     f.rows = compose(f);
     f.rowAt = { RIGHT: new Map(), LEFT: new Map() };
     f.rows.forEach((r, i) => {
-      if (r.t === 'a' || r.t === 'c') f.rowAt.RIGHT.set(r.n2, i);
+      if (r.t === 'a' || r.t === 'c' || r.t === 'x') f.rowAt.RIGHT.set(r.n2, i);
       if (r.t === 'd' || r.t === 'c') f.rowAt.LEFT.set(r.n1, i);
     });
     highlight(f);
@@ -426,10 +429,13 @@
     const t = line.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/^[>#\s]+/, '').replace(/\*\*|__/g, '').trim();
     return t.length > 90 ? t.slice(0, 88) + '…' : t;
   };
+  // Blocking first, then should, then nits; a question or an unmarked one keeps its place after them.
+  const SEV = { blocking: 'Blocking', should: 'Should', nit: 'Nit' };
+  const SEV_RANK = (r) => ({ blocking: 0, should: 1, nit: 2 })[r.severity] ?? 3;
   const recs = (GUIDE.recommendations || []).map((r) => Object.assign({}, r, {
     rid: r.id, group: sections.some((g) => g.title && g.title === r.group) ? r.group : null,
     sids: suggestions.filter((s) => s.rec === r.id).map((s) => s.sid),
-  })).concat(suggestions.filter((s) => !s.rec).map((s) => ({ rid: 'r' + s.sid, title: headline(s.body), why: '', group: groupOf(s.path), sids: [s.sid] })));
+  })).sort((a, b) => SEV_RANK(a) - SEV_RANK(b)).concat(suggestions.filter((s) => !s.rec).map((s) => ({ rid: 'r' + s.sid, title: headline(s.body), why: '', group: groupOf(s.path), sids: [s.sid] })));
   const accepted = (sid) => state.comments.some((c) => c.sid === sid);
   function recStatus(r) {
     if (!r.sids.length) return state.recs[r.rid] || 'open';
@@ -458,10 +464,12 @@
   const oneLine = (t) => String(t || '').trim().replace(/\s*\n\s*/g, ' ');
   // The kind decides whether a recommendation has a proposal at all (a question doesn't).
   const shownProposal = (r) => (!r.kind || !REC_PARTS[r.kind] || REC_PARTS[r.kind].includes('proposal') ? r.proposal : '') || '';
-  const recsMd = () => {
+  // refs maps a recommendation's id to the numbers of its diagrams in the diagrams comment, when they are posted.
+  const recsMd = (refs = {}) => {
     const list = recs.filter((r) => !r.sids.length && recStatus(r) === 'yes');
     return list.length ? '**Recommendations**\n\n' + list.map((r) => '- ' + oneLine(r.body || r.title + (shownProposal(r) || r.why ? ': ' + (shownProposal(r) || r.why) : '')) +
-      (r.principle && r.principle.name ? ' _(' + oneLine(r.principle.name) + (r.principle.title ? ', ' + r.principle.title : '') + ')_' : '')).join('\n') : '';
+      (r.principle && r.principle.name ? ' _(' + oneLine(r.principle.name) + (r.principle.title ? ', ' + r.principle.title : '') + ')_' : '') +
+      (refs[r.rid] ? ' ' + seeDiagrams(refs[r.rid]) : '')).join('\n') : '';
   };
 
   // Feature checks: behaviour the agent thinks is worth confirming. The reviewer marks each one
@@ -476,9 +484,10 @@
     return '**Feature concerns**\n\n' + list.map((c) => '- ' + c.text.replace(/\s*\n\s*/g, ' ') +
       (checkOf(c).note && checkOf(c).note.trim() ? ': ' + checkOf(c).note.trim().replace(/\s*\n\s*/g, ' ') : '')).join('\n');
   };
-  const fullBody = () => [state.body.trim(), recsMd(), concernsMd()].filter(Boolean).join('\n\n');
+  const fullBody = (refs) => [state.body.trim(), recsMd(refs), concernsMd()].filter(Boolean).join('\n\n');
   // Diagrams can sit in the overview, in a reading-guide group (shown under its header in the code step), or both.
-  const diagrams = (OV && OV.diagrams) || [];
+  // A group's own visuals are diagrams pinned to it, so they show on its gist and above its code.
+  const diagrams = ((OV && OV.diagrams) || []).concat((GUIDE.groups || []).flatMap((g) => (g.title ? g.visuals || [] : []).map((d) => Object.assign({ group: g.title }, d))));
   const diagramsIn = (section) => diagrams.filter((d) => (d.section || (d.group ? null : 'feature')) === section);
 
   // --- render the diff ----------------------------------------------------
@@ -488,7 +497,7 @@
       const mh = document.createElement('div');
       mh.className = 'ghead'; mh.id = 'g' + gi;
       mh.innerHTML = '<h2><span class="gnum">' + (gi + 1) + '.</span>' + esc(g.title) +
-        '<span class="gct"></span></h2>' + (g.why ? '<p class="gwhy">' + esc(g.why) + '</p>' : '');
+        '<span class="gct"></span><button type="button" class="gfold" title="Fold or unfold every file in this group">Collapse group</button></h2>' + (g.why ? '<p class="gwhy">' + esc(g.why) + '</p>' : '');
       diagrams.filter((d) => d.group && d.group === g.title).forEach((d) => {
         const det = document.createElement('details');
         det.className = 'gdiag'; det.open = true;
@@ -496,14 +505,21 @@
         det.appendChild(DIAG.render(Object.assign({}, d, { title: null }), mdHtml));
         mh.appendChild(det);
       });
+      mh.querySelector('.gfold').addEventListener('click', (e) => {
+        const fold = !g.files.every((f) => f.el.classList.contains('collapsed'));
+        g.files.forEach((f) => { f.el.classList.toggle('collapsed', fold); f.el.classList.remove('peek'); });
+        e.currentTarget.textContent = fold ? 'Expand group' : 'Collapse group';
+      });
       main.appendChild(mh);
-      const nh = document.createElement('div');
-      nh.className = 'ghead';
-      nh.innerHTML = '<h2><span class="gnum">' + (gi + 1) + '.</span><a href="#g' + gi + '">' +
-        esc(g.title) + '</a><span class="gct"></span></h2>';
-      nav.appendChild(nh);
-      g.mainEl = mh; g.navEl = nh;
-      g.ctEls = [mh.querySelector('.gct'), nh.querySelector('.gct')];
+      // The sidebar outline: the group, its recommendations (in Recommendations) and its files.
+      const og = document.createElement('details');
+      og.className = 'og'; og.open = true; og.dataset.g = gi;
+      og.innerHTML = '<summary class="ghead"><h2><span class="gnum">' + (gi + 1) + '.</span><a href="#g' + gi + '">' +
+        esc(g.title) + '</a><span class="gct"></span></h2></summary><div class="orecs"></div>' +
+        '<details class="ofiles"><summary>' + plural(g.files.length, 'file') + '</summary><div class="ofl"></div></details>';
+      nav.appendChild(og);
+      g.mainEl = mh; g.navEl = og; g.navFiles = og.querySelector('.ofl');
+      g.ctEls = [mh.querySelector('.gct'), og.querySelector('.gct')];
     }
     g.files.forEach((f) => {
       const i = f.i = idx++;
@@ -516,7 +532,8 @@
         (f.since ? '<span class="badge since" title="This file changed after your last review">changed since your review</span>' : '') +
         (f.stale ? '<span class="badge stale" title="You marked this viewed, then the file changed">changed since you viewed it</span>' : '') +
         '<span class="badge">' + f.status + '</span><span class="cbadge"></span><span class="add">+' + f.add +
-        '</span><span class="del">-' + f.del + '</span><button type="button" class="fcbtn" title="Comment on the whole file">Comment</button>' +
+        '</span><span class="del">-' + f.del + '</span><button type="button" class="xfold hidden" title="Hide the unchanged lines you expanded">Fold context</button>' +
+        '<button type="button" class="fcbtn" title="Comment on the whole file">Comment</button>' +
         '<label class="viewed-box"><input type="checkbox">Viewed</label></div>' +
         (f.auto ? '<div class="autonote"><b>Auto-reviewed:</b> ' + esc(f.auto.summary || 'no summary given') +
           ' &middot; expand to double-check, or tick Viewed to sign it off yourself.</div>' : '') +
@@ -542,6 +559,12 @@
         if (cb.checked) viewed[f.name] = f.sig; else delete viewed[f.name];
         saveViewed();
         render();
+      });
+      el.querySelector('.xfold').addEventListener('click', (e) => {
+        e.stopPropagation();
+        f.shown.clear();
+        buildTable(f);
+        renderFile(f);
       });
       el.querySelector('.fcbtn').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -570,105 +593,75 @@
       a.title = f.name;
       a.classList.toggle('since', f.since);
       f.navEl = a;
-      nav.appendChild(a);
+      (g.navFiles || nav).appendChild(a);
     });
   });
   $('stats').innerHTML = files.length + ' files &middot; <span class="add">+' + tAdd +
     '</span> <span class="del">-' + tDel + '</span>';
 
   const tLines = tAdd + tDel;
-  const ciRow = () => PR && PR.ci ? '<div class="row' + (ciCount('fail') ? ' ci-fail' : '') + '"><span>CI</span><b><a href="#overview">' + esc(ciLabel()) + '</a></b></div>' : '';
-  let sinceOnly = false;
+  let sinceOnly = false, readPct = 0;
+  const ring = (pct) => {
+    const r = 15, c = 2 * Math.PI * r;
+    return '<svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="' + r + '" class="rt"/><circle cx="18" cy="18" r="' + r +
+      '" class="rf" stroke-dasharray="' + (c * pct / 100).toFixed(2) + ' ' + c.toFixed(2) + '"/></svg>';
+  };
   function render() {
     const covered = (f) => f.cb.checked || !!f.auto;
     const left = files.filter((f) => !covered(f));
     const autoOnly = files.filter((f) => f.auto && !f.cb.checked);
     const lines = (fs) => fs.reduce((s, f) => s + f.add + f.del, 0);
-    const lAdd = left.reduce((s, f) => s + f.add, 0), lDel = left.reduce((s, f) => s + f.del, 0);
-    const lLines = lAdd + lDel, seen = tLines - lLines, aLines = lines(autoOnly);
-    const pct = tLines ? Math.round(seen / tLines * 100) : 100;
-    const mine = tLines ? (seen - aLines) / tLines * 100 : 100, auto = tLines ? aLines / tLines * 100 : 0;
+    const lLines = lines(left), seen = tLines - lLines, aLines = lines(autoOnly);
+    readPct = tLines ? Math.round(seen / tLines * 100) : 100;
     files.forEach((f) => {
       f.navEl.classList.toggle('viewed', f.cb.checked);
       f.navEl.classList.toggle('auto', !!f.auto && !f.cb.checked);
     });
-    // In the Recommendations mode, progress is decisions, not lines: the reviewer is reading at the
-    // height of the groups, and the diff's line count would sit near zero the whole time.
-    const byRecs = mode === 'recs' && recs.length > 0;
+    // Each step counts what it is for: decisions in Recommendations, lines read in Code.
+    const byRecs = mode === 'recs';
     sections.forEach((g) => {
       if (!g.title) return;
-      const gDone = g.files.filter(covered).length;
-      const all = gDone === g.files.length;
+      const gDone = g.files.filter(covered).length, all = gDone === g.files.length;
       const gr = groupRecs(g), gDecided = gr.filter((r) => recStatus(r) !== 'open').length;
       g.ctEls[0].textContent = (all ? '✓ ' : '') + gDone + ' / ' + g.files.length;
       g.ctEls[1].textContent = !byRecs ? g.ctEls[0].textContent : gr.length ? (gDecided === gr.length ? '✓ ' : '') + gDecided + ' / ' + gr.length : '';
       g.mainEl.classList.toggle('done', all);
       g.navEl.classList.toggle('done', byRecs ? gr.length > 0 && gDecided === gr.length : all);
     });
-    const nc = state.comments.length, ns = pendingSuggestions().length;
-    const openThreads = threads.filter((t) => !t.resolved).length;
-    const lr = META.lastReview, since = META.since;
-    const day = (at) => at ? new Date(at).toLocaleDateString() : '';
-    let review = '';
-    if (since) {
-      review = '<hr><div class="row"><span>Showing changes since</span><b>' + esc(since.sha.slice(0, 7)) + (since.at ? ' · ' + day(since.at) : '') + '</b></div>' +
-        (since.rebased ? '<div class="row"><span>Rebased since then, so this includes upstream changes</span></div>' : '');
-    } else if (lr && lr.changed) {
-      review = '<hr><div class="row"><span>Your last review</span><b>' + esc(lr.sha.slice(0, 7)) + ' · ' + day(lr.at) + '</b></div>' +
-        (changedSince.size
-          ? '<div class="row"><span>Changed since</span><b>' + plural(changedSince.size, 'file') +
-            ' <button type="button" data-act="sinceonly">' + (sinceOnly ? 'Show all' : 'Only these') + '</button></b></div>'
-          : '<div class="row"><span>Nothing changed since</span></div>');
-    }
+    const nc = state.comments.length;
+    if (document.body.dataset.view !== 'code') { const hp = document.querySelector('#gocode .hpct'); if (hp) hp.textContent = readPct + '%'; }
     if (byRecs) {
-      const n = recs.length, by = (st) => recs.filter((r) => recStatus(r) === st);
-      const yes = by('yes'), no = by('no'), mixed = by('mixed'), open = by('open'), decided = n - open.length;
-      const rPct = Math.round(decided / n * 100), w = (list) => list.length / n * 100;
-      const inReview = state.comments.filter((c) => c.sid && recs.some((r) => r.sids.includes(c.sid))).length;
-      $('meta').innerHTML =
-        '<div class="pctrow"><span class="pct' + (rPct === 100 ? ' done' : '') + '">' + rPct +
-        '%</span><span class="pctlbl">recommendations decided</span></div>' +
-        '<span class="progress" title="' + decided + ' of ' + n + ' recommendations decided"><i style="width:' + w(yes) +
-        '%"></i><i class="mixed" style="width:' + w(mixed) + '%"></i><i class="no" style="width:' + w(no) + '%"></i></span>' +
-        '<div class="row"><span>Decided</span><b>' + decided + ' / ' + n + '</b></div>' +
-        '<div class="row"><span>Yes</span><b>' + yes.length + (mixed.length ? ' (+' + mixed.length + ' in part)' : '') + '</b></div>' +
-        '<div class="row"><span>No</span><b>' + no.length + '</b></div>' +
-        '<div class="row"><span>Comments</span><b>' + nc + (inReview ? ' (' + inReview + ' from recommendations)' : '') + '</b></div>' +
-        (checks.length ? '<div class="row"><span>Feature checks</span><b><a href="#overview">' + checksLabel() + '</a></b></div>' : '') +
-        ciRow() +
-        (threads.length ? '<div class="row"><span>Threads</span><b>' + threads.length + (openThreads ? ' (' + openThreads + ' unresolved)' : '') + '</b></div>' : '') +
-        review +
-        '<hr><div class="row"><span>Code read</span><b><a href="#code" data-mode="diff">' + pct + '% of lines</a></b></div>' +
-        (open.length ? '<div class="row"><span>Remaining</span><b>' + plural(open.length, 'recommendation') + '</b></div>'
-          : '<div class="row done"><span>&#10003; All recommendations decided</span></div>');
-      $('gosubmit').textContent = 'Finish review' + (nc ? ' (' + nc + ')' : '');
-      return;
+      const n = recs.length, by = (st) => recs.filter((r) => recStatus(r) === st).length, decided = recsDecided();
+      const pct = n ? Math.round(decided / n * 100) : 100;
+      $('meta').innerHTML = '<div class="prog">' + ring(pct) + '<div><div class="pnum">' + decided + '<span> / ' + n + '</span></div>' +
+        '<div class="plbl">recommendations decided</div></div></div>' +
+        (n ? '<div class="pfoot"><span class="yes">' + by('yes') + ' added</span><span class="no">' + by('no') + ' ignored</span>' +
+          (by('mixed') ? '<span>' + by('mixed') + ' in part</span>' : '') + '</div>' : '');
+    } else {
+      const openThreads = threads.filter((t) => !t.resolved).length;
+      const lr = META.lastReview, since = META.since;
+      const day = (at) => at ? new Date(at).toLocaleDateString() : '';
+      let review = '';
+      if (since) {
+        review = '<div class="row"><span>Changes since</span><b>' + esc(since.sha.slice(0, 7)) + (since.at ? ' · ' + day(since.at) : '') + '</b></div>' +
+          (since.rebased ? '<div class="row"><span>Rebased since, so this includes upstream changes</span></div>' : '');
+      } else if (lr && lr.changed) {
+        review = '<div class="row"><span>Your last review</span><b>' + esc(lr.sha.slice(0, 7)) + ' · ' + day(lr.at) + '</b></div>' +
+          (changedSince.size
+            ? '<div class="row"><span>Changed since</span><b>' + plural(changedSince.size, 'file') +
+              ' <button type="button" data-act="sinceonly">' + (sinceOnly ? 'Show all' : 'Only these') + '</button></b></div>'
+            : '<div class="row"><span>Nothing changed since</span></div>');
+      }
+      $('meta').innerHTML = '<div class="prog">' + ring(readPct) + '<div><div class="pnum">' + readPct + '<span>%</span></div>' +
+        '<div class="plbl">of changed lines read</div></div></div>' +
+        '<div class="row"><span>Files</span><b>' + (files.length - left.length) + ' / ' + files.length + '</b></div>' +
+        (autoOnly.length ? '<div class="row"><span>Auto-reviewed</span><b>' + plural(autoOnly.length, 'file') + ', ' + plural(aLines, 'line') + '</b></div>' : '') +
+        (left.length ? '<div class="row"><span>Left to read</span><b>' + lLines.toLocaleString() + ' line' + (lLines === 1 ? '' : 's') + '</b></div>' : '') +
+        (threads.length ? '<div class="row"><span>Threads</span><b>' + threads.length + (openThreads ? ' (' + openThreads + ' open)' : '') + '</b></div>' : '') +
+        review;
     }
-    $('meta').innerHTML =
-      '<div class="pctrow"><span class="pct' + (pct === 100 ? ' done' : '') + '">' + pct +
-      '%</span><span class="pctlbl">lines reviewed</span></div>' +
-      '<span class="progress" title="' + seen + ' of ' + tLines + ' changed lines"><i style="width:' + mine +
-      '%"></i><i class="auto" style="width:' + auto + '%"></i></span>' +
-      '<div class="row"><span>Lines</span><b>' + seen.toLocaleString() + ' / ' + tLines.toLocaleString() + '</b></div>' +
-      '<div class="row"><span>Files</span><b>' + (files.length - left.length) + ' / ' + files.length + '</b></div>' +
-      (autoOnly.length ? '<div class="row"><span>Auto-reviewed</span><b>' + plural(autoOnly.length, 'file') + ', ' +
-        plural(aLines, 'line') + '</b></div>' : '') +
-      '<div class="row"><span>Comments</span><b>' + nc + (ns ? ' (+' + ns + ' suggested)' : '') + '</b></div>' +
-      (checks.length ? '<div class="row"><span>Feature checks</span><b><a href="#overview">' + checksLabel() + '</a></b></div>' : '') +
-      (recs.length ? '<div class="row"><span>Recommendations</span><b><a href="#code" data-mode="recs">' + recsDecided() + ' / ' + recs.length +
-        ' decided</a></b></div>' : '') +
-      ciRow() +
-      (threads.length ? '<div class="row"><span>Threads</span><b>' + threads.length + (openThreads ? ' (' + openThreads + ' unresolved)' : '') + '</b></div>' : '') +
-      review +
-      '<hr><div class="row"><span>Total change</span><b><span class="add">+' + tAdd +
-      '</span> <span class="del">-' + tDel + '</span></b></div>' +
-      (left.length
-        ? '<div class="row"><span>Remaining</span><b>' + plural(left.length, 'file') + ', ' + lLines.toLocaleString() +
-          ' line' + (lLines === 1 ? '' : 's') + '</b></div>' +
-          '<div class="row"><span></span><b><span class="add">+' + lAdd +
-          '</span> <span class="del">-' + lDel + '</span></b></div>'
-        : '<div class="row done"><span>&#10003; All files reviewed</span></div>');
-    $('gosubmit').textContent = 'Finish review' + (nc ? ' (' + nc + ')' : '');
+    renderRail();
+    if (byRecs) refreshOutline();
   }
 
   // --- comments in the diff -----------------------------------------------
@@ -687,11 +680,10 @@
     const td = e.target.closest('td.n');
     if (!td) return;
     if (td.dataset.r === undefined) {
-      if (td.classList.contains('rx')) flash('Expanded lines are outside the diff, so GitHub can\'t anchor a comment there. Use the file\'s Comment button.');
       return;
     }
     const r = +td.dataset.r;
-    if (!'acd'.includes(f.rows[r].t)) return;
+    if (!'acdx'.includes(f.rows[r].t)) return;
     e.preventDefault(); // no text selection while dragging
     drag = { f, start: r, lo: r, hi: r };
     document.body.classList.add('dragging');
@@ -702,7 +694,7 @@
     const el = e.target.closest && e.target.closest('[data-r]');
     if (!el || !drag.f.table.contains(el)) return;
     const rows = drag.f.rows, target = +el.dataset.r, step = target > drag.start ? 1 : -1;
-    const inHunk = (i) => rows[i] && 'acd'.includes(rows[i].t) && rows[i].hunk === rows[drag.start].hunk;
+    const inHunk = (i) => rows[i] && 'acdx'.includes(rows[i].t) && (rows[i].t === 'x') === (rows[drag.start].t === 'x') && rows[i].hunk === rows[drag.start].hunk;
     let end = drag.start;
     while (end !== target && inHunk(end + step)) end += step;
     drag.lo = Math.min(drag.start, end); drag.hi = Math.max(drag.start, end);
@@ -731,7 +723,7 @@
     }
     if (editing && (editing.body.trim() || editing.attachments.length) && !(draft.id && draft.id === editing.id)) {
       // Never throw away typed text; send the reviewer back to it instead.
-      if (editing.inRecs) { goStep('code'); setMode('recs'); }
+      if (editing.inRecs) { focusRec(recOfSid(editing.sid)); goStep('recs'); }
       else goToFile(byName.get(editing.path));
       editing.el.scrollIntoView({ block: 'center' });
       editing.el.querySelector('textarea').focus();
@@ -861,6 +853,7 @@
       editing.el.querySelector('.eloc').textContent = locLabel(editing);
       editing.el.querySelector('[data-tool="suggest"]').disabled = !editing.el.suggestable();
     }
+    f.el.querySelector('.xfold').classList.toggle('hidden', !f.shown.size);
     const n = state.comments.filter((c) => c.path === f.name).length;
     f.cbadge.textContent = [n ? plural(n, 'comment') : '', ths.length ? plural(ths.length, 'thread') : ''].filter(Boolean).join(' · ');
   }
@@ -1041,45 +1034,45 @@
     const dir = name.split('/').slice(0, -1);
     return dir.slice(0, 3).join('/') || '(root)';
   };
-  function landsHtml() {
-    const m = new Map();
-    files.forEach((f) => {
-      const k = areaOf(f.name), a = m.get(k) || { k, add: 0, del: 0, n: 0 };
-      a.add += f.add; a.del += f.del; a.n++;
-      m.set(k, a);
-    });
-    const rows = Array.from(m.values()).sort((a, b) => b.add + b.del - (a.add + a.del));
-    const max = Math.max(1, ...rows.map((r) => r.add + r.del));
-    return '<table class="ovbars">' + rows.map((r) => '<tr><td class="ovk"><code>' + esc(r.k) + '</code></td><td class="ovn">' +
-      plural(r.n, 'file') + '</td><td class="ovbar"><span><i class="a" style="width:' + (r.add / max * 100) + '%"></i><i class="d" style="width:' +
-      (r.del / max * 100) + '%"></i></span></td><td class="ovnum"><span class="add">+' + r.add + '</span> <span class="del">-' + r.del +
-      '</span></td></tr>').join('') + '</table>';
-  }
   // A file that crosses this many lines in the change gets a badge: a nudge, not a rule.
   const LARGE = 400;
-  function sizesHtml() {
-    if (!SIZES) return '<p class="svnote">File sizes need a page built from git (not <code>--stdin</code>).</p>';
-    const rows = files.map((f) => ({ f, b: (SIZES[f.name] || [])[0], a: (SIZES[f.name] || [])[1] }))
-      .filter((r) => r.b != null || r.a != null);
-    if (!rows.length) return '<p class="svnote">Only binary files changed.</p>';
-    const tb = rows.reduce((s, r) => s + (r.b || 0), 0), ta = rows.reduce((s, r) => s + (r.a || 0), 0);
-    const net = (r) => (r.a || 0) - (r.b || 0);
-    rows.sort((x, y) => Math.abs(net(y)) - Math.abs(net(x)) || x.f.i - y.f.i);
-    const max = Math.max(1, ...rows.map((r) => Math.max(r.a || 0, r.b || 0)));
-    const sign = (n) => (n > 0 ? '+' : '') + n.toLocaleString();
-    const tr = (r) => '<tr><td>' + fileLink(r.f.name, '<code>' + esc(r.f.name) + '</code>') +
-      (r.f.status !== 'modified' ? ' <span class="badge">' + r.f.status + '</span>' : '') +
-      ((r.a || 0) > LARGE && (r.b || 0) <= LARGE ? ' <span class="badge stale" title="Crossed ' + LARGE + ' lines in this change">now ' +
-        r.a + ' lines</span>' : '') + '</td><td class="ovnum">' + (r.b ?? '–') + ' → ' + (r.a ?? '–') + '</td><td class="ovnum ' +
-      (net(r) > 0 ? 'add' : net(r) < 0 ? 'del' : '') + '">' + sign(net(r)) + '</td><td class="ovsize" title="Before (grey) and after (blue), to scale">' +
-      '<i class="b" style="width:' + ((r.b || 0) / max * 100) + '%"></i><i class="a" style="width:' + ((r.a || 0) / max * 100) + '%"></i></td></tr>';
-    const TOP = 12, head = '<thead><tr><th>File</th><th>Lines</th><th>Net</th><th>Size, before and after</th></tr></thead>';
-    const nNew = rows.filter((r) => r.f.status === 'added').length, nGone = rows.filter((r) => r.f.status === 'deleted').length;
-    return '<p class="ovtotal">The touched files went from <b>' + tb.toLocaleString() + '</b> to <b>' + ta.toLocaleString() + '</b> lines (' +
-      sign(ta - tb) + ')' + (nNew ? ', ' + plural(nNew, 'new file') : '') + (nGone ? ', ' + plural(nGone, 'deleted file') : '') + '.</p>' +
-      '<table class="ovsizes">' + head + '<tbody>' + rows.slice(0, TOP).map(tr).join('') + '</tbody></table>' +
-      (rows.length > TOP ? '<details class="ovmore"><summary>' + plural(rows.length - TOP, 'more file') + '</summary><table class="ovsizes"><tbody>' +
-        rows.slice(TOP).map(tr).join('') + '</tbody></table></details>' : '');
+  const sign = (n) => (n > 0 ? '+' : '') + n.toLocaleString();
+  // Where the change lands and how the files' sizes moved, as one table: an area per row, with its
+  // lines added and removed, opening to its files' sizes before and after.
+  function landsHtml() {
+    const size = (f) => (SIZES && SIZES[f.name]) || [];
+    const m = new Map();
+    files.forEach((f) => {
+      const k = areaOf(f.name), a = m.get(k) || { k, add: 0, del: 0, files: [], b: 0, a: 0 };
+      a.add += f.add; a.del += f.del; a.files.push(f); a.b += size(f)[0] || 0; a.a += size(f)[1] || 0;
+      m.set(k, a);
+    });
+    const areas = Array.from(m.values()).sort((x, y) => y.add + y.del - (x.add + x.del));
+    const max = Math.max(1, ...areas.map((r) => r.add + r.del));
+    const fmax = Math.max(1, ...files.map((f) => Math.max(size(f)[0] || 0, size(f)[1] || 0)));
+    const net = (f) => (size(f)[1] || 0) - (size(f)[0] || 0);
+    const fileRow = (f) => {
+      const [b, a] = size(f);
+      return '<tr><td>' + fileLink(f.name, '<code>' + esc(f.name.split('/').pop()) + '</code>') +
+        (f.status !== 'modified' ? ' <span class="badge">' + f.status + '</span>' : '') +
+        ((a || 0) > LARGE && (b || 0) <= LARGE ? ' <span class="badge stale" title="Crossed ' + LARGE + ' lines in this change">now ' + a + ' lines</span>' : '') +
+        '</td><td class="ovnum"><span class="add">+' + f.add + '</span> <span class="del">-' + f.del + '</span></td>' +
+        (SIZES ? '<td class="ovnum muted">' + (b ?? '–') + ' → ' + (a ?? '–') + '</td><td class="ovsize" title="Before (grey) and after (accent), to scale">' +
+          '<i class="b" style="width:' + ((b || 0) / fmax * 100) + '%"></i><i class="a" style="width:' + ((a || 0) / fmax * 100) + '%"></i></td>' : '') + '</tr>';
+    };
+    let total = '';
+    if (SIZES) {
+      const tb = files.reduce((n, f) => n + (size(f)[0] || 0), 0), ta = files.reduce((n, f) => n + (size(f)[1] || 0), 0);
+      const nNew = files.filter((f) => f.status === 'added').length, nGone = files.filter((f) => f.status === 'deleted').length;
+      total = '<p class="ovtotal">The touched files went from <b>' + tb.toLocaleString() + '</b> to <b>' + ta.toLocaleString() + '</b> lines (' + sign(ta - tb) + ')' +
+        (nNew ? ', ' + plural(nNew, 'new file') : '') + (nGone ? ', ' + plural(nGone, 'deleted file') : '') + '. Open an area for its files.</p>';
+    }
+    return total + '<div class="lands">' + areas.map((r) => '<details class="land"><summary><span class="lk"><code>' + esc(r.k) + '</code></span>' +
+      '<span class="ln">' + plural(r.files.length, 'file') + '</span><span class="ovbar"><span><i class="a" style="width:' + (r.add / max * 100) +
+      '%"></i><i class="d" style="width:' + (r.del / max * 100) + '%"></i></span></span><span class="ovnum"><span class="add">+' + r.add +
+      '</span> <span class="del">-' + r.del + '</span></span>' + (SIZES ? '<span class="ovnum lnet ' + (r.a > r.b ? 'add' : r.a < r.b ? 'del' : '') + '" title="Net change in the files\' length">' +
+      sign(r.a - r.b) + ' net</span>' : '') + '</summary><table class="ovsizes"><tbody>' +
+      r.files.slice().sort((x, y) => Math.abs(net(y)) - Math.abs(net(x)) || x.i - y.i).map(fileRow).join('') + '</tbody></table></details>').join('') + '</div>';
   }
   const STATUS_TAG = { new: 'new', changed: 'changed', removed: 'removed', same: 'unchanged' };
   function shapeFactsHtml(sh) {
@@ -1116,7 +1109,10 @@
       return '<div class="chk ' + (k.s || '') + '" data-k="' + esc(c.kid) + '"><div class="chkbtns">' +
         '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">&#10003; Looks right</button>' +
         '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">! Concern</button></div>' +
-        '<div class="chktext md">' + mdHtml(c.text) + '</div>' +
+        (c.kind === 'should'
+          ? '<div class="chktext"><span class="ktag should" title="Behaviour the change should have but doesn\'t yet">Should</span>'
+          : '<div class="chktext"><span class="ktag does" title="Behaviour the change implements. Confirm it works and is wanted.">Does</span>') +
+        '<span class="md">' + mdHtml(c.text) + '</span></div>' +
         (c.how ? '<div class="chkhow md"><b>How to check:</b> ' + mdHtml(c.how) + '</div>' : '') +
         (c.path ? '<div class="chkfile">' + fileLink(c.path, '<code>' + esc(c.path) + '</code>') + '</div>' : '') +
         (k.s === 'concern' ? '<textarea class="chknote" placeholder="What is wrong? This goes into the review summary.">' + esc(k.note || '') + '</textarea>' : '') +
@@ -1176,49 +1172,63 @@
   function connectionHtml() {
     if (!CX) return '';
     const step = (st, i) => {
-      const mine = (st.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
-      const links = (st.groups || []).filter((t) => gIndex(t) !== -1).map((t) => '<a class="cxgroup" href="#code" data-mode="recs" data-rg="' + gIndex(t) +
+      const links = (st.groups || []).filter((t) => gIndex(t) !== -1).map((t) => '<a class="cxgroup" href="#recs" data-rg="' + gIndex(t) +
           '"><span class="gnum">' + (gIndex(t) + 1) + '.</span> ' + esc(t) + '</a>').join('') +
         (st.files || []).map((n) => fileLink(n, '<span class="rfile">' + esc(n.split('/').pop()) + '</span>')).join('');
       const vis = (st.visuals || []).length;
       return '<li class="cxstep' + (vis ? '' : ' novis') + '"><div class="cxnum">' + (i + 1) + '</div><div class="cxbody">' +
         (vis ? '<div class="cxvis" data-cxvis="' + i + '"></div>' : '') + '<div class="cxtext"><h4>' + inlineMd(st.title) + '</h4>' +
         (st.user ? '<div class="md cxuser">' + mdHtml(st.user) + '</div>' : '') +
-        // The code side stays folded: the step should read as the feature, with the detail on request.
-        (st.tech ? '<details class="cxtech"><summary class="cxlbl">Under the hood</summary><div class="md">' + mdHtml(st.tech) + '</div></details>' : '') +
-        (links ? '<div class="cxlinks">' + links + '</div>' : '') +
-        (mine.length ? '<div class="cxchecks">' + checksHtml(mine) + '</div>' : '') + '</div></div></li>';
+        (links ? '<div class="cxlinks">' + links + '</div>' : '') + '</div></div></li>';
     };
-    return '<section class="ovblock" id="ov-connection"><h3>Feature overview</h3>' +
+    return '<section class="ovblock" id="ov-connection"><h3>How it comes together</h3>' +
       (CX.summary ? '<div class="md">' + mdHtml(CX.summary) + '</div>' : '') + '<div data-diags="connection"></div>' +
       (CX.technical ? '<h4>How it works</h4><div class="md">' + mdHtml(CX.technical) + '</div>' : '') +
       (cxSteps.length ? '<h4>Step by step</h4><ol class="cxsteps">' + cxSteps.map(step).join('') + '</ol>' : '') + '</section>';
   }
 
-  function renderOverview() {
+  // The first three steps each show one part of the overview: the story, the checks, the shape.
+  const stepHead = (eyebrow, title, note) => '<div class="ovhead"><div class="eyebrow">' + eyebrow + '</div><h2>' + title + '</h2>' +
+    (note ? '<p class="lede">' + note + '</p>' : '') + '</div>';
+  const stepFoot = (cur) => {
+    const at = STEPS.findIndex((s) => s.id === cur), b = STEPS[at - 1], n = STEPS[at + 1];
+    return '<div class="ovfoot">' + (b ? '<button type="button" class="quiet" data-across="-1">&larr; ' + b.label + ' <kbd>k</kbd></button>' : '') +
+      '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' &rarr; <kbd>j</kbd></button>' : '') + '</div>';
+  };
+  function checksByStep() {
+    const block = (title, list) => list.length ? '<section class="ovblock">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
+    const stepBlock = (st, i) => {
+      const list = (st.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
+      if (!list.length) return '';
+      const n = (st.visuals || []).length;
+      return '<section class="ovblock chkstep"><h3><span class="cxn">' + (i + 1) + '</span>' + inlineMd(st.title) + '</h3>' +
+        (st.user ? '<div class="md cxuser">' + mdHtml(st.user) + '</div>' : '') +
+        (n ? '<details class="chkvis"><summary>' + (n === 1 ? 'The screen' : 'The ' + n + ' screens') + ' for this step</summary><div class="cxvis" data-cxvis="' + i + '"></div></details>' : '') +
+        checksHtml(list) + '</section>';
+    };
+    return block(placed.size ? 'The feature as a whole' : '', looseChecks) + cxSteps.map(stepBlock).join('');
+  }
+  function renderOverview(step) {
     const fe = (OV && OV.feature) || {}, sh = (OV && OV.shape) || {};
-    ovv.innerHTML =
-      '<div class="ovhead"><div><div class="ovstep">Step 1 of 3</div><h2>What this change does, and its shape</h2>' +
-      '<p class="svnote">Read this before the code: decide whether the feature is right and the change is shaped well. The code is step 2.</p></div>' +
-      '<button type="button" class="primary" data-step="code">Start the code review &rarr;</button></div>' +
-      ciHtml() + authorHtml() +
-      (OV ? '' : '<div class="ovblock"><p class="svnote">No overview was written for this change, so only the computed shape is shown. ' +
-        'The agent adds one under <code>overview</code> in the reading guide.</p></div>') +
-      (OV && (fe.summary || fe.behavior || checks.length || diagramsIn('feature').length)
-        ? '<section class="ovblock" id="ov-feature"><h3>The feature</h3>' + (fe.summary ? '<div class="md">' + mdHtml(fe.summary) + '</div>' : '') +
-          (fe.behavior ? '<h4>Behaviour</h4><div class="md">' + mdHtml(fe.behavior) + '</div>' : '') + '<div data-diags="feature"></div>' +
-          (checks.length ? '<h4>Feature checks <span class="ovct" id="ovchkct"></span></h4><p class="svnote">Confirm each in the app or by reasoning; ' +
-            'a concern and its note go into the review summary.' + (placed.size ? ' ' + (looseChecks.length ? 'More' : 'They') +
-            ' sit with their step in <a href="#ov-connection" data-jump="ov-connection">Feature overview</a>.' : '') + '</p>' +
-            '<div id="ovchecks">' + checksHtml(looseChecks) + '</div>' : '') + '</section>'
-        : '') +
-      connectionHtml() +
-      '<section class="ovblock" id="ov-shape"><h3>The shape of the change</h3>' + (sh.summary ? '<div class="md">' + mdHtml(sh.summary) + '</div>' : '') +
-      '<div data-diags="shape"></div>' + shapeFactsHtml(sh) + departuresHtml(sh) +
-      '<h4>Where the change lands</h4>' + landsHtml() +
-      '<h4>How the codebase\'s shape moved</h4>' + (sh.codebase ? '<div class="md">' + mdHtml(sh.codebase) + '</div>' : '') + sizesHtml() +
-      '</section>' +
-      '<div class="ovfoot"><button type="button" class="primary" data-step="code">Start the code review &rarr;</button></div>';
+    let h;
+    if (step === 'story') {
+      h = stepHead('Understand', 'What this change is for', 'The author\'s account, then how the feature comes together. No code yet.') +
+        ciHtml() + authorHtml() +
+        (OV ? '' : '<div class="ovblock"><p class="svnote">No overview was written for this change. The agent adds one under <code>overview</code> in the reading guide.</p></div>') +
+        (OV && (fe.summary || fe.behavior || diagramsIn('feature').length)
+          ? '<section class="ovblock" id="ov-feature"><h3>The feature</h3>' + (fe.summary ? '<div class="md">' + mdHtml(fe.summary) + '</div>' : '') +
+            (fe.behavior ? '<h4>Behaviour</h4><div class="md">' + mdHtml(fe.behavior) + '</div>' : '') + '<div data-diags="feature"></div></section>' : '') +
+        connectionHtml();
+    } else if (step === 'checks') {
+      h = stepHead('Understand', 'Does it behave the way it should?', 'Confirm each check in the app or by reasoning. A concern and its note go into your review summary.') +
+        '<div class="chkct" id="ovchkct"></div>' + checksByStep();
+    } else {
+      h = stepHead('Understand', 'How the code is shaped', 'What was added, changed and removed, and where the lines landed.') +
+        '<section class="ovblock" id="ov-shape">' + (sh.summary ? '<div class="md">' + mdHtml(sh.summary) + '</div>' : '') +
+        '<div data-diags="shape"></div>' + shapeFactsHtml(sh) + departuresHtml(sh) + '</section>' +
+        '<section class="ovblock"><h3>Where the change lands</h3>' + (sh.codebase ? '<div class="md">' + mdHtml(sh.codebase) + '</div>' : '') + landsHtml() + '</section>';
+    }
+    ovv.innerHTML = '<div class="ovcol">' + h + stepFoot(step) + '</div>';
     ['feature', 'connection', 'shape'].forEach((sec) => {
       const slot = ovv.querySelector('[data-diags="' + sec + '"]');
       const list = diagramsIn(sec);
@@ -1229,7 +1239,7 @@
       if (slot) (st.visuals || []).forEach((d) => slot.appendChild(DIAG.render(d, mdHtml)));
     });
     const ct = $('ovchkct');
-    if (ct) ct.textContent = checksLabel();
+    if (ct) ct.textContent = checksLabel() + ' checked';
   }
   // A check can show in the overview and on a recommendation; both share its state.
   function onCheck(b, root) {
@@ -1239,7 +1249,7 @@
     save();
     // Redraw only this check: it may sit inside a step, next to a recording that is playing.
     b.closest('.chk').outerHTML = checksHtml(checks.filter((c) => c.kid === kid));
-    if ($('ovchkct')) $('ovchkct').textContent = checksLabel();
+    if ($('ovchkct')) $('ovchkct').textContent = checksLabel() + ' checked';
     render();
     if (b.dataset.chk === 'concern' && state.checks[kid].s) {
       const ta = root.querySelector('.chk[data-k="' + kid + '"] .chknote');
@@ -1261,7 +1271,7 @@
       }
       redrawRec(r);
     });
-    if (said.length) flash('Said yes to ' + said.map((t) => '“' + t + '”').join(', ') + '. Change it under Recommendations.');
+    if (said.length) flash('Added ' + said.map((t) => '“' + t + '”').join(', ') + '. Change it under Recommendations.');
   }
   function onCheckNote(e) {
     if (!e.target.classList.contains('chknote')) return;
@@ -1325,73 +1335,165 @@
   function recHtml(r) {
     const st = recStatus(r), sugs = suggestions.filter((s) => r.sids.includes(s.sid)), n = sugs.length;
     const inReview = sugs.filter((s) => accepted(s.sid)).length;
-    const what = !n ? { open: 'A yes adds it to your summary', yes: 'In your summary', no: 'Left out' }[st]
-      : { open: 'A yes adds ' + plural(n, 'comment') + ' to your review', yes: plural(n, 'comment') + ' in your review', no: 'Left out',
+    const what = !n ? { open: 'Add puts it in your summary', yes: 'In your summary', no: 'Ignored' }[st]
+      : { open: 'Add puts ' + plural(n, 'comment') + ' in your review', yes: plural(n, 'comment') + ' in your review', no: 'Ignored',
         mixed: inReview + ' of ' + plural(n, 'comment') + ' in your review' }[st];
-    const refs = sugs.map((s) => goLink(s, esc(s.path.split('/').pop()) + ':' + refLabel(s), 'rref')).join('');
-    const editingHere = editing && editing.inRecs && r.sids.includes(editing.sid);
-    const more = n ? '<details class="recmore"' + (editingHere ? ' open' : '') + '><summary>' + (n === 1 ? 'The comment' : 'The ' + n + ' comments') +
-      '</summary>' + sugs.map(recCommentHtml).join('') + '</details>' : '';
     const parts = partsHtml(r), mine = (r.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
-    return '<div class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop"><div class="rectitle">' +
-      (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span> ' : '') + inlineMd(r.title) + '</div>' +
-      '<div class="recbtns"><button type="button" data-rec="yes" class="' + (st === 'yes' ? 'on' : '') + '">&#10003; Yes</button>' +
-      '<button type="button" data-rec="no" class="' + (st === 'no' ? 'on' : '') + '">&#10007; No</button></div></div>' +
+    return '<article class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop">' +
+      (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span>' : '') +
+      (SEV[r.severity] ? '<span class="sevtag ' + esc(r.severity) + '">' + SEV[r.severity] + '</span>' : '') +
+      '<h3 class="rectitle">' + inlineMd(r.title) + '</h3></div>' +
+      // A picture often says what the prose can't, so it comes first.
+      ((r.visuals || []).length ? '<div class="recvis" data-recvis="' + esc(r.rid) + '"></div>' : '') +
       (parts || (r.why ? '<div class="recwhy md">' + mdHtml(r.why) + '</div>' : '')) +
       principleHtml(r) +
-      (state.autoYes[r.rid] && st !== 'open' ? '<div class="recauto">Yes because you raised a concern on its feature check. Change it here if that is not what you meant.</div>' : '') +
-      ((r.visuals || []).length ? '<div class="recvis" data-recvis="' + esc(r.rid) + '"></div>' : '') +
-      (mine.length ? '<div class="recchecks"><span class="cxlbl">Feature ' + (mine.length === 1 ? 'check' : 'checks') + '</span>' + checksHtml(mine) + '</div>' : '') +
-      '<div class="recmeta">' + refs + '<span>' + what + '</span></div>' + more + '</div>';
+      (state.autoYes[r.rid] && st !== 'open' ? '<div class="recauto">Added because you raised a concern on its feature check. Change it here if that is not what you meant.</div>' : '') +
+      // Related checks stay folded, unless one is a concern: then it is why this was flagged.
+      (mine.length ? '<details class="recchecks"' + (mine.some((c) => checkOf(c).s === 'concern') ? ' open' : '') + '><summary>' +
+        plural(mine.length, 'related feature check') + (mine.some((c) => checkOf(c).s === 'concern') ? ' &middot; <span class="del">concern raised</span>' : '') +
+        '</summary>' + checksHtml(mine) + '</details>' : '') +
+      // In the focused view the comments are the evidence, so they show open.
+      (n ? '<div class="reccomments"><div class="cxlbl">' + (n === 1 ? 'The comment' : 'The ' + n + ' comments') + '</div>' + sugs.map(recCommentHtml).join('') + '</div>' : '') +
+      '<div class="recdecide">' + (n ? goLink(sugs[0], 'Show in code', 'btn recgo') : '') + '<span class="recwhat">' + what + '</span><span class="sp"></span>' +
+      // A lit button reads as the decision made ("Added", "Ignored"); pressing it again takes it back.
+      '<button type="button" data-rec="no" class="no' + (st === 'no' ? ' on' : '') + '">' + (st === 'no' ? 'Ignored' : 'Ignore') + ' <kbd>i</kbd></button>' +
+      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">' + (st === 'yes' ? '&#10003; Added' : '+ Add') + ' <kbd>a</kbd></button></div></article>';
   }
-  function groupCardHtml(g, gi) {
-    const mine = groupRecs(g);
-    const chips = g.files.map((f) => '<a class="rfile ' + f.status + (f.cb.checked ? ' viewed' : '') + (f.auto ? ' auto' : '') + '" href="#f' + f.i +
-      '" title="' + esc(f.name + (f.auto ? ' — auto-reviewed: ' + (f.auto.summary || '') : '')) + '">' + esc(f.name.split('/').pop()) +
-      ' <span class="add">+' + f.add + '</span><span class="del">-' + f.del + '</span></a>').join('');
-    return '<section class="rgroup" id="rg' + gi + '" data-g="' + gi + '"><div class="rghead">' +
-      (g.title ? '<span class="gnum">' + (gi + 1) + '.</span>' : '') + '<h3>' + esc(g.title || 'All files') + '</h3>' +
-      '<span class="rgstat"></span><a class="btn" href="#' + (g.title ? 'g' + gi : 'f' + g.files[0].i) + '">Read the code &rarr;</a></div>' +
-      (g.why ? '<p class="gwhy">' + esc(g.why) + '</p>' : '') +
-      (g.summary ? '<div class="rgsum md">' + mdHtml(g.summary) + '</div>' : '') +
-      (g.points.length ? '<ul class="rgpoints">' + g.points.map((p) => '<li class="md">' + inlineMd(p) + '</li>').join('') + '</ul>' : '') +
-      '<div data-rgvis="' + gi + '"></div>' +
-      // Files stay folded: the gist and the recommendations are what this view is for.
-      '<details class="rgfwrap"><summary>' + plural(g.files.length, 'file') + '</summary><div class="rgfiles">' + chips + '</div></details>' +
-      (mine.length ? '<div class="rgrecs">' + mine.map(recHtml).join('') + '</div>' : '') + '</section>';
+
+  // The flow: one group at a time, its gist first, then each of its recommendations. Recommendations
+  // that belong to no group come first, as "Across the change". The sidebar outline keeps the whole
+  // review in sight, and any item in it is one click away.
+  const general = recs.filter((r) => r.group == null);
+  const recGroups = (general.length ? [{ key: 'gen', title: 'Across the change', why: '', summary: '', points: [], files: [], recs: general, diags: [], gi: -1 }] : [])
+    .concat(sections.map((g, gi) => ({ key: 'g' + gi, title: g.title || 'All files', why: g.why, summary: g.summary, points: g.points, files: g.files,
+      recs: groupRecs(g), diags: g.title ? diagrams.filter((d) => d.group === g.title) : [], gi, sec: g })));
+  recGroups[0].diags = diagramsIn('recs').concat(recGroups[0].diags);
+  const hasGist = (G) => !!(G.why || G.summary || G.points.length || G.diags.length || G.files.length);
+  const itemsOf = (G) => (hasGist(G) ? ['gist'] : []).concat(G.recs);
+  const POS_KEY = KEY + ':recpos';
+  let pos = load(POS_KEY, { g: 0, i: 0 });
+  const clampPos = () => {
+    pos.g = Math.max(0, Math.min(recGroups.length - 1, pos.g | 0));
+    pos.i = Math.max(0, Math.min(itemsOf(recGroups[pos.g]).length - 1, pos.i | 0));
+  };
+  const curItem = () => itemsOf(recGroups[pos.g])[pos.i];
+  // In Recommendations only the group you are in stays open in the outline; in Code every group does.
+  function syncOutline() {
+    const recsView = mode === 'recs';
+    recGroups.forEach((G, g) => { const og = outlineOf(G); if (og) og.open = !recsView || g === pos.g; });
+    sections.forEach((g) => { const of = g.navEl && g.navEl.querySelector && g.navEl.querySelector('.ofiles'); if (of) of.open = !recsView; });
   }
-  // A group is done here when every recommendation on it is decided; one with none has nothing to decide.
-  function groupStat(el) {
-    const g = sections[+el.dataset.g], mine = groupRecs(g), decided = mine.filter((r) => recStatus(r) !== 'open').length;
-    const add = g.files.reduce((n, f) => n + f.add, 0), del = g.files.reduce((n, f) => n + f.del, 0);
-    el.classList.toggle('done', mine.length > 0 && decided === mine.length);
-    el.querySelector('.rgstat').innerHTML = '<span class="add">+' + add + '</span> <span class="del">-' + del + '</span> &middot; ' +
-      plural(g.files.length, 'file') + (mine.length ? ' &middot; <b>' + decided + ' / ' + mine.length + '</b> decided' : '');
+  function moveTo(g, i) {
+    const was = pos.g;
+    pos = { g, i };
+    clampPos();
+    store.set(POS_KEY, JSON.stringify(pos));
+    renderRecs();
+    if (was !== pos.g) syncOutline();
+    refreshOutline();
+    window.scrollTo(0, 0);
   }
-  const recsCount = () => recs.length ? '<b>' + recsDecided() + ' / ' + recs.length + '</b> recommendations decided' : 'No recommendations';
+  function stepFlow(dir) {
+    const n = itemsOf(recGroups[pos.g]).length;
+    if (dir > 0) {
+      if (pos.i < n - 1) moveTo(pos.g, pos.i + 1);
+      else if (pos.g < recGroups.length - 1) moveTo(pos.g + 1, 0);
+      else goStep('submit');
+    } else if (pos.i > 0) moveTo(pos.g, pos.i - 1);
+    else if (pos.g > 0) moveTo(pos.g - 1, itemsOf(recGroups[pos.g - 1]).length - 1);
+    else stepAcross(-1);
+  }
+  // j and k walk the whole review: through each step, and item by item inside Recommendations.
+  // Coming into Recommendations from behind starts at its last item, so k retraces j exactly.
+  function stepAcross(dir) {
+    const at = STEPS.findIndex((st) => st.id === document.body.dataset.view), next = STEPS[at + dir];
+    if (at === -1 || !next) return;
+    if (next.id === 'recs') {
+      const g = dir > 0 ? 0 : recGroups.length - 1;
+      pos = { g, i: dir > 0 ? 0 : Math.max(0, itemsOf(recGroups[g]).length - 1) };
+      store.set(POS_KEY, JSON.stringify(pos));
+      store.set(KEY + ':recsseen', '1');
+    }
+    goStep(next.id);
+  }
+  function focusRec(r) {
+    recGroups.forEach((G, g) => { const i = itemsOf(G).indexOf(r); if (i !== -1) pos = { g, i }; });
+    store.set(POS_KEY, JSON.stringify(pos));
+  }
+  function focusGroup(gi) {
+    const g = recGroups.findIndex((G) => G.gi === gi);
+    if (g !== -1) { pos = { g, i: 0 }; store.set(POS_KEY, JSON.stringify(pos)); }
+  }
+
+  const fileChips = (list) => list.map((f) => '<a class="rfile ' + f.status + (f.cb.checked ? ' viewed' : '') + (f.auto ? ' auto' : '') + '" href="#f' + f.i +
+    '" title="' + esc(f.name + (f.auto ? ' — auto-reviewed: ' + (f.auto.summary || '') : '')) + '">' + esc(f.name.split('/').pop()) +
+    ' <span class="add">+' + f.add + '</span><span class="del">-' + f.del + '</span></a>').join('');
+  function gistHtml(G) {
+    return '<article class="gist">' + (G.why ? '<p class="lede">' + esc(G.why) + '</p>' : '') +
+      (G.summary ? '<div class="md">' + mdHtml(G.summary) + '</div>' : '') +
+      (G.points.length ? '<ul class="rgpoints">' + G.points.map((p) => '<li class="md">' + inlineMd(p) + '</li>').join('') + '</ul>' : '') +
+      '<div data-gvis></div>' +
+      (G.files.length ? '<details class="gfiles"><summary>' + plural(G.files.length, 'file') + '</summary><div class="rgfiles">' + fileChips(G.files) + '</div></details>' : '') +
+      '<p class="gnext">' + (G.recs.length ? plural(G.recs.length, 'recommendation') + ' to decide next.' : 'Nothing to decide in this group.') + '</p></article>';
+  }
+  function pillsHtml() {
+    const G = recGroups[pos.g], items = itemsOf(G);
+    if (items.length < 2) return '';
+    return items.map((x, j) => '<button type="button" class="pill ' + (x === 'gist' ? 'pgist' : recStatus(x)) + (j === pos.i ? ' on' : '') + '" data-at="' + j +
+      '" title="' + esc(x === 'gist' ? 'Summary' : x.title) + '">' + (x === 'gist' ? 'Summary' : hasGist(G) ? j : j + 1) + '</button>').join('');
+  }
   function renderRecs() {
-    const general = recs.filter((r) => r.group == null);
-    rv.innerHTML = '<div class="rhead"><div><div class="ovstep">Step 2 of 3 &middot; Recommendations</div><h2>What changed, group by group</h2>' +
-      '<p class="svnote">Say yes or no to each recommendation; a yes puts its comments in your review. Switch to Code (<kbd>r</kbd>) for the diff behind any of it.</p></div>' +
-      '<div class="rcount" id="rcount">' + recsCount() + '</div></div><div data-rgvis="top"></div>' +
-      (general.length ? '<section class="rgroup rgen"><div class="rghead"><h3>Across the change</h3></div><div class="rgrecs">' +
-        general.map(recHtml).join('') + '</div></section>' : '') +
-      sections.map(groupCardHtml).join('');
-    const slot = (key, list) => {
-      const el = rv.querySelector('[data-rgvis="' + key + '"]');
-      if (!el) return;
-      if (!list.length) { el.remove(); return; }
-      const box = document.createElement('div');
-      box.className = 'rgvis';
-      list.forEach((d) => box.appendChild(DIAG.render(d, mdHtml)));
-      el.replaceWith(box);
-    };
-    rv.querySelectorAll('.rgroup[data-g]').forEach(groupStat);
-    slot('top', diagramsIn('recs'));
-    sections.forEach((g, gi) => slot(gi, g.title ? diagrams.filter((d) => d.group === g.title) : []));
+    clampPos();
+    const G = recGroups[pos.g], items = itemsOf(G), it = items[pos.i];
+    const titled = sections.filter((x) => x.title).length;
+    const eyebrow = G.key === 'gen' ? 'Before the groups' : G.sec.title ? 'Group ' + (G.gi + 1) + ' of ' + titled : 'The change';
+    const nx = items[pos.i + 1], ng = recGroups[pos.g + 1];
+    const upNext = nx ? (nx === 'gist' ? 'Summary' : inlineMd(nx.title)) : ng ? 'Next group: ' + esc(ng.title) : 'Submit your review';
+    // Back and Next sit in the header row with the pills, so they stay put however tall the card is.
+    // Add and Ignore already move on, so on a recommendation the flow buttons step back to quiet links;
+    // only the gist, which has nothing to decide, keeps Next as its main action.
+    const onRec = it && it !== 'gist';
+    const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
+    rv.innerHTML = '<div class="fhero"><div class="ftitle"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
+      '<div class="fbar"><div class="pills">' + pillsHtml() + '</div>' +
+      '<div class="fnav' + (onRec ? ' quiet' : '') + '"><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
+      '<button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
+      '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div></div></div>' +
+      '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>';
+    const gv = rv.querySelector('[data-gvis]');
+    if (gv) { if (G.diags.length) gv.replaceWith(figures(G.diags)); else gv.remove(); }
     mountRecVisuals(rv);
     mountRecEditor();
   }
+  const outlineOf = (G) => (G.key === 'gen' ? genNav : G.sec && G.sec.title ? G.sec.navEl : null);
+  function refreshOutline() {
+    recGroups.forEach((G, g) => {
+      const og = outlineOf(G);
+      if (!og) return;
+      og.querySelector('.orecs').innerHTML = itemsOf(G).map((x, i) => x === 'gist' ? '' : '<a href="#recs" class="orec ' + recStatus(x) +
+        (g === pos.g && i === pos.i ? ' on' : '') + '" data-goto="' + g + ':' + i + '"><i></i><span>' + inlineMd(x.title) + '</span></a>').join('');
+      og.classList.toggle('cur', g === pos.g);
+    });
+  }
+  // The recommendations that belong to no group get their own section at the top of the outline.
+  const genNav = general.length ? (() => {
+    const og = document.createElement('details');
+    og.className = 'og gen recsonly'; og.open = true;
+    og.innerHTML = '<summary class="ghead"><h2><a href="#recs">Across the change</a><span class="gct"></span></h2></summary><div class="orecs"></div>';
+    nav.prepend(og);
+    return og;
+  })() : null;
+  nav.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-goto]');
+    if (go) { e.preventDefault(); const [g, i] = go.dataset.goto.split(':').map(Number); moveTo(g, i); return; }
+    // In Recommendations a group's title opens its gist; in Code it is a link to the group's files.
+    const head = mode === 'recs' && e.target.closest('.og > summary a');
+    if (head) {
+      e.preventDefault();
+      const og = head.closest('.og'), g = recGroups.findIndex((G) => outlineOf(G) === og);
+      if (g !== -1) moveTo(g, 0);
+    }
+  });
   // An editor opened from a recommendation lives in its card; every redraw puts it back in its slot.
   function mountRecEditor() {
     const slot = editing && editing.inRecs && rv.querySelector('.recc[data-sid="' + editing.sid + '"] .recedit');
@@ -1403,19 +1505,24 @@
       if (r && !el.childElementCount) (r.visuals || []).forEach((d) => el.appendChild(DIAG.render(d, mdHtml)));
     });
   }
-  // Redraw just this card, so a playing recording elsewhere in the view keeps going.
+  // Redraw just this card, so a playing recording elsewhere keeps going.
   function redrawRec(r) {
     const el = r && rv.querySelector('.rec[data-rid="' + r.rid + '"]');
-    if (!el) return;
-    const open = Array.from(el.querySelectorAll('details[open]'), (x) => x.className);
-    el.outerHTML = recHtml(r);
-    const now = rv.querySelector('.rec[data-rid="' + r.rid + '"]');
-    open.forEach((cls) => { const x = now.querySelector('details.' + cls); if (x) x.open = true; });
-    $('rcount').innerHTML = recsCount();
-    const card = now.closest('.rgroup[data-g]');
-    if (card) groupStat(card);
-    mountRecVisuals(now);
-    mountRecEditor();
+    if (el) {
+      el.outerHTML = recHtml(r);
+      const now = rv.querySelector('.rec[data-rid="' + r.rid + '"]');
+      mountRecVisuals(now);
+      mountRecEditor();
+    }
+    const p = rv.querySelector('.pills');
+    if (p) p.innerHTML = pillsHtml();
+    if (mode === 'recs') refreshOutline();
+  }
+  // Deciding stays on the card, so the reviewer can see what the decision did; Next moves on.
+  function decideAndAdvance(r, how) {
+    delete state.autoYes[r.rid];
+    decide(r, how);
+    redrawRec(r);
   }
   const recOfSid = (sid) => recs.find((r) => r.sids.includes(sid));
   // Edit one suggested comment where it sits in its recommendation; saving puts it in the review.
@@ -1483,13 +1590,14 @@
       redrawRec(recOfSid(s.sid));
       return;
     }
+    const fl = e.target.closest('[data-flow]');
+    if (fl) { stepFlow(+fl.dataset.flow); return; }
+    const at = e.target.closest('[data-at]');
+    if (at) { moveTo(pos.g, +at.dataset.at); return; }
     const b = e.target.closest('[data-rec]');
     if (!b) return;
     const r = recs.find((x) => x.rid === b.closest('.rec').dataset.rid);
-    if (!r) return;
-    delete state.autoYes[r.rid];
-    decide(r, b.dataset.rec);
-    redrawRec(r);
+    if (r) decideAndAdvance(r, b.dataset.rec);
   });
 
   // --- the submit view ----------------------------------------------------
@@ -1511,7 +1619,7 @@
   sv.innerHTML =
     '<div class="svhead"><div><h2>Finish your review</h2><div class="svtarget" id="svtarget"></div></div></div>' +
     '<div class="svready" id="svready"></div>' +
-    '<div class="svblock svcompose"><div id="svbody"></div><div class="svposts" id="svposts"></div>' +
+    '<div class="svblock svcompose"><div id="svbody"></div><div class="svposts" id="svposts"></div><div class="svsev" id="svsev"></div>' +
     (PR ? '<div class="svverdicts">' + VERDICTS.map((v, i) => '<button type="button" class="' + v.cls + '" data-verdict="' + i + '" title="' +
       esc(v.tip) + '">' + v.label + '</button>').join('') + '</div>'
       : '<div class="svverdicts"><button type="button" class="primary" id="svmd2">Copy review as Markdown</button></div>') +
@@ -1525,7 +1633,7 @@
 
   // The whole review as GitHub will show it: the summary, then what the page adds to it, then a
   // line on what rides along as line comments. Ship it adds the squirrel.
-  const bodyFor = (shipit) => [fullBody(), shipit ? SHIPIT : ''].filter(Boolean).join('\n\n');
+  const bodyFor = (shipit, refs) => [fullBody(refs), shipit ? SHIPIT : ''].filter(Boolean).join('\n\n');
   function fullPreview() {
     const body = bodyFor(false), n = state.comments.length;
     const nr = state.comments.filter((c) => c.subject === 'reply').length;
@@ -1598,7 +1706,7 @@
       const open = checks.filter((c) => !checkOf(c).s).length, list = concerns();
       $('svchksum').innerHTML = '<b>Feature checks</b> <span class="svnote">' + esc(checksLabel()) + ' checked</span>';
       $('svchk').innerHTML = '<p class="svnote" style="margin-top:0">' +
-        (open ? '<a href="#overview">' + plural(open, 'check') + ' still open</a>. ' : '') +
+        (open ? '<a href="#checks">' + plural(open, 'check') + ' still open</a>. ' : '') +
         (list.length ? 'These concerns are added to the summary:' : 'No concerns raised.') + '</p>' +
         (list.length ? '<ul class="svauto">' + list.map((c) => '<li><span class="md">' + mdHtml(c.text) + '</span>' +
           (checkOf(c).note ? ' <span class="svnote">' + esc(checkOf(c).note) + '</span>' : '') + '</li>').join('') + '</ul>' : '');
@@ -1609,7 +1717,7 @@
       const MARK = { yes: '&#10003;', no: '&#10007;', mixed: '&#9680;', open: '&middot;' };
       $('svrecsum').innerHTML = '<b>Recommendations</b> <span class="svnote">' + recsDecided() + ' / ' + recs.length + ' decided</span>';
       $('svrec').innerHTML = '<p class="svnote" style="margin-top:0">' +
-        (open ? '<a href="#code" data-mode="recs">' + plural(open, 'recommendation') + ' still open</a>. ' : '') +
+        (open ? '<a href="#recs">' + plural(open, 'recommendation') + ' still open</a>. ' : '') +
         (gen ? plural(gen, 'general recommendation') + ' will be added to the summary.' : '') + '</p>' +
         '<ul class="svauto svrecs">' + recs.map((r) => '<li class="' + recStatus(r) + '">' + MARK[recStatus(r)] + ' ' + inlineMd(r.title) +
           (r.sids.length ? ' <span class="svnote">' + plural(r.sids.length, 'comment') + '</span>' : '') + '</li>').join('') + '</ul>';
@@ -1631,15 +1739,34 @@
   function readiness() {
     const items = [], stale = state.comments.filter(isStale).length;
     const openRecs = recs.length - recsDecided(), openChecks = checks.filter((c) => !checkOf(c).s).length, waiting = pendingSuggestions().length;
-    if (PR && PR.ci) items.push(ciCount('fail') ? { bad: 1, html: '<a href="#overview">CI ' + esc(ciLabel()) + '</a>' }
-      : ciCount('pending') ? { warn: 1, html: '<a href="#overview">CI ' + esc(ciLabel()) + '</a>' } : { ok: 1, html: 'CI ' + esc(ciLabel()) });
+    if (PR && PR.ci) items.push(ciCount('fail') ? { bad: 1, html: '<a href="#story">CI ' + esc(ciLabel()) + '</a>' }
+      : ciCount('pending') ? { warn: 1, html: '<a href="#story">CI ' + esc(ciLabel()) + '</a>' } : { ok: 1, html: 'CI ' + esc(ciLabel()) });
     if (stale) items.push({ bad: 1, html: '<a href="#" data-open="svcomments">' + plural(stale, 'comment') + ' on changed code</a> (blocks submitting)' });
-    if (openRecs) items.push({ warn: 1, html: '<a href="#code" data-mode="recs">' + plural(openRecs, 'recommendation') + ' undecided</a>' });
-    if (openChecks) items.push({ warn: 1, html: '<a href="#overview">' + plural(openChecks, 'feature check') + ' unchecked</a>' });
+    if (openRecs) items.push({ warn: 1, html: '<a href="#recs">' + plural(openRecs, 'recommendation') + ' undecided</a>' });
+    if (openChecks) items.push({ warn: 1, html: '<a href="#checks">' + plural(openChecks, 'feature check') + ' unchecked</a>' });
     if (waiting) items.push({ warn: 1, html: '<a href="#" data-open="svcomments">' + plural(waiting, 'suggested comment') + ' not in your review</a>' });
     if (concerns().length) items.push({ warn: 1, html: plural(concerns().length, 'concern') + ' in the summary' });
     if (!items.some((i) => i.bad || i.warn)) items.push({ ok: 1, html: 'Everything is decided' });
     return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + (i.bad ? '&#10007; ' : i.warn ? '&#9675; ' : '&#10003; ') + i.html + '</span>').join('');
+  }
+
+  // How much of what is going out blocks merging: the comments of each severity, plus summary-only
+  // recommendations said yes to, which count as one each.
+  function severityTally() {
+    const recOf = new Map(recs.flatMap((r) => r.sids.map((sid) => [sid, r])));
+    const n = { blocking: 0, should: 0, nit: 0, question: 0 };
+    state.comments.forEach((c) => {
+      const r = recOf.get(c.sid);
+      if (r && n[r.severity] != null) n[r.severity]++;
+      else if (r && r.kind === 'question') n.question++;
+    });
+    recs.filter((r) => !r.sids.length && recStatus(r) === 'yes').forEach((r) => {
+      if (n[r.severity] != null) n[r.severity]++;
+      else if (r.kind === 'question') n.question++;
+    });
+    const LABEL = Object.assign({ question: 'Question' }, SEV);
+    const parts = Object.keys(n).filter((k) => n[k]).map((k) => '<span class="sevtag ' + k + '"><b>' + n[k] + '</b> ' + LABEL[k] + '</span>');
+    return parts.length ? parts.join('') : '';
   }
 
   function refreshSubmit() {
@@ -1647,6 +1774,7 @@
     const n = state.comments.length, nr = state.comments.filter((c) => c.subject === 'reply').length;
     $('svposts').innerHTML = n || fullBody() ? 'Posts ' + [fullBody() ? 'your summary' : '', n - nr ? plural(n - nr, 'line comment') : '', nr ? plural(nr, 'reply', 'replies') : '']
       .filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' and $1') + '.' : 'Nothing written yet.';
+    $('svsev').innerHTML = severityTally();
     if (!PR) { $('svhelp').innerHTML = ''; return; }
     const stale = state.comments.filter(isStale).length;
     // GitHub takes an Approve with nothing else, but a Comment or Request changes needs a summary or a comment.
@@ -1671,6 +1799,14 @@
   function reviewData(verdict) {
     const ev = verdict ? verdict.ev : state.event, shipit = !!(verdict && verdict.shipit);
     const strip = (a) => ({ id: a.id, name: a.name, type: a.type, data: a.data });
+    // Submitting posts the diagrams after the review, so the first comment of each recommendation points at its own.
+    const refs = verdict && PR ? diagramRefs() : {}, pointed = new Set();
+    const withRefs = (c) => {
+      const r = c.sid && recOfSid(c.sid);
+      if (!r || !refs[r.rid] || pointed.has(r.rid)) return c.body;
+      pointed.add(r.rid);
+      return c.body.trimEnd() + '\n\n' + seeDiagrams(refs[r.rid]);
+    };
     const comments = ordered(state.comments).map((c) => {
       const span = rowsOf(c), f = byName.get(c.path);
       const t = c.subject === 'reply' ? threadById.get(c.thread_id) : null;
@@ -1683,15 +1819,15 @@
         in_reply_to: t ? t.comments[0].id : undefined,
         replying_to: replyingTo(c) || undefined,
         label: locLabel(c),
-        body: c.body,
+        body: withRefs(c),
         attachments: (c.attachments || []).map(strip),
         snippet: span ? f.rows.slice(span[0], span[1] + 1).map((r) => SIGN[r.t] + r.text) : [],
       };
     });
     const data = { version: 1, title: META.title, slug: META.slug, range: META.range || null, pr: PR, commit_id: META.commitId || null,
-      event: PR ? ev : null, shipit: shipit || undefined, body: bodyFor(shipit), attachments: (state.bodyAttachments || []).map(strip), comments,
+      event: PR ? ev : null, shipit: shipit || undefined, body: bodyFor(shipit, refs), attachments: (state.bodyAttachments || []).map(strip), comments,
       feature_checks: checks.map((c) => ({ text: c.text, status: checkOf(c).s || 'open', note: checkOf(c).note || undefined })),
-      recommendations: recs.map((r) => ({ id: r.rid, title: r.title, kind: r.kind || null, status: recStatus(r), comments: r.sids.length,
+      recommendations: recs.map((r) => ({ id: r.rid, title: r.title, kind: r.kind || null, severity: r.severity || null, status: recStatus(r), comments: r.sids.length,
         principle: r.principle && r.principle.name ? { name: r.principle.name, guide: r.principle.guide || null } : null,
         from_concern: !!state.autoYes[r.rid] || undefined })),
       auto_reviewed: files.filter((f) => f.auto).map((f) => ({ path: f.name, summary: f.auto.summary || '' })) };
@@ -1728,14 +1864,14 @@
   }
 
   const status = (msg, kind) => { const el = $('svstatus'); el.textContent = msg; el.className = 'svstatus' + (kind ? ' ' + kind : ''); };
-  let flashTimer = null, statsHtml = null;
+  let flashTimer = null;
   function flash(msg, err) {
     if (document.body.classList.contains('submitting')) { status(msg, err ? 'err' : ''); return; }
-    const el = $('stats');
-    if (statsHtml == null) statsHtml = el.innerHTML;
+    let el = $('toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
     clearTimeout(flashTimer);
-    el.textContent = msg; el.style.color = err ? 'var(--del-b)' : 'var(--accent)';
-    flashTimer = setTimeout(() => { el.innerHTML = statsHtml; statsHtml = null; el.style.color = ''; }, 3500);
+    el.textContent = msg; el.className = 'show' + (err ? ' err' : '');
+    flashTimer = setTimeout(() => { el.className = ''; }, 3500);
   }
   async function copy(text, what) {
     try { await navigator.clipboard.writeText(text); }
@@ -1772,6 +1908,7 @@
     try {
       state.event = v.ev;
       const data = reviewData(v);
+      if (diagramList().length) { status('Drawing diagrams…'); data.diagrams = await diagramPngs(); status('Submitting…'); }
       const r = await post('/api/submit', data);
       const nr = data.comments.filter((c) => c.subject === 'reply').length;
       state.submitted = { url: r.url, at: Date.now(), event: data.event, shipit: !!v.shipit, comments: data.comments.length - nr, replies: nr, notes: r.notes || [] };
@@ -1789,11 +1926,68 @@
       status(e.message, 'err');
     }
   }
+  // Diagrams on the recommendations going out (said yes to, or partly) are posted as images in one
+  // comment after the review. Each is drawn off screen with the page's own styles, then rasterized.
+  const diagramList = () => recs.filter((r) => ['yes', 'mixed'].includes(recStatus(r)))
+    .flatMap((r) => (r.visuals || []).filter((d) => d && d.kind !== 'video').map((d) => ({ rid: r.rid, rec: r.title, d })));
+  // Diagrams are numbered in the order they are posted: "Diagram 2: …" in the diagrams comment, "See diagram 2" where it belongs.
+  const diagramRefs = () => diagramList().reduce((m, x, i) => Object.assign(m, { [x.rid]: (m[x.rid] || []).concat(i + 1) }), {});
+  const seeDiagrams = (ns) => 'See diagram' + (ns.length > 1 ? 's ' + ns.slice(0, -1).join(', ') + ' and ' + ns[ns.length - 1] : ' ' + ns[0]) + ' below.';
+  const nextFrame = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  async function rasterize(src, w, h) {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const k = 2, c = document.createElement('canvas');
+    c.width = Math.ceil((w || img.naturalWidth) * k); c.height = Math.ceil((h || img.naturalHeight) * k);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--panel') || '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.scale(k, k);
+    ctx.drawImage(img, 0, 0, w || img.naturalWidth, h || img.naturalHeight);
+    return c.toDataURL('image/png');
+  }
+  async function diagramPng(d) {
+    if (d.kind === 'image') return /^data:image\/png;/.test(d.data || '') ? d.data : d.data ? rasterize(d.data) : null;
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:-20000px;top:0;width:880px;padding:16px;background:var(--panel)';
+    host.appendChild(DIAG.render(d, mdHtml));
+    document.body.appendChild(host);
+    try {
+      await nextFrame();
+      const box = host.getBoundingClientRect(), w = Math.ceil(box.width), h = Math.ceil(box.height);
+      // A clone loses shadow roots, so a raw diagram's markup is copied in as plain children.
+      const clone = host.cloneNode(true), shadows = Array.from(host.querySelectorAll('.draw')), copies = Array.from(clone.querySelectorAll('.draw'));
+      shadows.forEach((el, i) => { if (el.shadowRoot && copies[i]) copies[i].innerHTML = el.shadowRoot.innerHTML; });
+      clone.querySelectorAll('.dexpand').forEach((b) => b.remove());
+      clone.style.cssText = 'width:' + w + 'px;padding:16px;box-sizing:border-box';
+      const css = Array.from(document.querySelectorAll('style')).map((x) => x.textContent).join('\n');
+      const cs = getComputedStyle(document.documentElement);
+      const vars = Array.from(new Set(css.match(/--[\w-]+(?=\s*:)/g) || [])).map((v) => v + ':' + cs.getPropertyValue(v)).join(';');
+      const wrap = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + esc(vars) + ';background:var(--panel);color:var(--text);' +
+        'font:14px -apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,sans-serif"><style><![CDATA[' + css + ']]></style>' +
+        new XMLSerializer().serializeToString(clone) + '</div>';
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject x="0" y="0" width="100%" height="100%">' +
+        wrap + '</foreignObject></svg>';
+      return await rasterize('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), w, h);
+    } finally { host.remove(); }
+  }
+  async function diagramPngs() {
+    const out = [];
+    for (const [i, { rec, d }] of diagramList().entries()) {
+      try {
+        const data = await diagramPng(d);
+        if (data) out.push({ rec, n: i + 1, alt: d.title || rec, data });
+      } catch (e) { console.warn('could not draw diagram', d.title || rec, e); }
+    }
+    return out;
+  }
+
   // With the server up, ask it what GitHub will do before the reviewer commits to it.
   async function precheck() {
     if (!SERVER || !PR || !state.comments.length) return;
     try {
-      const r = await post('/api/check', reviewData());
+      const r = await post('/api/check', Object.assign(reviewData(), { diagrams: diagramList().map((x) => ({ rec: x.rec })) }));
       if (r.notes && r.notes.length) status(r.notes.join('\n'));
     } catch (e) { status(e.message, 'err'); }
   }
@@ -1816,84 +2010,131 @@
     return true;
   }
 
-  // --- views, toolbar -----------------------------------------------------
-  // With no hash, the page reopens on the step you were last on: the overview first when there is one.
+  // --- steps, the header rail ---------------------------------------------
+  // Understand (story, checks, shape), then review (recommendations, code), then submit. Each step
+  // is one view; the rail shows each one's own progress and nothing else. A file or group anchor
+  // (#f3, #g1) opens the code there. With no hash, the page reopens on the step you were last on.
+  const STEPS = [
+    { id: 'story', label: 'Story' },
+    { id: 'checks', label: 'Checks', when: () => checks.length > 0 },
+    { id: 'shape', label: 'Shape' },
+    { id: 'recs', label: 'Recommendations', sep: true },
+    { id: 'submit', label: 'Submit', sep: true },
+  ].filter((st) => !st.when || st.when());
+  const OVERVIEW = ['story', 'checks', 'shape'];
   const STEP_KEY = KEY + ':step';
   const ANCHOR = /^#[fg]\d+$/;
-  // The code step opens on Recommendations unless the reviewer last chose Code for this PR. A file
-  // or group anchor always means the diff. Each mode keeps its own scroll position.
-  const MODE_KEY = KEY + ':mode';
-  // A group link from the overview opens the Recommendations at that group's card.
-  let pendingCard = null;
-  const showCard = () => {
-    const el = pendingCard && $(pendingCard);
-    pendingCard = null;
-    if (el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight - 8);
-  };
-  let mode = store.get(MODE_KEY) === 'diff' ? 'diff' : 'recs';
-  const ys = { recs: 0, diff: 0 };
-  function applyMode() {
-    document.body.classList.toggle('recs', mode === 'recs');
-    document.querySelectorAll('#modes [data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-    if (mode === 'recs') renderRecs();
-    render();
+  const ALIAS = { overview: 'story' };
+  let mode = 'diff', codeFrom = 'recs';
+  const ys = {};
+  function railState(id) {
+    if (id === 'story') return CI && ciCount('fail') ? { text: 'CI failing', bad: 1 } : {};
+    if (id === 'checks') { const n = checks.filter((c) => checkOf(c).s).length; return { text: n + '/' + checks.length, done: n === checks.length, bad: concerns().length > 0 }; }
+    if (id === 'recs') return recs.length ? { text: recsDecided() + '/' + recs.length, done: recsDecided() === recs.length } : {};
+    if (id === 'submit') return state.comments.length ? { text: String(state.comments.length) } : {};
+    return {};
   }
-  function setMode(m) {
-    const onCode = document.body.dataset.view === 'code';
-    if (m === mode) return;
-    if (onCode) ys[mode] = window.scrollY;
-    mode = m;
-    store.set(MODE_KEY, m);
-    if (onCode && m === 'recs' && ANCHOR.test(location.hash)) history.replaceState(null, '', '#code');
-    applyMode();
-    if (onCode) window.scrollTo(0, ys[m]);
+  function renderRail() {
+    const v = document.body.dataset.view;
+    $('steps').innerHTML = STEPS.map((st, i) => {
+      const r = railState(st.id);
+      return (st.sep ? '<li class="sep" aria-hidden="true"></li>' : '') + '<li class="' + [st.id === v ? 'on' : '', r.done ? 'done' : '', r.bad ? 'bad' : ''].join(' ') + '">' +
+        '<button type="button" data-step="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (r.done ? '&#10003;' : i + 1) + '</span>' +
+        '<span class="rl">' + st.label + '</span>' + (r.text ? '<span class="rs">' + esc(r.text) + '</span>' : '') + '</button></li>';
+    }).join('');
   }
+  $('hrepo').innerHTML = PR
+    ? '<a href="' + esc(PR.url) + '" target="_blank" rel="noopener">' + esc(PR.owner + '/' + PR.repo) + '</a> <span>#' + PR.number + '</span>' +
+      (PR.author ? ' <span>by @' + esc(PR.author) + '</span>' : '') + (META.since ? ' <span class="pillnote">since your last review</span>' : '')
+    : esc(META.range || 'Local diff');
+
   function setView() {
     const h = location.hash, was = document.body.dataset.view;
     const done = h === '#done' && renderDone();
-    let step = done ? 'done' : h === '#submit' ? 'submit' : h === '#overview' ? 'overview' : h === '#code' || ANCHOR.test(h) ? 'code' : null;
-    if (!step) step = (() => { try { return localStorage.getItem(STEP_KEY); } catch (e) { return null; } })() || (OV ? 'overview' : 'code');
-    if (was === 'code' && step !== 'code') ys[mode] = window.scrollY;
+    const known = (x) => STEPS.some((st) => st.id === x);
+    let step = done ? 'done' : ANCHOR.test(h) || h === '#code' ? 'code' : ALIAS[h.slice(1)] || h.slice(1);
+    if (step !== 'done' && step !== 'code' && !known(step)) {
+      const last = store.get(STEP_KEY);
+      step = last === 'code' || known(ALIAS[last] || last) ? ALIAS[last] || last : 'story';
+    }
+    if (was) ys[was] = window.scrollY;
+    if (step !== 'code' && step !== 'done') codeFrom = step;
+    $('gocode').innerHTML = step === 'code' ? '&larr; Back to ' + esc((STEPS.find((x) => x.id === codeFrom) || STEPS[0]).label) : 'View code <span class="hpct">' + readPct + '%</span>';
+    mode = step === 'recs' ? 'recs' : 'diff';
     document.body.dataset.view = step;
-    document.body.classList.toggle('overviewing', step === 'overview');
+    document.body.classList.toggle('overviewing', OVERVIEW.includes(step));
     document.body.classList.toggle('submitting', step === 'submit');
     document.body.classList.toggle('done', step === 'done');
-    document.querySelectorAll('#steps [data-step]').forEach((b) => b.classList.toggle('on', b.dataset.step === step));
-    if (step !== 'done') try { localStorage.setItem(STEP_KEY, step); } catch (e) { /* storage unavailable */ }
+    document.body.classList.toggle('recs', step === 'recs');
+    if (step !== 'done') store.set(STEP_KEY, step);
     if (step === 'submit') { renderSubmit(); precheck(); }
-    if (step === 'overview') renderOverview();
-    if (step !== 'code') { window.scrollTo(0, 0); return; }
-    const el = ANCHOR.test(h) && $(h.slice(1));
-    const toAnchor = () => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight);
-    if (el && mode !== 'diff') {
-      // An anchor from the recommendations (or the overview) opens the diff there.
-      if (was === 'code') ys.recs = window.scrollY;
-      mode = 'diff';
-      store.set(MODE_KEY, 'diff');
-      applyMode();
-      toAnchor();
-      return;
+    if (OVERVIEW.includes(step)) renderOverview(step);
+    // The first visit always opens on the first group's overview, wherever earlier clicks left the
+    // position; after that it comes back to where the reviewer was.
+    if (step === 'recs' && !store.get(KEY + ':recsseen')) {
+      store.set(KEY + ':recsseen', '1');
+      pos = { g: 0, i: 0 };
+      store.set(POS_KEY, JSON.stringify(pos));
     }
-    applyMode();
-    // The diff was hidden when the browser tried to follow the anchor, so follow it now.
-    if (was && was !== 'code') { if (el) toAnchor(); else window.scrollTo(0, ys[mode]); }
-    showCard();
+    if (step === 'recs') renderRecs();
+    if (step === 'recs' || step === 'code') syncOutline();
+    render();
+    if (step !== 'code') { window.scrollTo(0, step === 'recs' && was === 'recs' ? ys.recs || 0 : 0); return; }
+    const el = ANCHOR.test(h) && $(h.slice(1));
+    if (el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight);
+    else if (was !== 'code') window.scrollTo(0, ys.code || 0);
   }
   addEventListener('hashchange', setView);
+  // How wide the reading columns run, remembered across reviews.
+  const WIDTHS = [['Narrow', '880px'], ['Normal', '1120px'], ['Wide', '1440px'], ['Full', '100%']];
+  let widthAt = +(store.get('frwidth') ?? 1);
+  const setWidth = (i) => {
+    widthAt = WIDTHS[i] ? i : 1;
+    document.documentElement.style.setProperty('--colw', WIDTHS[widthAt][1]);
+    store.set('frwidth', String(widthAt));
+    $('setpanel').innerHTML = '<div class="setlbl">Page width</div><div class="seg">' + WIDTHS.map((w, j) =>
+      '<button type="button" data-width="' + j + '" class="' + (j === widthAt ? 'on' : '') + '">' + w[0] + '</button>').join('') + '</div>';
+  };
+  setWidth(widthAt);
+  // In Recommendations the reading column stays centred where every other step puts it, and the
+  // sidebar sits in the left gutter beside it. Only when the gutter is too narrow for the sidebar
+  // does the column move over to make room, so nothing ever overlaps.
+  // The sidebar narrows from its full width to a floor before giving up the gutter.
+  const NAV_W = 300, NAV_MIN = 230, NAV_GAP = 16, COL_PAD = 24;
+  function placeSidebar() {
+    const vw = document.documentElement.clientWidth, w = WIDTHS[widthAt][1];
+    const col = w.endsWith('%') ? vw : Math.min(parseInt(w, 10), vw - 2 * COL_PAD);
+    const gutter = (vw - col) / 2, navW = Math.min(NAV_W, gutter - NAV_GAP);
+    document.body.classList.toggle('gutter', navW >= NAV_MIN);
+    document.documentElement.style.setProperty('--navw', navW + 'px');
+    document.documentElement.style.setProperty('--navx', Math.max(0, gutter - navW - NAV_GAP) + 'px');
+  }
+  placeSidebar();
+  addEventListener('resize', placeSidebar);
+  // The settings panel: a gear in the header opens it; a click elsewhere or Esc closes it.
+  const setPanel = (open) => {
+    $('setpanel').classList.toggle('hidden', !open);
+    $('setbtn').setAttribute('aria-expanded', String(open));
+  };
+  $('setbtn').onclick = (e) => { e.stopPropagation(); setPanel($('setpanel').classList.contains('hidden')); };
+  $('setpanel').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const b = e.target.closest('[data-width]');
+    if (b) { setWidth(+b.dataset.width); placeSidebar(); }
+  });
+  document.addEventListener('click', () => setPanel(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });
   const goStep = (step) => { if (location.hash === '#' + step) setView(); else location.hash = step; };
   document.addEventListener('click', (e) => {
+    // A group link from the story opens the Recommendations at that group's gist.
+    const rg = e.target.closest('[data-rg]');
+    if (rg) { e.preventDefault(); focusGroup(+rg.dataset.rg); goStep('recs'); return; }
     const b = e.target.closest('[data-step]');
-    if (b) { e.preventDefault(); goStep(b.dataset.step); }
+    if (b) { e.preventDefault(); goStep(b.dataset.step); return; }
+    const ac = e.target.closest('[data-across]');
+    if (ac) { e.preventDefault(); stepAcross(+ac.dataset.across); }
   });
-  $('gosubmit').onclick = () => goStep('submit');
-  document.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-mode]');
-    if (!b) return;
-    e.preventDefault();
-    pendingCard = b.dataset.rg != null ? 'rg' + b.dataset.rg : null;
-    if (document.body.dataset.view === 'code') { setMode(b.dataset.mode); showCard(); }
-    else { mode = b.dataset.mode; store.set(MODE_KEY, mode); goStep('code'); }
-  });
+  $('gocode').onclick = () => goStep(document.body.dataset.view === 'code' ? codeFrom : 'code');
 
   // An expanded diagram fills the window. A drawn one scales through its viewBox (CSS does that); a
   // hand-written one has no viewBox, so it is measured at its natural size and zoomed to fit.
@@ -1914,24 +2155,55 @@
   const lightbox = document.createElement('div');
   lightbox.id = 'lightbox'; lightbox.className = 'hidden';
   document.body.appendChild(lightbox);
+  // Screenshots and diagrams that sit together (a description's screenshots, a step's visuals, a
+  // compare's two sides) open as one gallery: arrows or the side buttons move through it.
+  const SCOPE = '.ovthumbs, .ovdesc, .cxvis, .recvis, .rgvis, .ovdiags, .rec, .gist, .ovblock';
+  let gallery = [], gi = 0;
+  function galleryOf(start) {
+    const scope = start.closest(SCOPE) || start.closest('section') || document.body;
+    const items = [], hosts = new Set();
+    scope.querySelectorAll('.dmedia img, .ovdesc img, .dexpand').forEach((el) => {
+      if (el.tagName === 'IMG') { items.push({ img: el }); return; }
+      const host = el.closest('.dside') || el.closest('figure.diagram');
+      if (host && host.diag && !hosts.has(host) && !host.querySelector('.dmedia img')) { hosts.add(host); items.push({ host, fig: el.closest('figure.diagram') }); }
+    });
+    return items;
+  }
+  function showItem(i) {
+    gi = (i + gallery.length) % gallery.length;
+    const it = gallery[gi], nav = gallery.length > 1 ? '<button type="button" class="lbnav prev" title="Previous (←)">&#8249;</button>' +
+      '<button type="button" class="lbnav next" title="Next (→)">&#8250;</button><div class="lbcount">' + (gi + 1) + ' / ' + gallery.length + '</div>' : '';
+    if (it.img) {
+      lightbox.className = '';
+      lightbox.innerHTML = nav;
+      lightbox.prepend(it.img.cloneNode());
+      return;
+    }
+    const panel = document.createElement('div');
+    panel.className = 'lbpanel';
+    panel.innerHTML = '<button type="button" class="lbclose" title="Close (Esc)">&times;</button>';
+    panel.appendChild(DIAG.render(it.host.diag, it.fig && it.fig.md, { big: true }));
+    lightbox.className = 'lbdiag';
+    lightbox.innerHTML = nav;
+    lightbox.prepend(panel);
+    fitBig(panel);
+  }
+  const openGallery = (el, match) => {
+    gallery = galleryOf(el);
+    const at = gallery.findIndex(match);
+    showItem(at === -1 ? 0 : at);
+  };
   document.addEventListener('click', (e) => {
     if (!e.target.closest) return;
-    const img = e.target.closest('.dmedia img'), ex = e.target.closest('.dexpand');
-    if (img && !img.closest('#lightbox')) {
-      lightbox.className = '';
-      lightbox.replaceChildren(img.cloneNode());
-    } else if (ex) {
-      // A compare diagram's sides each carry their own; a whole diagram keeps it on its figure.
-      const host = ex.closest('.dside') || ex.closest('figure.diagram'), fig = ex.closest('figure.diagram');
+    const nb = e.target.closest('.lbnav');
+    if (nb) { e.stopPropagation(); showItem(gi + (nb.classList.contains('next') ? 1 : -1)); return; }
+    const img = e.target.closest('.dmedia img, .ovdesc img'), ex = e.target.closest('.dexpand');
+    if (img && !img.closest('#lightbox')) openGallery(img, (x) => x.img === img);
+    else if (ex && !ex.closest('#lightbox')) {
+      const host = ex.closest('.dside') || ex.closest('figure.diagram');
       if (!host || !host.diag) return;
       e.stopPropagation();
-      const panel = document.createElement('div');
-      panel.className = 'lbpanel';
-      panel.innerHTML = '<button type="button" class="lbclose" title="Close (Esc)">&times;</button>';
-      panel.appendChild(DIAG.render(host.diag, fig && fig.md, { big: true }));
-      lightbox.className = 'lbdiag';
-      lightbox.replaceChildren(panel);
-      fitBig(panel);
+      openGallery(ex, (x) => x.host === host);
     } else if (e.target.closest('#lightbox') && (!lightbox.classList.contains('lbdiag') || e.target === lightbox || e.target.closest('.lbclose'))) {
       lightbox.className = 'hidden';
     }
@@ -1999,12 +2271,12 @@
   // --- keyboard -------------------------------------------------------------
   const KEYS = [['j / k', 'Next / previous file'], ['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
-    ['w', 'Show or hide whitespace changes'], ['r', 'Recommendations or code'], ['1 / 2 / 3', 'Overview, code, submit'], ['?', 'This help'], ['Esc', 'Close this help']];
+    ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['j / k', 'Next / previous, through every step and each recommendation (also → / ←); files in Code'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');
   help.id = 'keyhelp'; help.className = 'hidden';
   help.innerHTML = '<div class="kbox"><h3>Keyboard shortcuts</h3><table>' +
     KEYS.map((k) => '<tr><td>' + k[0].split(' / ').map((x) => '<kbd>' + esc(x) + '</kbd>').join(' / ') + '</td><td>' + esc(k[1]) + '</td></tr>').join('') +
-    '</table><p class="svnote">The current file is the one whose header is pinned under the toolbar.</p></div>';
+    '</table><p class="svnote">In Code, j / k move between files, and the current file is the one whose header is pinned under the toolbar.</p></div>';
   document.body.appendChild(help);
   const toggleKeys = (on) => help.classList.toggle('hidden', on === undefined ? !help.classList.contains('hidden') : !on);
   help.addEventListener('click', (e) => { if (e.target === help) toggleKeys(false); });
@@ -2042,12 +2314,26 @@
     }
     if (e.key === '?') { toggleKeys(); e.preventDefault(); return; }
     if (e.key === 'Escape') { toggleKeys(false); lightbox.className = 'hidden'; return; }
-    const STEPS = { 1: 'overview', 2: 'code', 3: 'submit' };
-    if (STEPS[e.key]) { goStep(STEPS[e.key]); e.preventDefault(); return; }
-    if (document.body.dataset.view !== 'code') return;
-    const k = e.key;
-    if (k === 'r') { setMode(mode === 'recs' ? 'diff' : 'recs'); e.preventDefault(); return; }
-    if (mode === 'recs') return;
+    if (!lightbox.classList.contains('hidden') && gallery.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      showItem(gi + (e.key === 'ArrowRight' ? 1 : -1)); e.preventDefault(); return;
+    }
+    if (/^[1-9]$/.test(e.key) && STEPS[+e.key - 1]) { goStep(STEPS[+e.key - 1].id); e.preventDefault(); return; }
+    const k = e.key, view = document.body.dataset.view;
+    if (view === 'recs') {
+      const it = curItem();
+      if (k === 'j' || k === 'ArrowRight') stepFlow(1);
+      else if (k === 'k' || k === 'ArrowLeft') stepFlow(-1);
+      // a / i, with y / n kept for hands that learned them.
+      else if ('aiyn'.includes(k) && k.length === 1 && it && it !== 'gist') decideAndAdvance(it, k === 'a' || k === 'y' ? 'yes' : 'no');
+      else if (k === 'r' || k === 'c') goStep('code');
+      else return;
+      e.preventDefault();
+      return;
+    }
+    if (k === 'c' && view !== 'code') { goStep('code'); e.preventDefault(); return; }
+    if (view !== 'code' && ['j', 'k', 'ArrowRight', 'ArrowLeft'].includes(k)) { stepAcross(k === 'j' || k === 'ArrowRight' ? 1 : -1); e.preventDefault(); return; }
+    if (view !== 'code') return;
+    if (k === 'r' || k === 'c') { goStep(codeFrom); e.preventDefault(); return; }
     if (k === 'j') stepFile(1);
     else if (k === 'k') stepFile(-1);
     else if (k === 'n') stepComment(1);

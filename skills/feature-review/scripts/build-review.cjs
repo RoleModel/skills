@@ -296,15 +296,20 @@ if (groupsPath) {
   if (!g || !Array.isArray(g.groups)) die('--groups must be an array of groups or {groups: [...], suggestions: [...]}');
   // A recommendation bundles the line comments it stands for. They ride as ordinary suggestions
   // tagged with the recommendation's id, so the code view still shows each one at its line.
+  // The severity rides on each comment as a label too, so the author sees what blocks merging.
+  const SEV_LABEL = { blocking: 'Blocking', should: 'Should', nit: 'Nit' };
+  const labelled = (sev, c) => (SEV_LABEL[sev] && c.body && !/^\*\*(Blocking|Should|Nit):\*\*/.test(c.body)
+    ? Object.assign({}, c, { body: '**' + SEV_LABEL[sev] + ':** ' + c.body }) : c);
   const recommendations = (g.recommendations || []).map((r, i) => ({
     id: String(r.id || 'r' + (i + 1)), title: r.title, why: r.why || '', kind: r.kind || '', group: r.group || null,
-    body: r.body || '', comments: r.comments || [],
+    severity: r.kind === 'question' ? '' : r.severity || '',
+    body: r.body || '', comments: (r.comments || []).map((c) => labelled(r.kind === 'question' ? '' : r.severity, c)),
     context: r.context || '', problem: r.problem || '', proposal: r.proposal || '', tradeoffs: r.tradeoffs || '',
     visuals: r.visuals || [], checks: r.checks || [], principle: r.principle || null,
   }));
   guide = {
     groups: g.groups.map((grp) => ({
-      title: grp.title, why: grp.why || '', auto: !!grp.auto, summary: grp.summary || '', points: grp.points || [],
+      title: grp.title, why: grp.why || '', auto: !!grp.auto, summary: grp.summary || '', points: grp.points || [], visuals: grp.visuals || [],
       files: (grp.files || []).map((e) => (typeof e === 'string' ? { path: e } : e)),
     })),
     suggestions: (g.suggestions || []).concat(recommendations.flatMap((r) => r.comments.map((c) => Object.assign({}, c, { rec: r.id })))),
@@ -339,6 +344,7 @@ if (guide.overview) {
   (guide.overview.diagrams || []).forEach(inlineMedia);
   ((guide.overview.connection && guide.overview.connection.steps) || []).forEach((st) => (st.visuals || []).forEach(inlineMedia));
 }
+guide.groups.forEach((g) => g.visuals.forEach(inlineMedia));
 guide.recommendations.forEach((r) => r.visuals.forEach(inlineMedia));
 
 // --- principles ----------------------------------------------------------------
@@ -406,51 +412,14 @@ const asset = (f) => fs.readFileSync(path.join(PAGE, f), 'utf8');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // JSON islands escape "<" so nothing inside them can close the script tag.
 const island = (id, value) => `<script id="${id}" type="application/json">${JSON.stringify(value).replace(/</g, '\\u003c')}</script>`;
-const js = [fs.readFileSync(path.join(__dirname, 'lib', 'diff-parse.cjs'), 'utf8'), asset('highlight.js'), asset('markdown.js'),
-  asset('diagrams.js'), asset('app.js')]
-  .join('\n;\n').replace(/<\/script/gi, '<\\/script');
 const event = (opt('--event') || 'COMMENT').toUpperCase().replace(/[\s-]+/g, '_');
 if (!['COMMENT', 'APPROVE', 'REQUEST_CHANGES'].includes(event)) die('--event must be comment, approve or request_changes');
 const meta = { title, slug, range, commitId, pr, event, headRev, baseRev, blobs, sizes, lastReview, since,
   repoRoot: headRev ? git(['rev-parse', '--show-toplevel']).trim() : null };
 
-const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="darkreader-lock">
-<title>${esc(title)}</title>
-<style>
-${asset('style.css')}
-</style></head><body>
-<header>
-<span class="steps" id="steps"><button data-step="overview"><b>1</b> Overview</button><button data-step="code"><b>2</b> Code</button><button data-step="submit"><b>3</b> Submit</button></span>
-<span class="steps modes diffonly" id="modes" title="Recommendations or code (r)"><button data-mode="recs">Recommendations</button><button data-mode="diff">Code</button></span>
-<h1>${esc(title)}</h1>
-<span class="stats" id="stats"></span>
-<button id="expand" class="diffonly codeonly">Expand all</button>
-<button id="collapse" class="diffonly codeonly">Collapse all</button>
-<button id="reset" class="diffonly codeonly">Reset viewed</button>
-<button id="hltoggle" class="diffonly codeonly">Syntax highlighting: on</button>
-<button id="wstoggle" class="diffonly codeonly">Whitespace: shown</button>
-<button id="splittoggle" class="diffonly codeonly">View: unified</button>
-<button id="keys" title="Keyboard shortcuts (?)">?</button>
-<input type="search" id="q" class="diffonly codeonly" placeholder="Filter files…">
-<button id="gosubmit" class="primary diffonly">Finish review</button>
-</header>
-<div class="layout"><nav><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
-<section id="overviewview"></section>
-<section id="submitview"></section>
-<section id="doneview"></section>
-${island('diff-src', diff)}
-${island('ws-src', wsMap)}
-${island('threads-src', threads)}
-${island('guide-src', guide)}
-${island('meta-src', meta)}
-${island('desc-src', description)}
-<script id="server-src" type="application/json">null</script>
-<script>
-${js}
-</script></body></html>`;
+const html = require('./lib/page.cjs').render({ titleHtml: esc(title), islands: [
+  island('diff-src', diff), island('ws-src', wsMap), island('threads-src', threads), island('guide-src', guide),
+  island('meta-src', meta), island('desc-src', description)].join('\n') });
 
 fs.writeFileSync(out, html);
 
@@ -484,6 +453,8 @@ if (numstat) {
 
 // --- guide check: it must describe files and lines that actually changed ----
 if (groupsPath) {
+  // diagrams.js is browser source, so evaluate its text rather than require() it (see "Constraints").
+  const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
   const seen = new Set();
   let bad = 0, auto = 0, autoLines = 0;
   for (const g of guide.groups) {
@@ -500,6 +471,9 @@ if (groupsPath) {
       }
     }
   }
+  guide.groups.forEach((g, i) => g.visuals.forEach((d, j) => {
+    for (const p of DIAG.problems(d, `groups: group ${i + 1} (${g.title || 'untitled'}) visual ${j + 1}`)) { console.error(p); bad++; }
+  }));
   for (const s of guide.suggestions) {
     const f = byName.get(s.path);
     const problem = !s.body ? 'has no body' : !f ? 'names a file not in the diff'
@@ -509,11 +483,10 @@ if (groupsPath) {
   // The overview: every check has text, every diagram can be drawn and lands somewhere real.
   const ov = guide.overview;
   if (ov) {
-    // diagrams.js is browser source, so evaluate its text rather than require() it (see "Constraints").
-    const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
     const titles = new Set(guide.groups.map((g) => g.title));
     const checks = (ov.feature && ov.feature.checks) || [];
     checks.forEach((c, i) => { if (!(c && (typeof c === 'string' || c.text))) { console.error(`overview: check ${i + 1} has no text`); bad++; } });
+    checks.forEach((c, i) => { if (c && typeof c === 'object' && c.kind && !['does', 'should'].includes(c.kind)) { console.error(`overview: check ${i + 1} kind must be "does" or "should"`); bad++; } });
     checks.forEach((c) => { if (c && c.path && !byName.has(c.path)) { console.error(`overview: check names a file not in the diff: ${c.path}`); bad++; } });
     (ov.diagrams || []).forEach((d, i) => {
       for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`)) { console.error(`overview: ${p}`); bad++; }
@@ -539,7 +512,6 @@ if (groupsPath) {
       console.error('overview: the shape has no structure diagram; add one with "section": "shape" marking what was added, changed and removed');
   }
   const groupTitles = new Set(guide.groups.map((g) => g.title)), rids = new Set();
-  const DIAG = new Function('module', asset('diagrams.js') + '\nreturn DIAG;')({});
   const checkIds = new Set(((ov && ov.feature && ov.feature.checks) || []).map((c) => c && c.id).filter(Boolean));
   // Keep in step with REC_PARTS in page/app.js.
   const PARTS = ['context', 'problem', 'proposal', 'tradeoffs'];
@@ -552,6 +524,8 @@ if (groupsPath) {
     rids.add(r.id);
     if (r.group && !groupTitles.has(r.group)) { console.error(`${at} names an unknown group "${r.group}"`); bad++; }
     if (r.kind && !REC_PARTS[r.kind]) { console.error(`${at} has unknown kind "${r.kind}" (bug, risk, design, tests, style or question); it shows every section`); }
+    if (r.severity && !['blocking', 'should', 'nit'].includes(r.severity)) console.error(`${at} has unknown severity "${r.severity}" (blocking, should or nit)`);
+    if (!r.severity && r.kind !== 'question') console.error(`${at} has no severity (blocking, should or nit)`);
     // The kind decides which short sections a recommendation has; the page only shows those.
     const extra = PARTS.filter((p) => r[p] && r.kind && REC_PARTS[r.kind] && !REC_PARTS[r.kind].includes(p));
     if (extra.length) console.error(`${at}: a ${r.kind} recommendation doesn't show ${extra.join(', ')}; it will be hidden`);

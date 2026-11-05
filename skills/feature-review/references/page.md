@@ -6,14 +6,38 @@ submit did.
 
 ## Reading the page
 
-- **Steps.** The header's **Overview / Code / Submit** switch steps (keys `1`,
-  `2`, `3`; hashes `#overview`, `#code`, `#submit`). In the code step,
-  **Recommendations / Code** (key `r`) switches mode; the choice is remembered
-  per PR, and Recommendations is the default. Progress follows the mode:
-  recommendations decided in Recommendations, changed lines viewed in Code. A file or group anchor
-  (`#f3`, `#g1`), like the links in the overview, opens the code at that spot,
-  and returning to the code restores where you were. The sidebar shows the
-  feature-check count.
+- **Steps.** The header shows the repo and title, then a rail of steps:
+  **Story** (`#story`: CI, the PR description, the feature and how it comes
+  together), **Checks** (`#checks`, only when there are feature checks, grouped
+  by the walkthrough step they test), **Shape** (`#shape`: diagrams, objects,
+  and where the change lands, one row per area that opens to its files' sizes),
+  **Recommendations** (`#recs`) and **Submit**. The code is optional: **View
+  code** in the header (or `c`) opens it, and the same button takes you back.
+  Number keys jump to a step; `#overview` still opens Story. Each rail step shows only its
+  own progress (checks done, recommendations decided, lines read).
+- **Checks** are tagged **Does** (behaviour the change implements; the default)
+  or **Should** (behaviour it ought to have but doesn't), from each check's
+  `kind`. A walkthrough step's screens sit, folded, with its checks.
+- **Settings.** The gear in the header opens a small panel. **Page width**
+  (Narrow, Normal, Wide, Full) sets how wide the reading columns run,
+  remembered across reviews.
+- **Images and diagrams** that sit together open as a gallery: arrow keys or
+  the side buttons move through a description's screenshots, a step's visuals,
+  or a compare's two sides.
+- **Recommendations** show one group at a time: its summary first, then each
+  recommendation on its own card: visuals first, then the text, related feature
+  checks folded (open when one has a concern), and the comments. `y`/`n` decide
+  (staying on the card), `j`/`k` (or arrows) step through, and the pills under the title jump within
+  the group. Recommendations that belong to no group come first, as "Across the
+  change". The sidebar is an outline of every group: the current one is open,
+  each recommendation is a short row with its status, and a group's files are
+  folded. In Code the same outline shows every group's files, and the sidebar's
+  progress becomes lines read. A file or group anchor (`#f3`, `#g1`), like the
+  file chips, opens the code at that spot.
+- **Refreshing picks up skill updates.** When served, the page shell, styles
+  and scripts are rebuilt from the skill's `scripts/page/` on every load, around
+  the review data in the built file. Pull an updated skill and refresh; no
+  rebuild needed.
 - **Existing threads.** With `--pr`, the PR's review threads are loaded at build
   time and shown inline at their lines, with author, date and a link to GitHub.
   Resolved threads start collapsed. Outdated threads, or every thread when the
@@ -23,6 +47,10 @@ submit did.
   so raw HTML in them (like `<img>` tags) shows as text, and Markdown images
   show as links (only pasted attachments render inline), so opening the page
   never fetches from a host a commenter chose.
+- **Folding.** A group header in the code has **Collapse group**; a file with
+  expanded context has **Fold context**. Comments can go on expanded lines too:
+  GitHub can't anchor them, so submitting moves them into the summary with
+  their file and line.
 - **Expanding context.** Unchanged lines between hunks fold into gap rows with
   `↓ 20`, `↑ 20` and `All` buttons, as on GitHub. Files load lazily, one request
   each, through the local server, so this needs `--serve`; from `file://` the gaps
@@ -35,7 +63,7 @@ submit did.
   `--stdin` pages.
 - **Split view.** **View: unified / split** (unified by default, remembered).
   Comments, threads and range selection work the same in both.
-- **Keyboard.** `r` Recommendations or Code, `j`/`k` next/previous file, `v` toggle Viewed, `x` collapse,
+- **Keyboard.** `r` Recommendations or Code; in Code, `j`/`k` next/previous file, `v` toggle Viewed, `x` collapse,
   `n`/`p` next/previous comment or thread, `/` filter, `s` split, `w`
   whitespace, `?` help. The current file is the one whose header is pinned
   under the toolbar.

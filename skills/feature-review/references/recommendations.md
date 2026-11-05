@@ -58,6 +58,7 @@ view), a link to its code, and what you add:
   reviewer needs to trust the group: what moved, what was removed, which rule
   changed. Inline code with backticks is fine. Skip points that only restate
   the summary.
+- **`visuals`**: pictures for the gist (any diagram kind). See Visuals below.
 
 Keep the whole card readable in about ten seconds. If a group needs more than
 that, it needs a diagram, not more words. A small mechanical group can have
@@ -65,8 +66,10 @@ neither: its why line and file chips are enough.
 
 ## Visuals
 
-Diagrams pinned to a group (`"group": "<title>"`) show on its card, side by
-side when there are several. `"section": "recs"` puts a visual at the top of
+A group's gist can carry its own pictures: give the group `visuals` (any
+diagram kind), or pin an overview diagram to it with `"group": "<title>"`.
+Either way they show on its card, side by side when there are several, and
+above its code in the Code mode. `"section": "recs"` puts a visual at the top of
 the view, for the one picture of the whole change. See
 `references/overview.md` for the diagram kinds. Two more kinds carry media:
 
@@ -80,11 +83,16 @@ build inlines it as a data URL, so the page stays one offline file; it warns
 over 8 MB a file and fails over 60 MB in total. Keep clips short (5 to 20
 seconds) and crop screenshots to the part that changed.
 
-Reach for a visual when it saves reading: a UI change (before and after
-screenshots in a `compare`, or a short recording of the flow), a flow through
-several objects (`sequence`), responsibility moving (`structure` with new and
-removed nodes), geometry (`svg`). One or two good visuals per complex group;
-none for a simple one.
+Prose alone often fails to show what a recommendation is about, so lean toward
+a visual: the page shows a recommendation's visuals before its text. Default to
+one for any recommendation that changes structure, flow, data or UI, and
+prefer a before/after `compare` (as it is, then as proposed). The picture can
+take any form that makes the point: a sketched screen with the problem
+outlined, a table of the inputs that break it, a short recording, a
+`sequence`, a `structure` with new and removed nodes, geometry in `svg`. When
+the thing to show can't be captured, mock it (`references/overview.md`,
+"Diagrams"). Skip it only for one-line fixes. The user's preferences
+(`Recommendation visuals`) can turn this down.
 
 ### Capturing screenshots and recordings
 
@@ -106,25 +114,40 @@ captures under `tmp/review/<slug>/`.
 
 A recommendation is one decision you want the reviewer to make, phrased as an
 action: "Keep the same-organization check", "Extract the label map", "Add a
-spec for a user from another org". The reviewer answers **Yes** or **No**.
+spec for a user from another org". The reviewer chooses **Add** or **Ignore**.
 
-- **From comments to recommendations.** Write the comments you would leave,
-  then group them by the call they ask for. Three comments that all say the
-  permission check got weaker are one recommendation with three `comments`.
-  A comment that stands alone is a recommendation with one comment. It is not
-  one to one, and usually several comments fold into one.
+- **From comments to recommendations.** The line comments you would leave are
+  a starting point, not the limit. Group them by the call they ask for: three
+  comments that all say the permission check got weaker are one recommendation
+  with three `comments`, and a comment that stands alone is a recommendation
+  with one comment. Then step back from the lines and add every other decision
+  the reviewer should make, with or without comments behind it: the approach,
+  the scope, something the feature doesn't handle, a risk that lives between
+  files, a follow-up worth a ticket. Don't drop a point because it has no line
+  to sit on.
 - **`comments`** have the same shape as `suggestions` (`path`, `line`,
   `start_line`, `side`, `body`) and are checked against the diff the same way.
-  A yes puts them all in the review as line comments, and they also show
-  inline in the Code mode as suggested comments. A no leaves them out.
-- **No comments**: a general point (release notes, a follow-up ticket, a
-  question about scope). A yes adds `body`, or else `title: why`, to the review
-  summary under **Recommendations**.
+  Add puts them all in the review as line comments, and they also show
+  inline in the Code mode as suggested comments. Ignore leaves them out.
+- **No comments**: a point that isn't about one line, such as the approach,
+  the scope, a missing case, a cross-file risk, release notes or a follow-up
+  ticket. These are as welcome as the commented ones. Add puts `body`, or
+  else `title: why`, to the review summary under **Recommendations**.
 - **`group`**: the group title it belongs to, so it shows on that card. Leave
   it out for points that span the change; they show first, under "Across the
   change".
 - **`kind`**: `bug`, `risk`, `design`, `tests`, `style` or `question`. It is
   shown as a tag, so pick the honest one.
+- **`severity`**: `blocking`, `should` or `nit`, the project's review labels
+  (see its `REVIEW.md`; these are the defaults when it has none).
+  **Blocking** is a bug, security or data loss, a removal of needed code, or a
+  real gap against the ticket; **should** is worth fixing in this PR but open
+  to discussion; **nit** is a small preference, fine to skip. A `question`
+  takes no severity: the kind is its label. The page shows it as a badge, lists
+  blocking recommendations first, and counts each severity above the verdict
+  buttons. The build adds the label to the front of each comment
+  (`**Blocking:** …`), so leave it out of the comment text. The build warns
+  when a recommendation has none.
 - **`title`** is the action in under about ten words. The comments carry the
   detail.
 - **Sections**: **one sentence each, two at most**, so the reviewer can
@@ -159,7 +182,11 @@ spec for a user from another org". The reviewer answers **Yes** or **No**.
   shape or a flow: a `compare` of the structure before and after the change
   you are proposing, a `sequence` showing where a check goes missing, a
   screenshot of the state the bug produces. A picture there often lets the
-  sections stay one sentence.
+  sections stay one sentence. When the review is submitted, the visuals of every
+  recommendation said yes to (recordings aside) are drawn as PNGs and posted
+  in one PR comment after the review, under each recommendation's title, so
+  the author sees them too. That includes recommendations with no comments,
+  such as questions that go into the summary.
 - **`checks`**: ids of feature checks (`overview.feature.checks`, each with an
   `id`) that this recommendation bears on, such as a check that a user from
   another organization gets a 404 next to the recommendation to keep the
@@ -179,7 +206,7 @@ spec for a user from another org". The reviewer answers **Yes** or **No**.
   recommendation, so the reviewer can read the standard itself; it comes from
   the cache `review-guides.cjs` filled, so run that first. Name a principle
   only when the recommendation really follows from it; a recommendation that
-  stands on judgement alone is fine without one. A yes on a general
+  stands on judgement alone is fine without one. Adding a general
   recommendation adds the principle's name to the summary line, and the
   decisions log records it, so `decision-patterns.cjs` can tell which
   principles a reviewer keeps declining.
@@ -197,14 +224,14 @@ instead whenever two or more ask for the same thing.
   "decided" count all track recommendations. A group is done once every
   recommendation on it is decided. The Code mode keeps its line-based progress,
   and the sidebar links across to it ("Code read").
-- Pressing the lit button again takes a decision back. Taking back a yes keeps
+- Pressing the lit button again takes a decision back. Taking back an add keeps
   any comment the reviewer edited since.
 - Each comment under **The comments** has its own buttons: **Accept**,
   **Edit** (an editor opens in place; saving puts it in the review) and
   **Dismiss**, then **Edit** / **Remove** once in the review, or **Restore**
   once dismissed. Its file path (and the `file:line` chips above it) open the
   diff at that line.
-- Deciding comments one by one, or a yes and a later edit or dismiss in the
+- Deciding comments one by one, or an add and a later edit or dismiss in the
   Code mode, shows the recommendation as partly accepted ("2 of 3 comments in
   your review").
 - The submit page lists every recommendation with its decision, and the open
