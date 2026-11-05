@@ -30,7 +30,7 @@ comments that can be posted to the PR as one review:
 2. **Code**, in two modes switched in the header (or `r`):
    - **Recommendations** (the default): each reading-guide group as a short
      gist with its visuals (diagrams, screenshots, screen recordings) and the
-     recommendations to answer yes or no. Each one bundles the line comments
+     recommendations to add or ignore. Each one bundles the line comments
      it stands for, so a large change can be reviewed at this height.
    - **Code**: the diff, file by file, in reading-guide order, with diagrams
      next to the complex groups.
@@ -209,8 +209,8 @@ The code step opens on the Recommendations view, built from the guide: one
 card per group with its `summary`, up to four `points`, its pinned diagrams and
 media, and its files as chips (folded by default) that open the diff. Your
 review comments live here as **recommendations**: one action each, which the
-reviewer answers Yes (its comments go into the review, or a general one into
-the summary) or No. Each also has a few short sections (`context`,
+reviewer adds (its comments go into the review, or a general one into
+the summary) or ignores. Each also has a few short sections (`context`,
 `problem`, `proposal`, `tradeoffs`), one sentence each and two at most, in
 plain words rather than code; its `kind` decides which. A recommendation can
 carry `visuals` (any diagram kind), `checks` (ids of feature checks it bears
