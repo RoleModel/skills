@@ -1432,7 +1432,7 @@
     // only the gist, which has nothing to decide, keeps Next as its main action.
     const onRec = it && it !== 'gist';
     const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
-    rv.innerHTML = '<div class="fhero"><div class="fhead"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
+    rv.innerHTML = '<div class="fhero"><div class="ftitle"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
       '<div class="pills">' + pillsHtml() + '</div></div>' +
       '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>' +
       '<div class="fnav' + (onRec ? ' quiet' : '') + '"><button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
