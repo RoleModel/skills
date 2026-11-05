@@ -403,7 +403,14 @@ td.goflash{box-shadow:inset 0 0 0 999px #f5d90a44}
 .stag.bug,.stag.risk{border-color:var(--del-b);color:var(--del-b)}
 .stag.design,.stag.tests{border-color:#d29922;color:#d29922}
 .stag.question,.stag.style{border-color:var(--accent);color:var(--accent)}
-.svrecs li.no{color:var(--muted)}
+/* Severity: how much a recommendation blocks merging, filled so it reads apart from the kind tag. */
+.sevtag{font-size:10px;text-transform:uppercase;letter-spacing:.04em;border-radius:20px;padding:1px 7px;white-space:nowrap;background:var(--border);color:var(--text)}
+.sevtag.blocking{background:var(--del-b);color:#fff}
+.sevtag.should{background:#d29922;color:#fff}
+.sevtag.question{background:var(--accent);color:#fff}
+.svsev{display:flex;gap:6px;flex-wrap:wrap;margin:8px 2px 0}.svsev:empty{display:none}
+.svsev .sevtag{font-size:11px;padding:2px 9px}
+.svrecs li.no{color:var(--muted);text-decoration:line-through}
 .svrecs li.yes{color:var(--add-b)}
 .svrecs li.yes code,.svrecs li.no code{color:inherit}
 /* --- screenshots and recordings ------------------------------------------ */
@@ -680,8 +687,11 @@ a.cxchk{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent)
 .recdecide button.yes.on{background:var(--add-bg);border-color:var(--add-b);color:var(--add-b)}
 .recdecide button.no.on{background:var(--raised);border-color:var(--border);color:var(--muted)}
 .recdecide button.on kbd{color:inherit;border-color:currentColor;opacity:.7}
-.fnav{display:flex;align-items:center;gap:12px;margin-top:18px}
-.fnav.quiet{margin-top:10px}
+.fbar{display:flex;align-items:center;gap:16px;margin-top:14px;min-height:34px}
+.fbar .pills{flex:1 0 auto;max-width:100%;margin-top:0}
+@media(max-width:1000px){.fbar{flex-wrap:wrap}.fnav .fnext{display:none}}
+.fnav{display:flex;align-items:center;gap:8px;margin-left:auto;flex:0 1 auto;min-width:0}
+.fnav .fnext{min-width:0;margin-right:4px}
 .fnav.quiet button{background:none;border-color:transparent;color:var(--muted)}
 .fnav.quiet button:hover:not(:disabled){color:var(--text);border-color:var(--border)}
 .ftitle{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
@@ -717,7 +727,7 @@ button:hover kbd{opacity:1}
 .cxsteps .cxbody{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
 .cxsteps .cxstep.novis .cxbody{grid-template-columns:1fr}
 .cxsteps .cxvis{display:grid;gap:10px}
-.cxvis .dmedia img,.cxvis .dmedia video{width:100%;height:260px;object-fit:contain;background:var(--bg);border-radius:8px}
+.cxvis .dmedia img,.cxvis .dmedia video{width:auto;height:auto;max-width:100%;max-height:260px;border-radius:8px}
 .cxvis figure.diagram{margin:0}
 .cxtext h4{margin-top:0}
 @media(max-width:900px){.cxsteps .cxbody{grid-template-columns:1fr}}
@@ -784,11 +794,15 @@ background:rgba(20,20,24,.7);border:1px solid rgba(255,255,255,.2);color:#fff;z-
 .cxsteps .cxvis{align-items:flex-start;width:100%}
 .cxsteps .cxvis>figure{height:auto;min-height:0}
 .cxsteps .cxvis .dmedia{display:flex;justify-content:center;height:auto}
-.cxsteps .cxvis .dmedia img,.cxsteps .cxvis .dmedia video{width:100%;height:300px;object-fit:contain}
+.cxsteps .cxvis .dmedia img,.cxsteps .cxvis .dmedia video{max-height:300px}
 .cxsteps .cxvis{flex-direction:row}
 /* Group links match the check file links: a quiet border that lights up on hover. */
 .cxgroup{border-color:var(--border);color:var(--accent);transition:border-color .15s}
 .cxgroup:hover{border-color:var(--accent)}
+.rectop .sevtag{margin-left:6px}
+/* Inline code: sized to the text around it (so it grows in titles), on a tinted chip with a border that reads. */
+.md code,.rgpoints code,.rectitle code,.cxtext h4 code,.ovblock code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;font-weight:500;color:var(--text);background:var(--accent-bg);border:1px solid color-mix(in srgb,var(--accent) 18%,var(--border));border-radius:5px;padding:.08em .38em}
+
 /* The understand steps end on Back and Next, the same pair Recommendations has. */
 .ovfoot{display:flex;align-items:center;gap:12px}
 .ovfoot .sp{flex:1}
