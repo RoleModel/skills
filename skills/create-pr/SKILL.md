@@ -6,7 +6,7 @@ metadata:
   author: rolemodelsoftware
   version: "2.0"
   triggers: "open a PR, create a PR, file a PR, draft a PR, pull request, PR description, write the PR body, update the PR description, push this for review, put this up for review, ready for review"
-allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Read, Write
+allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Bash(gh stack link:*), Bash(gh stack --help:*), Read, Write
 ---
 
 # Creating a Pull Request
@@ -52,6 +52,12 @@ Write the body to a file in the scratchpad — always `--body-file`, never `--bo
 ```bash
 git push -u origin HEAD
 gh pr create --base <base> --title "<title>" --body-file <path> --assignee @me   # add --draft when unfinished
+```
+
+**Stack.** When the base is another open PR's branch, register the two as a GitHub PR stack, bottom to top, and print the stack number with the URL. `gh stack link` extends the stack when the PR below already belongs to one. If `gh stack --help` fails, the `github/gh-stack` extension is missing: tell the user and skip this step.
+
+```bash
+gh stack link <base PR number> <new PR number>
 ```
 
 `--assignee @me` assigns whoever `gh` is authenticated as; if it fails, use `gh api user --jq .login`. Add the reviewers the user names, or those the repo's `AGENTS.md` or contributing docs ask for; otherwise none.
