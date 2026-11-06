@@ -1012,3 +1012,13 @@ details.recchecks{border-left:0;padding-left:0}
   --xc:#aaa59b;--xs:#8fe37f;--xn:#7fb8ff;--xk:#ff7aa8;--xl:#7fb8ff;--xf:#c9a2ff;--xt:#ffb35c;--xv:#ffb35c;--xa:#8fe37f;--xy:#7fb8ff;
 }}
 .setlbl+.seg+.setlbl{margin-top:14px}
+/* Diff rows get their own, deeper fills, a solid edge on the line numbers, and word changes that
+   stand out against the fill. */
+:root.hc{--hc-add:#b4e2bd;--hc-del:#f4bcb1}
+@media (prefers-color-scheme:dark){:root.hc{--hc-add:#1f5c2e;--hc-del:#732a1f}}
+.hc tr.a td.c,.hc tr.a td.n,.hc td.ra{background:var(--hc-add)}
+.hc tr.d td.c,.hc tr.d td.n,.hc td.rd{background:var(--hc-del)}
+.hc tr.a>td:first-child,.hc td.ra:first-child{box-shadow:inset 3px 0 0 var(--pos)}
+.hc tr.d>td:first-child,.hc td.rd:first-child{box-shadow:inset 3px 0 0 var(--neg)}
+.hc tr.a td.c mark,.hc td.ra mark{background:color-mix(in srgb,var(--pos) 45%,transparent)}
+.hc tr.d td.c mark,.hc td.rd mark{background:color-mix(in srgb,var(--neg) 45%,transparent)}
