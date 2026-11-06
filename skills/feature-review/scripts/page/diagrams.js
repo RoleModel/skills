@@ -231,7 +231,7 @@ const DIAG = (function () {
     '.grid{display:grid;gap:10px;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr))}' +
     '.box{border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--panel)}' +
     '.box.new,.new{border-color:var(--add-b)}.box.changed,.changed{border-color:#d29922}' +
-    '.box.removed,.removed{border-color:var(--del-b);border-style:dashed;opacity:.85}.box.removed{text-decoration:line-through}' +
+    '.box.removed,.removed{border-color:var(--del-b);border-style:dashed;opacity:.85}.box.removed{color:var(--del-b)}' +
     '.arrow::before{content:"\\2192";color:var(--muted);font-size:18px}.down::before{content:"\\2193";color:var(--muted);font-size:18px}' +
     // A flex column stretches its children, which would put an arrow's glyph at the left edge.
     '.down{text-align:center}.col>.down,.col>.arrow{align-self:center}' +
@@ -265,7 +265,7 @@ const DIAG = (function () {
     '.timeline>.new::before{background:var(--add-b)}.timeline>.removed::before{background:var(--del-b)}.timeline>.ghost::before{background:var(--muted)}' +
     '.meter{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}' +
     '.meter>i{display:block;height:10px;border-radius:3px;background:var(--accent);width:var(--v,50%)}.meter>i.new{background:var(--add-b)}.meter>i.removed{background:var(--del-b)}' +
-    '.cross{text-decoration:line-through;color:var(--del-b)}';
+    '.cross{color:var(--del-b)}';
   function raw(markup) {
     const host = document.createElement('div');
     host.className = 'draw';

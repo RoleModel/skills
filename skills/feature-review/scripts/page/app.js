@@ -411,8 +411,10 @@
   const sections = groups.length ? groups : [{ title: null, why: '', summary: '', points: [], files }];
   const fileOrder = sections.flatMap((g) => g.files);
 
+  // Pages built before the fix carry "**Nit:** nit: ...": keep the bold label, drop the agent's own.
+  const oneLabel = (body) => body.replace(/^(\*\*(Blocking|Should|Nit):\*\* )\s*(\*\*)?(blocking|should|nit)\s*:\s*(\*\*)?\s*/i, '$1');
   const suggestions = (GUIDE.suggestions || []).map((s) =>
-    Object.assign({ subject: s.line == null ? 'file' : 'line', side: 'RIGHT' }, s, { sid: 's' + hash(JSON.stringify(s)) }));
+    Object.assign({ subject: s.line == null ? 'file' : 'line', side: 'RIGHT' }, s, { sid: 's' + hash(JSON.stringify(s)) }, s.body ? { body: oneLabel(s.body) } : {}));
   const pendingSuggestions = () => suggestions.filter((s) =>
     !state.dismissed.includes(s.sid) && !state.comments.some((c) => c.sid === s.sid));
   const commentFrom = (s) => ({ id: uid('c'), sid: s.sid, path: s.path, subject: s.subject, side: s.side, line: s.line,
@@ -774,18 +776,16 @@
     if (f.cb.checked) f.el.classList.add('peek');
   }
 
+  // Same shape as a comment in Recommendations: where it sits, the words, then a footer with its state and actions.
   function cardHtml(c, pending) {
-    const tag = c.sid ? '<span class="tag">Suggested</span>' : '';
+    const btn = (act, id, label, cls) => '<button type="button"' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + id + '">' + label + '</button>';
     const acts = pending
-      ? '<button type="button" data-act="accept" data-id="' + c.sid + '">Accept</button>' +
-        '<button type="button" data-act="edit-s" data-id="' + c.sid + '">Edit</button>' +
-        '<button type="button" data-act="dismiss" data-id="' + c.sid + '">Dismiss</button>'
-      : '<button type="button" data-act="edit" data-id="' + c.id + '">Edit</button>' +
-        '<button type="button" data-act="delete" data-id="' + c.id + '">Delete</button>';
+      ? '<span class="reccst">Suggested comment</span><span class="sp"></span>' + btn('dismiss', c.sid, 'Dismiss', 'quiet') +
+        btn('edit-s', c.sid, 'Edit', 'quiet') + btn('accept', c.sid, 'Accept', 'primary')
+      : '<span class="reccst yes">In your review</span><span class="sp"></span>' + btn('delete', c.id, 'Delete', 'quiet') + btn('edit', c.id, 'Edit');
     const label = c.subject === 'reply' ? 'Your reply' : esc(locLabel(c)) + orphanNote(c);
-    return '<div class="card' + (pending ? ' sugg-pending' : '') + '"><div class="chead"><span>' + label +
-      '</span>' + tag + (pending ? '<span>not in review yet</span>' : '') + '<span class="sp"></span>' + acts +
-      '</div><div class="md">' + renderBody(c) + '</div></div>';
+    return '<div class="card ' + (pending ? 'sugg-pending' : 'yes') + '"><div class="chead"><span>' + label + '</span></div>' +
+      '<div class="md">' + renderBody(c) + '</div><div class="reccfoot">' + acts + '</div></div>';
   }
 
   const when = (at) => { try { return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return at; } };
@@ -1107,8 +1107,8 @@
     return list.map((c) => {
       const k = checkOf(c);
       return '<div class="chk ' + (k.s || '') + '" data-k="' + esc(c.kid) + '"><div class="chkbtns">' +
-        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">&#10003; Looks right</button>' +
-        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">! Concern</button></div>' +
+        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">Looks right</button>' +
+        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">Concern</button></div>' +
         (c.kind === 'should'
           ? '<div class="chktext"><span class="ktag should" title="Behaviour the change should have but doesn\'t yet">Should</span>'
           : '<div class="chktext"><span class="ktag does" title="Behaviour the change implements. Confirm it works and is wanted.">Does</span>') +
@@ -1192,11 +1192,11 @@
     (note ? '<p class="lede">' + note + '</p>' : '') + '</div>';
   const stepFoot = (cur) => {
     const at = STEPS.findIndex((s) => s.id === cur), b = STEPS[at - 1], n = STEPS[at + 1];
-    return '<div class="ovfoot">' + (b ? '<button type="button" class="quiet" data-across="-1">&larr; ' + b.label + ' <kbd>k</kbd></button>' : '') +
-      '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' &rarr; <kbd>j</kbd></button>' : '') + '</div>';
+    return '<div class="ovfoot">' + (b ? '<button type="button" class="quiet" data-across="-1">' + b.label + ' <kbd>k</kbd></button>' : '') +
+      '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' <kbd>j</kbd></button>' : '') + '</div>';
   };
   function checksByStep() {
-    const block = (title, list) => list.length ? '<section class="ovblock">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
+    const block = (title, list) => list.length ? '<section class="ovblock' + (title ? '' : ' untitled') + '">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
     const stepBlock = (st, i) => {
       const list = (st.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
       if (!list.length) return '';
@@ -1315,14 +1315,14 @@
   function recCommentHtml(s) {
     const c = state.comments.find((x) => x.sid === s.sid);
     const st = c ? 'yes' : state.dismissed.includes(s.sid) ? 'no' : 'open';
-    const btn = (act, label) => '<button type="button" data-rc="' + act + '" data-sid="' + esc(s.sid) + '">' + label + '</button>';
-    const acts = st === 'open' ? btn('accept', '&#10003; Accept') + btn('edit', 'Edit') + btn('dismiss', '&#10007; Dismiss')
-      : st === 'yes' ? '<span class="tag done">In review</span>' + btn('edit', 'Edit') + btn('remove', 'Remove')
-        : '<span class="tag">Dismissed</span>' + btn('restore', 'Restore');
+    const btn = (act, label, cls) => '<button type="button"' + (cls ? ' class="' + cls + '"' : '') + ' data-rc="' + act + '" data-sid="' + esc(s.sid) + '">' + label + '</button>';
+    // The actions sit in the card's own footer: the state on the left, the quiet choices, then the main one.
+    const acts = st === 'open' ? '<span class="reccst">Suggested comment</span><span class="sp"></span>' + btn('dismiss', 'Dismiss', 'quiet') + btn('edit', 'Edit', 'quiet') + btn('accept', 'Accept', 'primary')
+      : st === 'yes' ? '<span class="reccst yes">In your review</span><span class="sp"></span>' + btn('remove', 'Remove', 'quiet') + btn('edit', 'Edit')
+        : '<span class="reccst">Dismissed</span><span class="sp"></span>' + btn('restore', 'Restore');
     const mine = editing && editing.inRecs && editing.sid === s.sid;
-    return '<div class="recc ' + st + '" data-sid="' + esc(s.sid) + '"><div class="svfile">' + goLink(s, esc(s.path) + ' &middot; ' + esc(locLabel(s))) +
-      '<span class="sp"></span>' + (mine ? '' : acts) + '</div>' + snippetHtml(s) +
-      (mine ? '<div class="recedit"></div>' : '<div class="md">' + renderBody(c || s) + '</div>') + '</div>';
+    return '<div class="recc ' + st + '" data-sid="' + esc(s.sid) + '"><div class="svfile">' + goLink(s, esc(s.path) + ' &middot; ' + esc(locLabel(s))) + '</div>' + snippetHtml(s) +
+      (mine ? '<div class="recedit"></div>' : '<div class="md">' + renderBody(c || s) + '</div><div class="reccfoot">' + acts + '</div>') + '</div>';
   }
   // The guide section a recommendation rests on, folded: the standard, a click away, in its own words.
   const principleHtml = (r) => {
@@ -1340,8 +1340,10 @@
         mixed: inReview + ' of ' + plural(n, 'comment') + ' in your review' }[st];
     const parts = partsHtml(r), mine = (r.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
     return '<article class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop">' +
-      (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span>' : '') +
-      (SEV[r.severity] ? '<span class="sevtag ' + esc(r.severity) + '">' + SEV[r.severity] + '</span>' : '') +
+      // Kind and severity read as one quiet line over the title, not as badges beside it.
+      (r.kind || SEV[r.severity] ? '<div class="recmeta">' +
+        (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span>' : '') +
+        (SEV[r.severity] ? '<span class="sevtag ' + esc(r.severity) + '">' + SEV[r.severity] + '</span>' : '') + '</div>' : '') +
       '<h3 class="rectitle">' + inlineMd(r.title) + '</h3></div>' +
       // A picture often says what the prose can't, so it comes first.
       ((r.visuals || []).length ? '<div class="recvis" data-recvis="' + esc(r.rid) + '"></div>' : '') +
@@ -1357,7 +1359,7 @@
       '<div class="recdecide">' + (n ? goLink(sugs[0], 'Show in code', 'btn recgo') : '') + '<span class="recwhat">' + what + '</span><span class="sp"></span>' +
       // A lit button reads as the decision made ("Added", "Ignored"); pressing it again takes it back.
       '<button type="button" data-rec="no" class="no' + (st === 'no' ? ' on' : '') + '">' + (st === 'no' ? 'Ignored' : 'Ignore') + ' <kbd>i</kbd></button>' +
-      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">' + (st === 'yes' ? '&#10003; Added' : '+ Add') + ' <kbd>a</kbd></button></div></article>';
+      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">' + (st === 'yes' ? 'Added' : 'Add') + ' <kbd>a</kbd></button></div></article>';
   }
 
   // The flow: one group at a time, its gist first, then each of its recommendations. Recommendations
@@ -1453,11 +1455,11 @@
     // Add and Ignore already move on, so on a recommendation the flow buttons step back to quiet links;
     // only the gist, which has nothing to decide, keeps Next as its main action.
     const onRec = it && it !== 'gist';
-    const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
+    const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code</a>' : '';
     rv.innerHTML = '<div class="fhero"><div class="ftitle"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
       '<div class="fbar"><div class="pills">' + pillsHtml() + '</div>' +
       '<div class="fnav' + (onRec ? ' quiet' : '') + '"><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
-      '<button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
+      '<button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>Back <kbd>k</kbd></button>' +
       '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div></div></div>' +
       '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>';
     const gv = rv.querySelector('[data-gvis]');
@@ -1613,7 +1615,7 @@
     { ev: 'REQUEST_CHANGES', label: 'Request changes', cls: 'danger', tip: 'Feedback that must be addressed before merging' },
     { ev: 'COMMENT', label: 'Comment', cls: '', tip: 'Feedback without approving' },
     { ev: 'APPROVE', label: 'Approve', cls: 'primary', tip: 'Approve merging these changes' },
-    { ev: 'APPROVE', shipit: true, label: '<span class="squirrel" aria-hidden="true">&#x1F43F;&#xFE0F;</span> Ship it', cls: 'primary shipit',
+    { ev: 'APPROVE', shipit: true, label: 'Ship it', cls: 'primary shipit',
       tip: 'Approve, with ' + SHIPIT + ' added to the summary' },
   ];
   sv.innerHTML =
@@ -1747,7 +1749,7 @@
     if (waiting) items.push({ warn: 1, html: '<a href="#" data-open="svcomments">' + plural(waiting, 'suggested comment') + ' not in your review</a>' });
     if (concerns().length) items.push({ warn: 1, html: plural(concerns().length, 'concern') + ' in the summary' });
     if (!items.some((i) => i.bad || i.warn)) items.push({ ok: 1, html: 'Everything is decided' });
-    return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + (i.bad ? '&#10007; ' : i.warn ? '&#9675; ' : '&#10003; ') + i.html + '</span>').join('');
+    return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + i.html + '</span>').join('');
   }
 
   // How much of what is going out blocks merging: the comments of each severity, plus summary-only
@@ -2039,7 +2041,7 @@
     $('steps').innerHTML = STEPS.map((st, i) => {
       const r = railState(st.id);
       return (st.sep ? '<li class="sep" aria-hidden="true"></li>' : '') + '<li class="' + [st.id === v ? 'on' : '', r.done ? 'done' : '', r.bad ? 'bad' : ''].join(' ') + '">' +
-        '<button type="button" data-step="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (r.done ? '&#10003;' : i + 1) + '</span>' +
+        '<button type="button" data-step="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (i + 1) + '</span>' +
         '<span class="rl">' + st.label + '</span>' + (r.text ? '<span class="rs">' + esc(r.text) + '</span>' : '') + '</button></li>';
     }).join('');
   }
@@ -2047,6 +2049,8 @@
     ? '<a href="' + esc(PR.url) + '" target="_blank" rel="noopener">' + esc(PR.owner + '/' + PR.repo) + '</a> <span>#' + PR.number + '</span>' +
       (PR.author ? ' <span>by @' + esc(PR.author) + '</span>' : '') + (META.since ? ' <span class="pillnote">since your last review</span>' : '')
     : esc(META.range || 'Local diff');
+  // The file count and line totals sit with the rest of what describes the PR.
+  $('hrepo').appendChild($('stats'));
 
   function setView() {
     const h = location.hash, was = document.body.dataset.view;
@@ -2059,7 +2063,7 @@
     }
     if (was) ys[was] = window.scrollY;
     if (step !== 'code' && step !== 'done') codeFrom = step;
-    $('gocode').innerHTML = step === 'code' ? '&larr; Back to ' + esc((STEPS.find((x) => x.id === codeFrom) || STEPS[0]).label) : 'View code <span class="hpct">' + readPct + '%</span>';
+    $('gocode').innerHTML = step === 'code' ? 'Back to ' + esc((STEPS.find((x) => x.id === codeFrom) || STEPS[0]).label) : 'View code <span class="hpct">' + readPct + '%</span>';
     mode = step === 'recs' ? 'recs' : 'diff';
     document.body.dataset.view = step;
     document.body.classList.toggle('overviewing', OVERVIEW.includes(step));
@@ -2092,15 +2096,29 @@
     widthAt = WIDTHS[i] ? i : 1;
     document.documentElement.style.setProperty('--colw', WIDTHS[widthAt][1]);
     store.set('frwidth', String(widthAt));
-    $('setpanel').innerHTML = '<div class="setlbl">Page width</div><div class="seg">' + WIDTHS.map((w, j) =>
-      '<button type="button" data-width="' + j + '" class="' + (j === widthAt ? 'on' : '') + '">' + w[0] + '</button>').join('') + '</div>';
+    drawSettings();
   };
+  // Contrast, remembered the same way: high darkens text, rules, diff washes and syntax colours.
+  let contrast = store.get('frcontrast') === 'high' ? 'high' : 'normal';
+  const setContrast = (c) => {
+    contrast = c === 'high' ? 'high' : 'normal';
+    document.documentElement.classList.toggle('hc', contrast === 'high');
+    store.set('frcontrast', contrast);
+    drawSettings();
+  };
+  const seg = (attr, opts, on) => '<div class="seg">' + opts.map(([label, v]) =>
+    '<button type="button" ' + attr + '="' + v + '" class="' + (v === on ? 'on' : '') + '">' + label + '</button>').join('') + '</div>';
+  function drawSettings() {
+    $('setpanel').innerHTML = '<div class="setlbl">Page width</div>' + seg('data-width', WIDTHS.map((w, j) => [w[0], String(j)]), String(widthAt)) +
+      '<div class="setlbl">Contrast</div>' + seg('data-contrast', [['Normal', 'normal'], ['High', 'high']], contrast);
+  }
   setWidth(widthAt);
+  setContrast(contrast);
   // In Recommendations the reading column stays centred where every other step puts it, and the
   // sidebar sits in the left gutter beside it. Only when the gutter is too narrow for the sidebar
   // does the column move over to make room, so nothing ever overlaps.
   // The sidebar narrows from its full width to a floor before giving up the gutter.
-  const NAV_W = 300, NAV_MIN = 230, NAV_GAP = 16, COL_PAD = 24;
+  const NAV_W = 300, NAV_MIN = 230, NAV_GAP = 40, COL_PAD = 24;
   function placeSidebar() {
     const vw = document.documentElement.clientWidth, w = WIDTHS[widthAt][1];
     const col = w.endsWith('%') ? vw : Math.min(parseInt(w, 10), vw - 2 * COL_PAD);
@@ -2121,6 +2139,8 @@
     e.stopPropagation();
     const b = e.target.closest('[data-width]');
     if (b) { setWidth(+b.dataset.width); placeSidebar(); }
+    const c = e.target.closest('[data-contrast]');
+    if (c) setContrast(c.dataset.contrast);
   });
   document.addEventListener('click', () => setPanel(false));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });
@@ -2269,7 +2289,7 @@
   splitBtn.onclick = () => setSplit(!split);
 
   // --- keyboard -------------------------------------------------------------
-  const KEYS = [['j / k', 'Next / previous file'], ['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
+  const KEYS = [['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
     ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['j / k', 'Next / previous, through every step and each recommendation (also → / ←); files in Code'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');

@@ -8,18 +8,18 @@
 </style></head><body>
 <header>
 <div class="hbar">
-<div class="hid"><div class="hrepo" id="hrepo"></div><h1>{{title}}</h1></div>
+<div class="hid"><div class="hrepo" id="hrepo"></div><span class="stats" id="stats"></span><h1>{{title}}</h1></div>
 <ol class="rail" id="steps"></ol>
-<span class="hend"><span class="stats" id="stats"></span><span class="setwrap"><button id="setbtn" title="Settings" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button><div id="setpanel" class="hidden" role="dialog" aria-label="Settings"></div></span><button id="keys" title="Keyboard shortcuts (?)">?</button><button id="gocode" title="The diff (c)">View code</button></span>
+<span class="hend"><button id="gocode" title="The diff (c)">View code</button><span class="setwrap"><button id="setbtn" title="Settings" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button><div id="setpanel" class="hidden" role="dialog" aria-label="Settings"></div></span><button id="keys" title="Keyboard shortcuts (?)">?</button></span>
 </div>
 <div class="codebar">
-<input type="search" id="q" placeholder="Filter files…">
+<input type="search" id="q" placeholder="Filter files">
 <button id="expand">Expand all</button><button id="collapse">Collapse all</button><button id="reset">Reset viewed</button>
 <span class="sp"></span>
 <button id="hltoggle">Syntax highlighting: on</button><button id="wstoggle">Whitespace: shown</button><button id="splittoggle">View: unified</button>
 </div>
 </header>
-<div class="layout"><nav><section class="meta" id="meta"></section><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
+<div class="layout"><nav class="side"><section class="meta" id="meta"></section><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
 <section id="overviewview"></section>
 <section id="submitview"></section>
 <section id="doneview"></section>

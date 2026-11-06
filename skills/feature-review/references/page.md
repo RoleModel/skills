@@ -19,8 +19,9 @@ submit did.
   or **Should** (behaviour it ought to have but doesn't), from each check's
   `kind`. A walkthrough step's screens sit, folded, with its checks.
 - **Settings.** The gear in the header opens a small panel. **Page width**
-  (Narrow, Normal, Wide, Full) sets how wide the reading columns run,
-  remembered across reviews.
+  (Narrow, Normal, Wide, Full) sets how wide the reading columns run.
+  **Contrast** (Normal, High) darkens text and rules, strengthens the diff
+  colours and brightens the syntax colours. Both are remembered across reviews.
 - **Images and diagrams** that sit together open as a gallery: arrow keys or
   the side buttons move through a description's screenshots, a step's visuals,
   or a compare's two sides.

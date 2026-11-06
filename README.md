@@ -36,6 +36,8 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 |-------|-------------|
 | **[rails-conventions](skills/rails-conventions)** | RoleModel's Rails conventions where they differ from what an agent writes by default: flash wording, `:unprocessable_content`, Simple Form for every form, `parent_resource.name.classify` in route concerns, and gotchas for `params.expect` with nested attributes and Lexxy change events. |
 | **[dynamic-forms](skills/dynamic-forms)** | Forms that change as they are filled in (dependent dropdowns, conditional fields, dynamic option lists) with the `turbo_form` gem, RoleModel's mechanism for dynamic form interaction. Supersedes hand-wired `turbo_fetch`. |
+| **[turbo-modals](skills/turbo-modals)** | RoleModel's Turbo Frame modal and panel pattern from `rolemodel_rails`: `modal_link_to`, `render layout: 'modal'`, 422 on errors, redirect on success, and never the `layout` class method. |
+| **[soft-destroyable](skills/soft-destroyable)** | Soft-delete models with the `SoftDestroyable` concern from `rolemodel_rails` — `kept`/`only_deleted` instead of a default scope, cascading soft destroy and timestamp-matched restore, and the shared example. |
 | **[polymorphic-parent-resources](skills/polymorphic-parent-resources)** | Serve a child resource that hangs off many different parents (comments, reports, duplications, attachments) from a single controller, using a route concern plus `resource_for` from `rolemodel_rails`. Includes a retrofit guide for consolidating existing per-parent controllers. |
 | **[tdd](skills/tdd)** | Test-driven development for Rails — outside-in with RSpec, Capybara, and FactoryBot. Covers the red-green loop, spec plans, and the Prove-It pattern for bugs. |
 
