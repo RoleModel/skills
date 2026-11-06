@@ -441,7 +441,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dsvg .dn.changed rect{stroke:var(--warn);stroke-width:1.2}
 .dsvg .dn.changed .dtag{fill:var(--warn)}
 .dsvg .dn.removed rect{fill:var(--neg-wash);stroke:var(--neg);stroke-dasharray:4 3}
-.dsvg .dn.removed text{text-decoration:line-through;fill:var(--ink-3)}
+.dsvg .dn.removed text{fill:var(--neg)}
 .dsvg .dn.removed .dtag{fill:var(--neg);text-decoration:none}
 .dsvg .de{fill:none;stroke:var(--ink-3);stroke-width:1.1}
 .dsvg .de.new{stroke:var(--pos)}.dsvg .de.changed{stroke:var(--warn)}.dsvg .de.removed{stroke:var(--neg);stroke-dasharray:4 3}

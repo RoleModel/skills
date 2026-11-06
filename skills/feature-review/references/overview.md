@@ -344,7 +344,7 @@ Ready-made classes:
     placeholder; set `--w`), `.ui-img` (an image placeholder).
   - `.hl` outlines what to look at (`.hl.new`, `.hl.removed` recolour it);
     `.ghost` fades something that isn't there yet or is going away; `.cross`
-    strikes out a removed value.
+    marks a removed value in red.
   - `.note`: a sticky note; `.pin`: a numbered dot to tie a spot to a note.
   - `.timeline`: its children become points on a line (`.new`, `.removed`,
     `.ghost` colour the dot).
