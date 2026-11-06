@@ -298,7 +298,7 @@ submit page is their approval step.
 - `scripts/lib/events.cjs`: the optional event log and `FEATURE_REVIEW_NO_OPEN` check.
 - `scripts/lib/diff-parse.cjs`: the one diff parser, used by all three and inlined into the page.
 - `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `diagrams.js`, `app.js`, inlined into every page.
-- `scripts/page/fonts/`: Source Serif 4, Source Sans 3 and Source Code Pro (latin subsets, SIL OFL 1.1), inlined into every page as base64. Each file carries its copyright notice and the licence text in its own metadata, so pages that embed them stay licensed.
+- `scripts/page/fonts/`: Source Serif 4, Source Sans 3 and JetBrains Mono (latin subsets, SIL OFL 1.1), inlined into every page as base64. Each file carries its copyright notice and the licence text in its own metadata, so pages that embed them stay licensed.
 - `references/overview.md`: the overview format (feature, checks, shape, diagrams) and how to write it.
 - `references/recommendations.md`: group gists, recommendations, screenshots and recordings, and how to capture them.
 - `references/review-md.md`: the `REVIEW.md` format for a project's review rules and shared guides.

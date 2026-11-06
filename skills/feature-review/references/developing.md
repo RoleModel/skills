@@ -18,7 +18,7 @@ The page is typeset, not boxed. Keep to these when changing it:
   there if you ever replace a font): Source Serif 4 for headings and
   prose in the reading views (17px/1.6, a 68ch measure, old-style figures),
   Source Sans 3 for the interface (header, sidebar, buttons, tables, metadata,
-  tabular figures), Source Code Pro for code and paths, ligatures off.
+  tabular figures), JetBrains Mono for code and paths, ligatures off.
 - **Colour has meaning or it is ink.** One link blue; green and red for added
   and removed (and Looks right / Concern); amber for "look here". A
   recommendation's kind colours its top rule and label (bugs and risks red,

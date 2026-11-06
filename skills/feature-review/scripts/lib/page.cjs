@@ -12,7 +12,7 @@ const PAGE = path.join(__dirname, '..', 'page');
 const asset = (f) => fs.readFileSync(path.join(PAGE, f), 'utf8');
 const FONTS = [['Review Serif', 'source-serif-4-latin-opsz-normal', 'normal'], ['Review Serif', 'source-serif-4-latin-opsz-italic', 'italic'],
   ['Review Sans', 'source-sans-3-latin-wght-normal', 'normal'], ['Review Sans', 'source-sans-3-latin-wght-italic', 'italic'],
-  ['Review Mono', 'source-code-pro-latin-wght-normal', 'normal']];
+  ['Review Mono', 'jetbrains-mono-latin-wght-normal', 'normal'], ['Review Mono', 'jetbrains-mono-latin-wght-italic', 'italic']];
 const fontFaces = () => FONTS.map(([fam, file, style]) => `@font-face{font-family:"${fam}";font-style:${style};font-weight:200 900;font-display:swap;` +
   `src:url(data:font/woff2;base64,${fs.readFileSync(path.join(PAGE, 'fonts', file + '.woff2')).toString('base64')}) format("woff2")}`).join('\n');
 const SERVER_PLACEHOLDER = '<script id="server-src" type="application/json">null</script>';
