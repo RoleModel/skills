@@ -1023,5 +1023,9 @@ details.recchecks{border-left:0;padding-left:0}
 .hc tr.d td.c,.hc tr.d td.n,.hc td.rd{background:var(--hc-del)}
 .hc tr.a>td:first-child,.hc td.ra:first-child{box-shadow:inset 4px 0 0 var(--pos)}
 .hc tr.d>td:first-child,.hc td.rd:first-child{box-shadow:inset 4px 0 0 var(--neg)}
-.hc tr.a td.c mark,.hc td.ra mark{background:color-mix(in srgb,var(--pos) 45%,transparent)}
-.hc tr.d td.c mark,.hc td.rd mark{background:color-mix(in srgb,var(--neg) 45%,transparent)}
+/* Changed words get their own fill (paler than the row in light, deeper in dark) so the letters
+   stay crisp, and an underline in the row's colour marks them. */
+:root.hc{--hc-addw:#f0fbf2;--hc-delw:#fff1ee}
+@media (prefers-color-scheme:dark){:root.hc{--hc-addw:#1e5a2b;--hc-delw:#6e2117}}
+.hc tr.a td.c mark,.hc td.ra mark{background:var(--hc-addw);box-shadow:inset 0 -2px 0 var(--pos)}
+.hc tr.d td.c mark,.hc td.rd mark{background:var(--hc-delw);box-shadow:inset 0 -2px 0 var(--neg)}
