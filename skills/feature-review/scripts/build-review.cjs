@@ -391,7 +391,8 @@ fs.mkdirSync(path.dirname(out), { recursive: true });
 const PAGE = path.join(__dirname, 'page');
 const asset = (f) => fs.readFileSync(path.join(PAGE, f), 'utf8');
 // The page's type: Source Serif 4 (text, with optical sizes), Source Sans 3 (interface) and Source
-// Code Pro (code), latin subsets under the OFL, inlined so the page stays offline and single-file.
+// Code Pro (code), latin subsets under the SIL OFL 1.1, inlined so the page stays offline and single-file.
+// Each font carries its copyright and the licence text in its own metadata, so every page does too.
 const FONTS = [['Review Serif', 'source-serif-4-latin-opsz-normal', 'normal'], ['Review Serif', 'source-serif-4-latin-opsz-italic', 'italic'],
   ['Review Sans', 'source-sans-3-latin-wght-normal', 'normal'], ['Review Sans', 'source-sans-3-latin-wght-italic', 'italic'],
   ['Review Mono', 'source-code-pro-latin-wght-normal', 'normal']];

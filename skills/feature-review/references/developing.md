@@ -13,7 +13,9 @@ The page is typeset, not boxed. Keep to these when changing it:
   sit one indent in, under light rules; a recommendation's feature check is an
   aside with a thin rule on its left.
 - **Three faces, one job each**, inlined from `page/fonts/` as base64 woff2 by
-  `build-review.cjs` (about 360 KB, OFL): Source Serif 4 for headings and
+  `build-review.cjs` (about 360 KB; SIL OFL 1.1, with the copyright notice
+  and licence text inside each file's `name` table, IDs 0 and 13, so keep them
+  there if you ever replace a font): Source Serif 4 for headings and
   prose in the reading views (17px/1.6, a 68ch measure, old-style figures),
   Source Sans 3 for the interface (header, sidebar, buttons, tables, metadata,
   tabular figures), Source Code Pro for code and paths, ligatures off.
