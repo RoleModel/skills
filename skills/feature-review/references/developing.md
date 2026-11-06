@@ -1,5 +1,38 @@
 # Developing the page
 
+## Design
+
+The page is typeset, not boxed. Keep to these when changing it:
+
+- **No box in a box.** Sections are separated by space and a single hairline
+  rule. Only controls, inputs, figures, snippets and the diff get a border.
+  No coloured side rails, pills, badges or shadows (the lightbox and menus
+  are the only shadows).
+- **Nesting shows in rule weight, indent and size.** In Recommendations: a
+  group has a dark rule and its number hung in a gutter; its recommendations
+  sit one indent in, under light rules; a recommendation's feature check is an
+  aside with a thin rule on its left.
+- **Three faces, one job each**, inlined from `page/fonts/` as base64 woff2 by
+  `build-review.cjs` (about 360 KB, OFL): Source Serif 4 for headings and
+  prose in the reading views (17px/1.6, a 68ch measure, old-style figures),
+  Source Sans 3 for the interface (header, sidebar, buttons, tables, metadata,
+  tabular figures), Source Code Pro for code and paths, ligatures off.
+- **Colour has meaning or it is ink.** One link blue; green and red for added
+  and removed (and Looks right / Concern); amber for "look here". A
+  recommendation's kind colours its top rule and label (bugs and risks red,
+  questions blue, design and tests amber) until it is decided. Labels are
+  sentence case in the sans, never uppercase with tracking. Words, not icons:
+  no check marks, crosses or arrows in button labels.
+- **Run-in paragraphs** for a recommendation's parts ("Problem. ..."), numerals
+  hung in the margin for the feature-overview steps, and the decision buttons
+  at the right edge. Recommendations fold to their title (per item, or a whole
+  group); the folded set is stored under `<KEY>:folded`.
+- The header holds only the title, the steps, the mode switch and Finish; the
+  code view's toggles live in the **View** menu (same element ids, so the
+  keyboard and handlers are unchanged).
+
+Check a change in light and dark at 1440 and 900 px wide.
+
 Read this before changing the scripts or `scripts/page/`. None of it is needed
 to run a review.
 

@@ -10,7 +10,7 @@ allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '3.9'
+  version: '3.10'
 license: MIT
 ---
 
@@ -260,6 +260,7 @@ submit page is their approval step.
 - `scripts/submit-review.cjs`: posts a review JSON through `gh`; `saveReview` writes the Markdown and JSON.
 - `scripts/lib/diff-parse.cjs`: the one diff parser, used by all three and inlined into the page.
 - `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `diagrams.js`, `app.js`, inlined into every page.
+- `scripts/page/fonts/`: Source Serif 4, Source Sans 3 and Source Code Pro (latin, OFL), inlined into every page as base64.
 - `references/overview.md`: the overview format (feature, checks, shape, diagrams) and how to write it.
 - `references/recommendations.md`: group gists, recommendations, screenshots and recordings, and how to capture them.
 - `references/review-md.md`: the `REVIEW.md` format for a project's review rules and shared guides.

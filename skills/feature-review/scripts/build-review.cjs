@@ -390,6 +390,13 @@ fs.mkdirSync(path.dirname(out), { recursive: true });
 // --- the page -------------------------------------------------------------
 const PAGE = path.join(__dirname, 'page');
 const asset = (f) => fs.readFileSync(path.join(PAGE, f), 'utf8');
+// The page's type: Source Serif 4 (text, with optical sizes), Source Sans 3 (interface) and Source
+// Code Pro (code), latin subsets under the OFL, inlined so the page stays offline and single-file.
+const FONTS = [['Review Serif', 'source-serif-4-latin-opsz-normal', 'normal'], ['Review Serif', 'source-serif-4-latin-opsz-italic', 'italic'],
+  ['Review Sans', 'source-sans-3-latin-wght-normal', 'normal'], ['Review Sans', 'source-sans-3-latin-wght-italic', 'italic'],
+  ['Review Mono', 'source-code-pro-latin-wght-normal', 'normal']];
+const fontFaces = () => FONTS.map(([fam, file, style]) => `@font-face{font-family:"${fam}";font-style:${style};font-weight:200 900;font-display:swap;` +
+  `src:url(data:font/woff2;base64,${fs.readFileSync(path.join(PAGE, 'fonts', file + '.woff2')).toString('base64')}) format("woff2")}`).join('\n');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // JSON islands escape "<" so nothing inside them can close the script tag.
 const island = (id, value) => `<script id="${id}" type="application/json">${JSON.stringify(value).replace(/</g, '\\u003c')}</script>`;
@@ -407,24 +414,27 @@ const html = `<!doctype html>
 <meta name="darkreader-lock">
 <title>${esc(title)}</title>
 <style>
+${fontFaces()}
 ${asset('style.css')}
 </style></head><body>
 <header>
-<span class="steps" id="steps"><button data-step="overview"><b>1</b> Overview</button><button data-step="code"><b>2</b> Code</button><button data-step="submit"><b>3</b> Submit</button></span>
-<span class="steps modes diffonly" id="modes" title="Recommendations or code (r)"><button data-mode="recs">Recommendations</button><button data-mode="diff">Code</button></span>
 <h1>${esc(title)}</h1>
 <span class="stats" id="stats"></span>
-<button id="expand" class="diffonly codeonly">Expand all</button>
-<button id="collapse" class="diffonly codeonly">Collapse all</button>
-<button id="reset" class="diffonly codeonly">Reset viewed</button>
-<button id="hltoggle" class="diffonly codeonly">Syntax highlighting: on</button>
-<button id="wstoggle" class="diffonly codeonly">Whitespace: shown</button>
-<button id="splittoggle" class="diffonly codeonly">View: unified</button>
+<nav class="steps" id="steps" aria-label="Steps"><button data-step="overview">Overview</button><button data-step="code">Code</button><button data-step="submit">Submit</button></nav>
+<span class="modes diffonly" id="modes" title="Recommendations or code (r)"><button data-mode="recs">Recommendations</button><button data-mode="diff">Diff</button></span>
+<input type="search" id="q" class="diffonly codeonly" placeholder="Filter files">
+<details class="viewmenu diffonly codeonly"><summary>View</summary><div class="viewpanel">
+<button id="splittoggle">View: unified</button>
+<button id="wstoggle">Whitespace: shown</button>
+<button id="hltoggle">Syntax highlighting: on</button>
+<button id="expand">Expand all</button>
+<button id="collapse">Collapse all</button>
+<button id="reset">Reset viewed</button>
+</div></details>
 <button id="keys" title="Keyboard shortcuts (?)">?</button>
-<input type="search" id="q" class="diffonly codeonly" placeholder="Filter files…">
 <button id="gosubmit" class="primary diffonly">Finish review</button>
 </header>
-<div class="layout"><nav><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
+<div class="layout"><nav class="side"><section class="meta" id="meta"></section><div class="navlbl">Files</div><div id="navlist"></div></nav><main id="main"><section id="recsview"></section><div id="filelist"></div></main></div>
 <section id="overviewview"></section>
 <section id="submitview"></section>
 <section id="doneview"></section>

@@ -68,6 +68,9 @@
       flash('Could not save comments locally (storage full or blocked?). They will be lost if you close this tab.', true);
   };
 
+  // Recommendations the reviewer folded down to their title, remembered per review.
+  const folded = new Set(load(KEY + ':folded', []));
+  const saveFolded = () => store.set(KEY + ':folded', JSON.stringify(Array.from(folded)));
   let hideWs = !!WS && store.get('diffhidews') === '1';
   let split = store.get('diffsplit') === '1';
 
@@ -640,7 +643,7 @@
         review +
         '<hr><div class="row"><span>Code read</span><b><a href="#code" data-mode="diff">' + pct + '% of lines</a></b></div>' +
         (open.length ? '<div class="row"><span>Remaining</span><b>' + plural(open.length, 'recommendation') + '</b></div>'
-          : '<div class="row done"><span>&#10003; All recommendations decided</span></div>');
+          : '<div class="row done"><span>All recommendations decided</span></div>');
       $('gosubmit').textContent = 'Finish review' + (nc ? ' (' + nc + ')' : '');
       return;
     }
@@ -667,7 +670,7 @@
           ' line' + (lLines === 1 ? '' : 's') + '</b></div>' +
           '<div class="row"><span></span><b><span class="add">+' + lAdd +
           '</span> <span class="del">-' + lDel + '</span></b></div>'
-        : '<div class="row done"><span>&#10003; All files reviewed</span></div>');
+        : '<div class="row done"><span>All files reviewed</span></div>');
     $('gosubmit').textContent = 'Finish review' + (nc ? ' (' + nc + ')' : '');
   }
 
@@ -1114,8 +1117,8 @@
     return list.map((c) => {
       const k = checkOf(c);
       return '<div class="chk ' + (k.s || '') + '" data-k="' + esc(c.kid) + '"><div class="chkbtns">' +
-        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">&#10003; Looks right</button>' +
-        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">! Concern</button></div>' +
+        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">Looks right</button>' +
+        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">Concern</button></div>' +
         '<div class="chktext md">' + mdHtml(c.text) + '</div>' +
         (c.how ? '<div class="chkhow md"><b>How to check:</b> ' + mdHtml(c.how) + '</div>' : '') +
         (c.path ? '<div class="chkfile">' + fileLink(c.path, '<code>' + esc(c.path) + '</code>') + '</div>' : '') +
@@ -1198,9 +1201,8 @@
   function renderOverview() {
     const fe = (OV && OV.feature) || {}, sh = (OV && OV.shape) || {};
     ovv.innerHTML =
-      '<div class="ovhead"><div><div class="ovstep">Step 1 of 3</div><h2>What this change does, and its shape</h2>' +
-      '<p class="svnote">Read this before the code: decide whether the feature is right and the change is shaped well. The code is step 2.</p></div>' +
-      '<button type="button" class="primary" data-step="code">Start the code review &rarr;</button></div>' +
+      '<div class="ovhead"><div><h2>What this change does, and its shape</h2>' +
+      '<p class="lede">Read this before the code: decide whether the feature is right and the change is shaped well.</p></div></div>' +
       ciHtml() + authorHtml() +
       (OV ? '' : '<div class="ovblock"><p class="svnote">No overview was written for this change, so only the computed shape is shown. ' +
         'The agent adds one under <code>overview</code> in the reading guide.</p></div>') +
@@ -1218,7 +1220,7 @@
       '<h4>Where the change lands</h4>' + landsHtml() +
       '<h4>How the codebase\'s shape moved</h4>' + (sh.codebase ? '<div class="md">' + mdHtml(sh.codebase) + '</div>' : '') + sizesHtml() +
       '</section>' +
-      '<div class="ovfoot"><button type="button" class="primary" data-step="code">Start the code review &rarr;</button></div>';
+      '<div class="ovfoot"><button type="button" class="primary" data-step="code">Start the code review</button></div>';
     ['feature', 'connection', 'shape'].forEach((sec) => {
       const slot = ovv.querySelector('[data-diags="' + sec + '"]');
       const list = diagramsIn(sec);
@@ -1306,7 +1308,7 @@
     const c = state.comments.find((x) => x.sid === s.sid);
     const st = c ? 'yes' : state.dismissed.includes(s.sid) ? 'no' : 'open';
     const btn = (act, label) => '<button type="button" data-rc="' + act + '" data-sid="' + esc(s.sid) + '">' + label + '</button>';
-    const acts = st === 'open' ? btn('accept', '&#10003; Accept') + btn('edit', 'Edit') + btn('dismiss', '&#10007; Dismiss')
+    const acts = st === 'open' ? btn('accept', 'Accept') + btn('edit', 'Edit') + btn('dismiss', 'Dismiss')
       : st === 'yes' ? '<span class="tag done">In review</span>' + btn('edit', 'Edit') + btn('remove', 'Remove')
         : '<span class="tag">Dismissed</span>' + btn('restore', 'Restore');
     const mine = editing && editing.inRecs && editing.sid === s.sid;
@@ -1333,10 +1335,12 @@
     const more = n ? '<details class="recmore"' + (editingHere ? ' open' : '') + '><summary>' + (n === 1 ? 'The comment' : 'The ' + n + ' comments') +
       '</summary>' + sugs.map(recCommentHtml).join('') + '</details>' : '';
     const parts = partsHtml(r), mine = (r.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
-    return '<div class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop"><div class="rectitle">' +
+    return '<div class="rec ' + st + (r.kind ? ' k-' + esc(r.kind) : '') + (folded.has(r.rid) ? ' folded' : '') + '" data-rid="' + esc(r.rid) + '">' +
+      '<div class="rectop"><button type="button" class="recfold" data-fold aria-expanded="' + !folded.has(r.rid) + '" title="Collapse or expand"></button>' +
+      '<div class="rectitle" data-fold>' +
       (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span> ' : '') + inlineMd(r.title) + '</div>' +
-      '<div class="recbtns"><button type="button" data-rec="yes" class="' + (st === 'yes' ? 'on' : '') + '">&#10003; Yes</button>' +
-      '<button type="button" data-rec="no" class="' + (st === 'no' ? 'on' : '') + '">&#10007; No</button></div></div>' +
+      '<div class="recbtns"><button type="button" data-rec="yes" class="' + (st === 'yes' ? 'on' : '') + '">Yes</button>' +
+      '<button type="button" data-rec="no" class="' + (st === 'no' ? 'on' : '') + '">No</button></div></div>' +
       (parts || (r.why ? '<div class="recwhy md">' + mdHtml(r.why) + '</div>' : '')) +
       principleHtml(r) +
       (state.autoYes[r.rid] && st !== 'open' ? '<div class="recauto">Yes because you raised a concern on its feature check. Change it here if that is not what you meant.</div>' : '') +
@@ -1351,14 +1355,15 @@
       ' <span class="add">+' + f.add + '</span><span class="del">-' + f.del + '</span></a>').join('');
     return '<section class="rgroup" id="rg' + gi + '" data-g="' + gi + '"><div class="rghead">' +
       (g.title ? '<span class="gnum">' + (gi + 1) + '.</span>' : '') + '<h3>' + esc(g.title || 'All files') + '</h3>' +
-      '<span class="rgstat"></span><a class="btn" href="#' + (g.title ? 'g' + gi : 'f' + g.files[0].i) + '">Read the code &rarr;</a></div>' +
+      '<span class="rgstat"></span><a class="btn" href="#' + (g.title ? 'g' + gi : 'f' + g.files[0].i) + '">Read the code</a></div>' +
       (g.why ? '<p class="gwhy">' + esc(g.why) + '</p>' : '') +
       (g.summary ? '<div class="rgsum md">' + mdHtml(g.summary) + '</div>' : '') +
       (g.points.length ? '<ul class="rgpoints">' + g.points.map((p) => '<li class="md">' + inlineMd(p) + '</li>').join('') + '</ul>' : '') +
       '<div data-rgvis="' + gi + '"></div>' +
       // Files stay folded: the gist and the recommendations are what this view is for.
       '<details class="rgfwrap"><summary>' + plural(g.files.length, 'file') + '</summary><div class="rgfiles">' + chips + '</div></details>' +
-      (mine.length ? '<div class="rgrecs">' + mine.map(recHtml).join('') + '</div>' : '') + '</section>';
+      (mine.length ? '<div class="rgrecs"><h4 class="rglbl">' + (mine.length === 1 ? 'Recommendation' : plural(mine.length, 'recommendation')) +
+        '<button type="button" class="foldall" data-foldall></button></h4>' + mine.map(recHtml).join('') + '</div>' : '') + '</section>';
   }
   // A group is done here when every recommendation on it is decided; one with none has nothing to decide.
   function groupStat(el) {
@@ -1371,10 +1376,11 @@
   const recsCount = () => recs.length ? '<b>' + recsDecided() + ' / ' + recs.length + '</b> recommendations decided' : 'No recommendations';
   function renderRecs() {
     const general = recs.filter((r) => r.group == null);
-    rv.innerHTML = '<div class="rhead"><div><div class="ovstep">Step 2 of 3 &middot; Recommendations</div><h2>What changed, group by group</h2>' +
-      '<p class="svnote">Say yes or no to each recommendation; a yes puts its comments in your review. Switch to Code (<kbd>r</kbd>) for the diff behind any of it.</p></div>' +
+    rv.innerHTML = '<div class="rhead"><div><h2>What changed, group by group</h2>' +
+      '<p class="lede">Say yes or no to each recommendation; a yes puts its comments in your review. Switch to Code (<kbd>r</kbd>) for the diff behind any of it.</p></div>' +
       '<div class="rcount" id="rcount">' + recsCount() + '</div></div><div data-rgvis="top"></div>' +
-      (general.length ? '<section class="rgroup rgen"><div class="rghead"><h3>Across the change</h3></div><div class="rgrecs">' +
+      (general.length ? '<section class="rgroup rgen"><div class="rghead"><h3>Across the change</h3></div><div class="rgrecs"><h4 class="rglbl">' +
+        plural(general.length, 'recommendation') + '<button type="button" class="foldall" data-foldall></button></h4>' +
         general.map(recHtml).join('') + '</div></section>' : '') +
       sections.map(groupCardHtml).join('');
     const slot = (key, list) => {
@@ -1387,6 +1393,7 @@
       el.replaceWith(box);
     };
     rv.querySelectorAll('.rgroup[data-g]').forEach(groupStat);
+    rv.querySelectorAll('.rgrecs').forEach(foldAllLabel);
     slot('top', diagramsIn('recs'));
     sections.forEach((g, gi) => slot(gi, g.title ? diagrams.filter((d) => d.group === g.title) : []));
     mountRecVisuals(rv);
@@ -1404,6 +1411,18 @@
     });
   }
   // Redraw just this card, so a playing recording elsewhere in the view keeps going.
+  // A group's "Collapse all" reads "Expand all" once every recommendation in it is folded.
+  function foldAllLabel(box) {
+    const b = box.querySelector('[data-foldall]');
+    if (!b) return;
+    const all = Array.from(box.querySelectorAll('.rec'));
+    b.textContent = all.length && all.every((x) => x.classList.contains('folded')) ? 'Expand all' : 'Collapse all';
+  }
+  function setFold(el, on) {
+    el.classList.toggle('folded', on);
+    el.querySelector('.recfold').setAttribute('aria-expanded', String(!on));
+    if (on) folded.add(el.dataset.rid); else folded.delete(el.dataset.rid);
+  }
   function redrawRec(r) {
     const el = r && rv.querySelector('.rec[data-rid="' + r.rid + '"]');
     if (!el) return;
@@ -1483,6 +1502,21 @@
       redrawRec(recOfSid(s.sid));
       return;
     }
+    const fa = e.target.closest('[data-foldall]');
+    if (fa) {
+      const box = fa.closest('.rgrecs'), all = Array.from(box.querySelectorAll('.rec'));
+      const on = !all.every((x) => x.classList.contains('folded'));
+      all.forEach((x) => setFold(x, on));
+      saveFolded(); foldAllLabel(box);
+      return;
+    }
+    const fd = e.target.closest('[data-fold]');
+    if (fd && !e.target.closest('a') && !String(window.getSelection() || '')) {
+      const el = fd.closest('.rec');
+      setFold(el, !el.classList.contains('folded'));
+      saveFolded(); foldAllLabel(el.closest('.rgrecs'));
+      return;
+    }
     const b = e.target.closest('[data-rec]');
     if (!b) return;
     const r = recs.find((x) => x.rid === b.closest('.rec').dataset.rid);
@@ -1505,7 +1539,7 @@
     { ev: 'REQUEST_CHANGES', label: 'Request changes', cls: 'danger', tip: 'Feedback that must be addressed before merging' },
     { ev: 'COMMENT', label: 'Comment', cls: '', tip: 'Feedback without approving' },
     { ev: 'APPROVE', label: 'Approve', cls: 'primary', tip: 'Approve merging these changes' },
-    { ev: 'APPROVE', shipit: true, label: '<span class="squirrel" aria-hidden="true">&#x1F43F;&#xFE0F;</span> Ship it', cls: 'primary shipit',
+    { ev: 'APPROVE', shipit: true, label: 'Ship it', cls: 'primary shipit',
       tip: 'Approve, with ' + SHIPIT + ' added to the summary' },
   ];
   sv.innerHTML =
@@ -1639,7 +1673,7 @@
     if (waiting) items.push({ warn: 1, html: '<a href="#" data-open="svcomments">' + plural(waiting, 'suggested comment') + ' not in your review</a>' });
     if (concerns().length) items.push({ warn: 1, html: plural(concerns().length, 'concern') + ' in the summary' });
     if (!items.some((i) => i.bad || i.warn)) items.push({ ok: 1, html: 'Everything is decided' });
-    return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + (i.bad ? '&#10007; ' : i.warn ? '&#9675; ' : '&#10003; ') + i.html + '</span>').join('');
+    return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + i.html + '</span>').join('');
   }
 
   function refreshSubmit() {
