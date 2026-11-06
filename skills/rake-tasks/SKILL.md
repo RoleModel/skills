@@ -54,5 +54,5 @@ end
   end
   ```
 
-- **`rolemodel-rails` in the `development` group breaks the task in production**, where it fails to load `rolemodel/utility/task_tools`. If the gem sits only in `development`, flag it rather than moving it silently.
+- **`rolemodel-rails` in the `development` group breaks the task in production**, where it fails to load `rolemodel/utility/task_tools`. If the gem sits only in `development`, move it automatically and inform the user why.
 - **A `def` in a `.rake` file is global, even inside a `namespace` block.** Two files that define `helper` share one method, and the file loaded last wins silently. Give helper methods task-specific names. (`include` there likewise lands on `Object`, which is harmless for TaskTools.)
