@@ -68,7 +68,6 @@
       flash('Could not save comments locally (storage full or blocked?). They will be lost if you close this tab.', true);
   };
 
-  // Recommendations the reviewer folded down to their title, remembered per review.
   const folded = new Set(load(KEY + ':folded', []));
   const saveFolded = () => store.set(KEY + ':folded', JSON.stringify(Array.from(folded)));
   let hideWs = !!WS && store.get('diffhidews') === '1';
@@ -1411,7 +1410,6 @@
     });
   }
   // Redraw just this card, so a playing recording elsewhere in the view keeps going.
-  // A group's "Collapse all" reads "Expand all" once every recommendation in it is folded.
   function foldAllLabel(box) {
     const b = box.querySelector('[data-foldall]');
     if (!b) return;

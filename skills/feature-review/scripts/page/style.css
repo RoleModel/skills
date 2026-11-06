@@ -1,18 +1,3 @@
-/* ==========================================================================
-   The feature-review page.
-
-   Principles, so later edits keep to them:
-   - Structure comes from type, space and hairline rules. Never a box in a box:
-     the only bordered things are controls, inputs, figures and the diff.
-   - Three faces with one job each: serif for reading (headings, prose),
-     sans for the interface (header, sidebar, buttons, tables, metadata),
-     mono for code and paths.
-   - One accent (ink blue) for links and focus. Green and red mean added and
-     removed, and appear almost nowhere else. Amber means "look here".
-   - No uppercase tracked labels, no pills, no coloured side rails, no icons
-     standing in for words.
-   - Prose keeps a reading measure (about 68 characters); figures may run wider.
-   ========================================================================== */
 
 :root{
   --hh:57px;
@@ -111,7 +96,6 @@ nav.side a.since::before{content:"";display:inline-block;width:5px;height:5px;bo
 main{flex:1;min-width:0;padding:36px 44px 96px}
 @media (max-width:900px){nav.side{display:none}main{padding:24px 18px 80px}header{padding:10px 18px}}
 
-/* Sidebar summary: a few lines of quiet text, not a dashboard. */
 .meta{padding:0 0 18px;margin-bottom:18px;border-bottom:1px solid var(--rule)}
 .meta .pctrow{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
 .meta .pct{font:600 26px/1 var(--serif);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
@@ -131,7 +115,6 @@ main{flex:1;min-width:0;padding:36px 44px 96px}
 .progress>i.no{background:var(--rule-2)}
 .navlbl{font:600 13.5px var(--sans);color:var(--ink);margin:0 0 8px}
 
-/* Group headings, in the sidebar and above each group of files. */
 .ghead{margin:56px 0 18px}
 #filelist>.ghead:first-child{margin-top:0}
 .ghead h2{margin:0;font:600 24px/1.2 var(--serif);letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px;text-wrap:balance}
@@ -186,7 +169,7 @@ td.ra mark{background:color-mix(in srgb,var(--pos) 28%,transparent)}td.rd mark{b
 table.split{table-layout:fixed}
 table.split td.n{width:auto;min-width:0}
 table.split tr.sp td.c:nth-child(2){border-right:1px solid var(--rule)}
-/* Hunk headers and the gaps between hunks: quiet bands. */
+
 tr.h td,tr.g td{background:var(--wash);color:var(--ink-3);padding:5px 10px;font:12.5px/1.4 var(--sans);white-space:normal}
 tr.h td{font-family:var(--mono);font-size:12px}
 tr.g button{padding:1px 8px;font-size:12px;margin-right:6px;background:var(--paper)}
@@ -194,7 +177,7 @@ tr.g button{padding:1px 8px;font-size:12px;margin-right:6px;background:var(--pap
 .ghint{opacity:.8;margin-left:6px}
 .ghint code{font-family:var(--mono)}
 tr.m td{color:var(--ink-3);font-style:italic;padding:4px 10px}
-/* Commenting on lines: click or drag a line number. */
+
 td.n[data-r]{cursor:pointer}
 td.n[data-r]:hover{background:var(--ink);color:var(--paper)}
 td.sel,td.dragsel{box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--link) 10%,transparent)}
@@ -202,7 +185,7 @@ td.n.sel{box-shadow:inset -2px 0 0 var(--link)}
 body.dragging{user-select:none;cursor:ns-resize}
 td.n.hc{box-shadow:inset -2px 0 0 var(--link)}
 td.goflash{box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--warn) 22%,transparent)}
-/* A row of comments and threads under a line. */
+
 tr.cmt td{padding:10px 16px 12px;background:var(--paper);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
   white-space:normal;font:15px/1.5 var(--sans)}
 .xc{color:var(--xc);font-style:italic}.xs{color:var(--xs)}.xn{color:var(--xn)}.xk{color:var(--xk)}
@@ -285,14 +268,11 @@ body.nohl td.c span{color:inherit;font-style:normal}
 .sugg table{font-size:12.5px}
 .sugg td.c{padding:0 8px}
 
-/* Reading views set prose in the serif, at a reading size and measure. */
 #overviewview .md,#recsview .md,.svcompose .epreview,#submitview .svfold .md{font:17px/1.6 var(--serif);font-variant-numeric:oldstyle-nums proportional-nums}
 #overviewview .md code,#recsview .md code{font-size:.8em}
 #overviewview .md strong,#recsview .md strong{font-weight:620}
 
-/* ==========================================================================
-   Overview (step 1)
-   ========================================================================== */
+/* --- overview -------------------------------------------------------------- */
 #overviewview{display:none;padding:64px 44px 120px}
 body.overviewing .layout,body.overviewing #submitview,body.overviewing #doneview{display:none}
 body.overviewing #overviewview{display:block}
@@ -308,7 +288,6 @@ body.overviewing header .diffonly{display:none}
 .ovfoot{display:flex;justify-content:flex-start;padding-top:40px}
 .ovfoot button{padding:10px 20px;font-size:15px}
 
-/* Each part of the overview is a section under a rule, not a card. */
 .ovblock{padding:44px 0 8px;margin:0 auto 32px;border-top:1px solid var(--rule)}
 .ovblock>h3{font:600 26px/1.2 var(--serif);letter-spacing:-.012em;margin:0 0 18px;text-wrap:balance;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .ovblock h4{font:600 19px/1.3 var(--serif);margin:40px 0 12px;display:flex;gap:10px;align-items:baseline;text-wrap:balance}
@@ -329,7 +308,6 @@ details.cxtech>summary::before,.recprin>summary::before,.svfold>summary::before{
 details.cxtech[open]>summary::before,.recprin[open]>summary::before,.svfold[open]>summary::before{transform:rotate(45deg);margin-bottom:4px}
 .ovmore summary:hover,.rgfwrap>summary:hover,.recmore summary:hover,.gdiag summary:hover{color:var(--ink)}
 
-/* CI: one line of text. Only a problem gets colour. */
 .ovci{margin:0 auto 40px;font-size:15px;color:var(--ink-2)}
 .ovci>b{font-weight:600;color:var(--ink)}
 .ovci.pass>b{color:var(--pos)}.ovci.fail>b{color:var(--neg)}.ovci.pending>b{color:var(--warn)}
@@ -339,7 +317,6 @@ details.cxtech[open]>summary::before,.recprin[open]>summary::before,.svfold[open
 .ovci details ul{columns:2 260px;column-gap:32px}
 .ovci .ovmore summary{font-size:13.5px;color:var(--ink-3);margin-top:6px}
 
-/* A note that needs attention: set off by space and an amber heading, not a box. */
 .ovwarn{margin:24px 0;padding:14px 0 14px 20px;border-left:2px solid var(--warn);max-width:var(--measure);font-size:15px}
 .ovwarn>b{display:block;font:600 14px var(--sans);color:var(--warn);margin-bottom:4px}
 .ovwarn ul{margin:6px 0 0;padding-left:1.1em}
@@ -350,14 +327,12 @@ details.cxtech[open]>summary::before,.recprin[open]>summary::before,.svfold[open
 .rgpoints li::marker{color:var(--ink-3)}
 .rgpoints code,.rectitle code,.cxtext h4 code{font:.8em var(--mono);background:var(--wash);border-radius:2px;padding:.1em .3em}
 
-/* The PR description's screenshots: a strip of thumbnails. */
 .ovthumbs{display:flex;gap:14px;overflow-x:auto;margin:20px 0 6px;padding-bottom:6px}
 .ovthumbs .dmedia{margin:0;flex:0 0 auto}
 .ovthumbs .dmedia img,.ovthumbs .dmedia video{height:168px;width:auto;max-width:none;max-height:none}
 .ovdesc{padding:6px 0 6px 18px;border-left:1px solid var(--rule-2);margin-top:8px;max-width:var(--measure)}
 .ovdesc img{max-height:320px;cursor:zoom-in}
 
-/* Tables in the overview: numbers right-aligned in tabular figures, hairlines between rows. */
 .ovblock table{font:14px/1.45 var(--sans);width:100%;margin:8px 0 4px}
 .ovblock th{text-align:left;font-weight:600;color:var(--ink-2);font-size:13.5px;padding:6px 12px 6px 0;border-bottom:1px solid var(--rule-2)}
 .ovblock td{white-space:normal;padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);vertical-align:baseline}
@@ -380,11 +355,10 @@ td.ovsize{width:28%;vertical-align:middle!important}
 .ovlbl{color:var(--ink-2);font-weight:600;margin-right:4px}
 .ovrow .chip{font:13px var(--mono);color:var(--ink)}
 .ovobjs{margin:16px 0}
-/* Status words (new, changed, removed; and a recommendation's kind): coloured text, nothing more. */
+
 .stag{font:600 13px var(--sans);color:var(--ink-3);white-space:nowrap;font-style:normal}
 .stag.new{color:var(--pos)}.stag.changed{color:var(--warn)}.stag.removed{color:var(--neg)}
 
-/* Feature checks: a list with rules between, the verdict buttons to the right. */
 .chk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 24px;padding:14px 0;border-top:1px solid var(--rule)}
 #ovchecks{margin-bottom:8px}
 .chktext,.chkhow,.chkfile{grid-column:1;min-width:0;overflow-wrap:anywhere}
@@ -432,7 +406,6 @@ details.cxtech>summary:hover{color:var(--ink)}
 .cxchecks .chknote{grid-column:1;grid-row:5}
 #overviewview .cxchecks .chktext.md{font-size:16px}
 
-/* File references: monospace text links, never chips. */
 .rfile{display:inline-flex;gap:6px;align-items:baseline;font:12.5px var(--mono);color:var(--link);text-decoration:none;max-width:100%;overflow-wrap:anywhere}
 a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18em}
 .rfile .add,.rfile .del{font-size:11.5px;font-variant-numeric:tabular-nums}
@@ -454,7 +427,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dside>.dsidet{padding-right:30px}
 .dsidet{font:600 13.5px var(--sans);color:var(--ink-3);margin-bottom:8px}
 .dside.after .dsidet{color:var(--ink)}
-/* A drawn diagram keeps its natural width; on a wide page it sits in the middle. */
+
 .dsvg{display:block;height:auto;margin:0 auto;font-family:var(--sans)}
 .dsvg text{fill:var(--ink);font-size:13px}
 .dsvg .dsub{fill:var(--ink-3);font-size:11px}
@@ -488,7 +461,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dmedia{margin:0}
 .dmedia img,.dmedia video{display:block;max-width:100%;max-height:460px;margin:0 auto;border:1px solid var(--rule);border-radius:2px;background:var(--wash)}
 .dmedia img{cursor:zoom-in}
-/* Inside a step or a recommendation a figure needs no rule of its own, and lines up with the text. */
+
 .cxvis .dmedia img,.cxvis .dmedia video{margin:0}
 .cxvis .diagram,.recvis .diagram,.rgvis .diagram{border-top:0;padding-top:0}
 .cxvis .dexpand,.recvis .dexpand,.rgvis .dexpand{top:-4px}
@@ -511,9 +484,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .lbclose{position:absolute;top:16px;right:16px;z-index:2;border:0;font-size:20px;line-height:1;padding:4px 8px;color:var(--ink-3);background:var(--paper)}
 .lbclose:hover{color:var(--ink)}
 
-/* ==========================================================================
-   Code step: recommendations
-   ========================================================================== */
+/* --- recommendations ------------------------------------------------------- */
 #recsview{display:none;max-width:1000px}
 body.recs #recsview{display:block}
 body.recs #filelist{display:none}
@@ -522,10 +493,6 @@ body.recs header .codeonly{display:none}
 .rcount b{display:block;font:600 30px/1.1 var(--serif);color:var(--ink);font-variant-numeric:lining-nums tabular-nums;margin-bottom:2px}
 .rhead{margin-bottom:32px}
 
-/* Nesting without boxes. Three levels, each told apart by rule weight, indent and type size:
-   a group (dark rule, number hung in a gutter, 26px heading), its recommendations (indented one
-   step under a small heading, light rules that start at the indent, 19px titles), and a
-   recommendation's feature check (an aside: thin rule on its left, sans text, buttons below). */
 .rgroup{position:relative;padding:40px 0 28px 56px;margin-top:40px;border-top:1px solid var(--ink)}
 .rgroup:first-of-type{margin-top:0}
 .rgroup.rgen{padding-left:0}
@@ -547,8 +514,7 @@ body.recs header .codeonly{display:none}
 .rglbl+.rec{border-top:0;padding-top:12px}
 .rectop{display:flex;gap:24px;align-items:flex-start}
 .rectitle{flex:1;font:600 19px/1.35 var(--serif);text-wrap:balance;max-width:var(--measure)}
-/* The kind leads: what needs attention is marked by colour in the rule above it and in a label
-   over the title. Bugs and risks red, questions blue, design and tests amber; style stays quiet. */
+
 .rectitle .stag{display:flex;align-items:center;gap:8px;font:600 14.5px var(--sans);margin-bottom:6px}
 .stag.bug,.stag.risk{color:var(--neg)}
 .stag.design,.stag.tests{color:var(--warn)}
@@ -559,12 +525,11 @@ body.recs header .codeonly{display:none}
 .rec.k-design,.rec.k-tests{border-top:2px solid color-mix(in srgb,var(--warn) 70%,transparent)}
 .rglbl+.rec.k-bug,.rglbl+.rec.k-risk,.rglbl+.rec.k-question,.rglbl+.rec.k-design,.rglbl+.rec.k-tests{padding-top:22px;margin-top:8px}
 .rec.k-bug .rectitle,.rec.k-risk .rectitle{font-size:20px}
-/* Decided recommendations hand the colour back: the reviewer has dealt with them. */
+
 .rec.yes,.rec.no,.rec.mixed{border-top:1px solid var(--rule)!important}
 .rec.yes .stag,.rec.no .stag,.rec.mixed .stag{color:var(--ink-3)}
 .recbtns{display:flex;gap:6px;flex:0 0 auto;padding-top:2px;margin-left:auto}
-/* Folding a recommendation: the chevron hangs in the indent, the title toggles too. Folded, it keeps
-   its kind, title and Yes / No; everything else waits until it is opened again. */
+
 .rectop{position:relative}
 .recfold{position:absolute;left:-26px;top:0;width:22px;height:26px;padding:0;border:0;background:none;color:var(--ink-3)}
 .recfold::before{content:"";position:absolute;left:8px;top:7px;width:6px;height:6px;border:solid currentColor;
@@ -585,7 +550,7 @@ body.recs header .codeonly{display:none}
 .rec.no .rectitle{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--rule-2);text-decoration-thickness:1px}
 .rec.no .recparts,.rec.no .recwhy,.rec.no .recchecks{opacity:.55}
 .recwhy{color:var(--ink-2);margin-top:8px;max-width:var(--measure)}
-/* context / problem / proposal / tradeoffs as run-in paragraphs: "Problem. The new scope …" */
+
 .recparts{margin:12px 0 0;max-width:var(--measure)}
 .recpart{margin:0 0 .55em;min-width:0}
 .recpart dt{display:inline;font:600 14.5px var(--sans);color:var(--ink)}
@@ -614,7 +579,7 @@ body.recs header .codeonly{display:none}
 .recmeta{display:flex;gap:4px 16px;flex-wrap:wrap;align-items:baseline;margin-top:14px;font-size:13.5px;color:var(--ink-3)}
 .rref{font:12.5px var(--mono);color:var(--link)}
 .recmore summary{margin-top:8px}
-/* One suggested comment: where it points, the lines, what it says. */
+
 .recc{margin:10px 0 14px 15px;border-left:1px solid var(--rule-2);padding-left:16px}
 .recc .svfile{margin:0 0 6px;font:12.5px var(--mono);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .recc .svfile a{overflow-wrap:anywhere}
@@ -629,16 +594,14 @@ body.recs header .codeonly{display:none}
 .snippet{overflow:auto;background:var(--paper);border:1px solid var(--rule);border-radius:2px}
 .recc .snippet{max-width:900px}
 
-/* ==========================================================================
-   Submit (step 3) and submitted
-   ========================================================================== */
+/* --- submit and submitted -------------------------------------------------- */
 #submitview{display:none;max-width:860px;margin:0 auto;padding:64px 28px 120px}
 body.submitting .layout{display:none}
 body.submitting #submitview{display:block}
 body.submitting header .diffonly{display:none}
 .svtarget{color:var(--ink-2);font:italic 18px/1.5 var(--serif)}
 .svhead{margin-bottom:28px}
-/* What still needs the reviewer: a line of text, coloured only where it matters. */
+
 .svready{display:flex;flex-wrap:wrap;gap:4px 0;margin:0 0 28px;font-size:14px}
 .svchip{color:var(--ink-2)}
 .svchip+.svchip::before{content:"\00b7";color:var(--ink-3);margin:0 10px}
