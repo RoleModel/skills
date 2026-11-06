@@ -6,7 +6,7 @@ metadata:
   author: rolemodelsoftware
   version: "2.0"
   triggers: "open a PR, create a PR, file a PR, draft a PR, pull request, PR description, write the PR body, update the PR description, push this for review, put this up for review, ready for review"
-allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Bash(gh api repos/{owner}/{repo}/pulls/:*), Bash(gh stack link:*), Bash(gh stack --help:*), Read, Write
+allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Bash(gh stack link:*), Bash(gh stack --help:*), Read, Write
 ---
 
 # Creating a Pull Request
