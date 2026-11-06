@@ -54,10 +54,10 @@ git push -u origin HEAD
 gh pr create --base <base> --title "<title>" --body-file <path> --assignee @me   # add --draft when unfinished
 ```
 
-**Stack.** When the base is another open PR's branch, register the new PR in a GitHub PR stack on top of it, and print the stack number with the URL. If `gh stack --help` fails, the `github/gh-stack` extension is missing: tell the user and skip this step. Read the base PR's stack and its own base with the bundled script, which only ever reads (`SKILL_DIR` is the directory this file was loaded from):
+**Stack.** When the base is another open PR's branch, register the new PR in a GitHub PR stack on top of it, and print the stack number with the URL. If `gh stack --help` fails, the `github/gh-stack` extension is missing: tell the user and skip this step. Read the base PR's stack and its own base with the bundled script, which only ever reads. Write its path in the form `allowed-tools` lists, so it runs without a prompt: `~/.claude/skills/create-pr` when this file was loaded from your home directory (write `~`, not the expanded path), else `.claude/skills/create-pr` or `skills/create-pr` relative to the repo root.
 
 ```bash
-bash <SKILL_DIR>/scripts/pr-stack.sh <base PR number>
+bash ~/.claude/skills/create-pr/scripts/pr-stack.sh <base PR number>
 ```
 
 - `stack` is null: start a stack, keeping the base PR's own base — without `--base`, the bottom PR is retargeted to the default branch.
