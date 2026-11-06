@@ -2094,10 +2094,24 @@
     widthAt = WIDTHS[i] ? i : 1;
     document.documentElement.style.setProperty('--colw', WIDTHS[widthAt][1]);
     store.set('frwidth', String(widthAt));
-    $('setpanel').innerHTML = '<div class="setlbl">Page width</div><div class="seg">' + WIDTHS.map((w, j) =>
-      '<button type="button" data-width="' + j + '" class="' + (j === widthAt ? 'on' : '') + '">' + w[0] + '</button>').join('') + '</div>';
+    drawSettings();
   };
+  // Contrast, remembered the same way: high darkens text, rules, diff washes and syntax colours.
+  let contrast = store.get('frcontrast') === 'high' ? 'high' : 'normal';
+  const setContrast = (c) => {
+    contrast = c === 'high' ? 'high' : 'normal';
+    document.documentElement.classList.toggle('hc', contrast === 'high');
+    store.set('frcontrast', contrast);
+    drawSettings();
+  };
+  const seg = (attr, opts, on) => '<div class="seg">' + opts.map(([label, v]) =>
+    '<button type="button" ' + attr + '="' + v + '" class="' + (v === on ? 'on' : '') + '">' + label + '</button>').join('') + '</div>';
+  function drawSettings() {
+    $('setpanel').innerHTML = '<div class="setlbl">Page width</div>' + seg('data-width', WIDTHS.map((w, j) => [w[0], String(j)]), String(widthAt)) +
+      '<div class="setlbl">Contrast</div>' + seg('data-contrast', [['Normal', 'normal'], ['High', 'high']], contrast);
+  }
   setWidth(widthAt);
+  setContrast(contrast);
   // In Recommendations the reading column stays centred where every other step puts it, and the
   // sidebar sits in the left gutter beside it. Only when the gutter is too narrow for the sidebar
   // does the column move over to make room, so nothing ever overlaps.
@@ -2123,6 +2137,8 @@
     e.stopPropagation();
     const b = e.target.closest('[data-width]');
     if (b) { setWidth(+b.dataset.width); placeSidebar(); }
+    const c = e.target.closest('[data-contrast]');
+    if (c) setContrast(c.dataset.contrast);
   });
   document.addEventListener('click', () => setPanel(false));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });

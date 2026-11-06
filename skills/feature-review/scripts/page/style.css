@@ -993,3 +993,22 @@ details.recchecks{border-left:0;padding-left:0}
 @media (max-width:1000px){.hend .stats{display:none}}
 /* You write prose in the editor, so it uses the text face; code blocks inside still read as code once previewed. */
 .editor textarea{font:15px/1.55 var(--sans)}
+
+/* --- high contrast ---------------------------------------------------------- */
+/* Set from the settings panel: darker text, firmer rules, stronger diff washes and syntax colours
+   that are brighter and further apart, still readable on the diff washes. */
+:root.hc{
+  --paper:#ffffff; --ink:#000000; --ink-2:#2b2925; --ink-3:#45423c;
+  --rule:#c9c5bc; --rule-2:#8f8a80; --wash:#f0eee8; --wash-2:#e4e1d9;
+  --link:#0b3d91; --pos:#11531f; --neg:#8c1a10; --warn:#633f00;
+  --pos-wash:#cfe9d3; --neg-wash:#f5d2cb; --warn-wash:#f1e0b8;
+  --xc:#5c5850;--xs:#0a7a1f;--xn:#0050c8;--xk:#c0003c;--xl:#0050c8;--xf:#7a1fd1;--xt:#a65300;--xv:#a65300;--xa:#0a7a1f;--xy:#0050c8;
+}
+@media (prefers-color-scheme:dark){:root.hc{
+  --paper:#0b0b0a; --ink:#ffffff; --ink-2:#e2ded6; --ink-3:#c6c1b7;
+  --rule:#3f3d39; --rule-2:#6d6961; --wash:#1a1918; --wash-2:#262522;
+  --link:#b9d1f7; --pos:#aee6b7; --neg:#ffb4a5; --warn:#f3cc7d;
+  --pos-wash:#1d4126; --neg-wash:#52241d; --warn-wash:#43361a;
+  --xc:#aaa59b;--xs:#8fe37f;--xn:#7fb8ff;--xk:#ff7aa8;--xl:#7fb8ff;--xf:#c9a2ff;--xt:#ffb35c;--xv:#ffb35c;--xa:#8fe37f;--xy:#7fb8ff;
+}}
+.setlbl+.seg+.setlbl{margin-top:14px}
