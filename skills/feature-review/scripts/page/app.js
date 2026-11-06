@@ -774,18 +774,16 @@
     if (f.cb.checked) f.el.classList.add('peek');
   }
 
+  // Same shape as a comment in Recommendations: where it sits, the words, then a footer with its state and actions.
   function cardHtml(c, pending) {
-    const tag = c.sid ? '<span class="tag">Suggested</span>' : '';
+    const btn = (act, id, label, cls) => '<button type="button"' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + id + '">' + label + '</button>';
     const acts = pending
-      ? '<button type="button" data-act="accept" data-id="' + c.sid + '">Accept</button>' +
-        '<button type="button" data-act="edit-s" data-id="' + c.sid + '">Edit</button>' +
-        '<button type="button" data-act="dismiss" data-id="' + c.sid + '">Dismiss</button>'
-      : '<button type="button" data-act="edit" data-id="' + c.id + '">Edit</button>' +
-        '<button type="button" data-act="delete" data-id="' + c.id + '">Delete</button>';
+      ? '<span class="reccst">Suggested comment</span><span class="sp"></span>' + btn('dismiss', c.sid, 'Dismiss', 'quiet') +
+        btn('edit-s', c.sid, 'Edit', 'quiet') + btn('accept', c.sid, 'Accept', 'primary')
+      : '<span class="reccst yes">In your review</span><span class="sp"></span>' + btn('delete', c.id, 'Delete', 'quiet') + btn('edit', c.id, 'Edit');
     const label = c.subject === 'reply' ? 'Your reply' : esc(locLabel(c)) + orphanNote(c);
-    return '<div class="card' + (pending ? ' sugg-pending' : '') + '"><div class="chead"><span>' + label +
-      '</span>' + tag + (pending ? '<span>not in review yet</span>' : '') + '<span class="sp"></span>' + acts +
-      '</div><div class="md">' + renderBody(c) + '</div></div>';
+    return '<div class="card ' + (pending ? 'sugg-pending' : 'yes') + '"><div class="chead"><span>' + label + '</span></div>' +
+      '<div class="md">' + renderBody(c) + '</div><div class="reccfoot">' + acts + '</div></div>';
   }
 
   const when = (at) => { try { return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return at; } };
@@ -2102,7 +2100,7 @@
   // sidebar sits in the left gutter beside it. Only when the gutter is too narrow for the sidebar
   // does the column move over to make room, so nothing ever overlaps.
   // The sidebar narrows from its full width to a floor before giving up the gutter.
-  const NAV_W = 300, NAV_MIN = 230, NAV_GAP = 16, COL_PAD = 24;
+  const NAV_W = 300, NAV_MIN = 230, NAV_GAP = 40, COL_PAD = 24;
   function placeSidebar() {
     const vw = document.documentElement.clientWidth, w = WIDTHS[widthAt][1];
     const col = w.endsWith('%') ? vw : Math.min(parseInt(w, 10), vw - 2 * COL_PAD);
