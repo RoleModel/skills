@@ -7,7 +7,7 @@ metadata:
 
 # Rake Tasks
 
-Apps built with `rolemodel_rails` write rake tasks with `Rolemodel::Utility::TaskTools`, not hand-rolled `puts`, `ENV` flags, or progress printing. Check that `rolemodel-rails` is in the `Gemfile` outside the `development` group, since production tasks need it at runtime. If it's only in `development`, say so rather than moving it silently.
+Apps with `rolemodel-rails` in the `Gemfile` write rake tasks with `Rolemodel::Utility::TaskTools`, not hand-rolled `puts`, `ENV` flags, or progress printing.
 
 The gem's README is the API documentation: run `bundle info rolemodel-rails --path` and read the `Rolemodel::Utility::TaskTools` section of `README.md` there. This skill doesn't restate it.
 
@@ -54,5 +54,5 @@ end
   end
   ```
 
-- **`sanitize_arguments` in rolemodel-rails 2.6.1 and earlier drops any value that contains an underscore**, not just a bare `_`, so `jane_doe@example.com` silently becomes the default. On those versions, read arguments that can contain `_` straight from `args`.
+- **`rolemodel-rails` in the `development` group breaks the task in production**, where it fails to load `rolemodel/utility/task_tools`. If the gem sits only in `development`, flag it rather than moving it silently.
 - **A `def` in a `.rake` file is global, even inside a `namespace` block.** Two files that define `helper` share one method, and the file loaded last wins silently. Give helper methods task-specific names. (`include` there likewise lands on `Object`, which is harmless for TaskTools.)
