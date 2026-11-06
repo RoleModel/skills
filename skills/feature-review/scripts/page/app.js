@@ -2049,6 +2049,8 @@
     ? '<a href="' + esc(PR.url) + '" target="_blank" rel="noopener">' + esc(PR.owner + '/' + PR.repo) + '</a> <span>#' + PR.number + '</span>' +
       (PR.author ? ' <span>by @' + esc(PR.author) + '</span>' : '') + (META.since ? ' <span class="pillnote">since your last review</span>' : '')
     : esc(META.range || 'Local diff');
+  // The file count and line totals sit with the rest of what describes the PR.
+  $('hrepo').appendChild($('stats'));
 
   function setView() {
     const h = location.hash, was = document.body.dataset.view;

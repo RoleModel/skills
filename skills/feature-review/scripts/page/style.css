@@ -696,9 +696,12 @@ header{display:block;padding:0}
 .hrepo a{color:var(--ink-3);font-weight:600}
 .hrepo a:hover{color:var(--link)}
 .hrepo .pillnote{font-size:12.5px}
+.hrepo{flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+.hrepo .stats{font-size:13px}
+@media (max-width:1100px){.hrepo .stats{display:none}}
+.hend #gocode{margin-right:4px}
 header h1{display:block;max-width:none;margin-top:2px}
 .hend{display:flex;gap:12px;align-items:center}
-.hend .stats{max-width:360px;overflow:hidden;text-overflow:ellipsis}
 .rail{list-style:none;margin:0;padding:0;display:flex;align-items:center;gap:2px}
 .rail li.sep{width:1px;height:18px;background:var(--rule);margin:0 8px}
 .rail button{border:0;border-radius:0;display:flex;align-items:baseline;gap:6px;padding:6px 8px;color:var(--ink-3);box-shadow:inset 0 -2px 0 transparent}
@@ -990,7 +993,6 @@ details.recchecks{border-left:0;padding-left:0}
 .thread .tcm{border-bottom:0}
 .thread .tcm+.tcm{border-top:1px solid var(--rule)}
 /* Narrow windows: the file count gives way so the header keeps to two rows. */
-@media (max-width:1000px){.hend .stats{display:none}}
 /* You write prose in the editor, so it uses the text face; code blocks inside still read as code once previewed. */
 .editor textarea{font:15px/1.55 var(--sans)}
 
