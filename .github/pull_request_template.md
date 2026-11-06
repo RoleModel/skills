@@ -16,4 +16,4 @@
 
 ## Pre-merge
 
-- [ ] Have you updated `README.md` and `AGENTS.md`? Any new, renamed, or removed skill needs a row in the README table and a bullet in AGENTS.md. Check the box or replace it with `N/A` if this PR touches no skill.
+- [ ] Have you updated `README.md`? Any new, renamed, or removed skill needs a row in the README table. Check the box or replace it with `N/A` if this PR touches no skill.
