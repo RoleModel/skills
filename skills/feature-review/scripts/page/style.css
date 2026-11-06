@@ -86,10 +86,10 @@ nav.side{position:sticky;top:var(--hh);width:280px;flex:0 0 280px;height:calc(10
 nav.side>.meta,nav.side>.navlbl{flex:0 0 auto}
 /* Only the file list scrolls; the meta block stays pinned at the top of the sidebar. */
 #navlist{flex:1 1 auto;min-height:0;overflow:auto;padding:0 8px 32px 0;margin-right:-8px}
-:where(#navlist)>a{display:block;color:var(--ink-2);text-decoration:none;font:12.5px/1.4 var(--mono);padding:3px 0;
+:where(#navlist)>a,:where(#navlist) .ofl>a{display:block;color:var(--ink-2);text-decoration:none;font:12.5px/1.4 var(--mono);padding:3px 0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-:where(#navlist)>a:hover{color:var(--link)}
-:where(#navlist)>a .c{float:right;margin-left:10px;white-space:nowrap;font-size:11.5px;font-variant-numeric:tabular-nums}
+:where(#navlist)>a:hover,:where(#navlist) .ofl>a:hover{color:var(--link)}
+:where(#navlist) a .c{float:right;margin-left:10px;white-space:nowrap;font-size:11.5px;font-variant-numeric:tabular-nums}
 nav.side a.viewed{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--rule-2)}
 nav.side a.auto{color:var(--ink-3)}
 nav.side a.since::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--link);margin:0 6px 2px 0}
@@ -277,7 +277,7 @@ body.nohl td.c span{color:inherit;font-style:normal}
 body.overviewing .layout,body.overviewing #submitview,body.overviewing #doneview{display:none}
 body.overviewing #overviewview{display:block}
 body.overviewing header .diffonly{display:none}
-#overviewview>*{max-width:1000px;margin-left:auto;margin-right:auto}
+#overviewview>:not(.ovcol){max-width:1000px;margin-left:auto;margin-right:auto}
 @media (max-width:900px){#overviewview{padding:36px 18px 80px}}
 
 .ovhead,.rhead,.svhead{display:flex;gap:24px;align-items:flex-end;justify-content:space-between;margin-bottom:48px}
@@ -894,3 +894,69 @@ body.recs.gutter .layout{display:block}
 body.recs.gutter nav.side{position:fixed;left:var(--navx);width:var(--navw);flex-basis:var(--navw);top:var(--hh);height:calc(100vh - var(--hh));
   z-index:5;border-right:0}
 body.recs.gutter main{padding:36px 24px 80px}
+
+/* --- polish after the merge --------------------------------------------------- */
+/* The sidebar outline: each group's files sit under it, one per line. */
+.og>summary{padding:8px 0 4px}
+.ofl{padding:0 0 10px 18px}
+.og+.og{border-top:1px solid var(--rule);margin-top:6px;padding-top:4px}
+nav.side .og>summary .gnum{flex:none}
+nav.side .og>summary a{flex:1;min-width:0}
+nav.side .og>summary .gct{flex:none;margin-left:auto}
+
+/* A checks block with no heading needs no rule or gap above it. */
+.ovblock.untitled{border-top:0;padding-top:0}
+.ovblock.untitled>.chk:first-child,.ovblock>h3+.chk,.ovblock>.md+.chk{border-top:0}
+
+/* A recommendation: kind and severity as one line over the title. */
+#recsview .rec .rectop{display:block;margin-bottom:22px}
+.recmeta{display:flex;gap:0;align-items:baseline;font:600 13px var(--sans);margin-bottom:6px}
+.recmeta>span+span::before{content:"\00b7";color:var(--ink-3);margin:0 8px;font-weight:400}
+.recmeta .stag,.recmeta .sevtag{font:600 13px var(--sans)}
+.recmeta .sevtag{font-weight:500}
+#recsview .rec .rectitle{margin:0}
+
+/* Its parts: each a block under its own label, with room between, and the proposal
+   set apart, since it is what the reviewer is being asked to agree to. */
+#recsview .recparts{max-width:var(--measure);margin:0}
+#recsview .recpart{margin:0 0 22px}
+#recsview .recpart dt{display:block;font:600 12.5px/1.2 var(--sans);letter-spacing:.02em;color:var(--ink-3);margin:0 0 5px}
+#recsview .recpart dt::after{content:none}
+#recsview .recpart dd{display:block;margin:0}
+#recsview .recpart dd.md>p:first-child{display:block}
+#recsview .recpart.problem dt{color:var(--neg)}
+#recsview .recpart.proposal{background:var(--accent-bg);border-left:3px solid var(--link);padding:14px 18px 16px;margin-left:-21px;border-radius:0 4px 4px 0}
+#recsview .recpart.proposal dt{color:var(--link)}
+#recsview .recpart.proposal dd{color:var(--ink)}
+
+/* A suggested comment: one card, with a header, the code, the words and its own footer. */
+.rec .recc{margin:10px 0 0;padding:0;border:1px solid var(--rule-2);border-radius:6px;overflow:hidden;background:var(--paper)}
+.rec .recc .svfile{margin:0;padding:9px 14px;background:var(--wash);border-bottom:1px solid var(--rule);font:12.5px var(--mono)}
+.rec .recc .snippet{border:0;border-bottom:1px solid var(--rule);border-radius:0;max-width:none}
+.rec .recc>.md{padding:12px 14px 4px}
+.rec .recc .recedit{padding:10px 14px}
+.reccfoot{display:flex;align-items:center;gap:6px;padding:8px 10px 10px 14px}
+.reccfoot button{padding:5px 12px;font-size:13px}
+.reccfoot button.quiet{border-color:transparent;color:var(--ink-3)}
+.reccfoot button.quiet:hover{color:var(--ink);border-color:var(--rule-2)}
+.reccst{font:500 12.5px var(--sans);color:var(--ink-3)}
+.reccst.yes{color:var(--pos)}
+.rec .recc.yes{border-color:color-mix(in srgb,var(--pos) 55%,var(--rule-2))}
+.rec .recc.yes .svfile{background:var(--pos-wash)}
+.rec .recc.no{border-style:dashed}
+/* The width setting widens the text too, as it did before: the 68ch measure only holds at Narrow. */
+.ovcol,#recsview{--measure:max(68ch,calc(var(--colw) - 300px))}
+.lede{max-width:var(--measure)}
+/* The current group in the outline: a rule at the sidebar's edge, inside the summary so nothing clips. */
+.og.cur>summary h2{box-shadow:none;padding-left:0;margin-left:0}
+.og>summary{padding-left:10px;margin-left:-10px;box-shadow:inset 2px 0 0 transparent}
+.og.cur>summary{box-shadow:inset 2px 0 0 var(--ink)}
+/* "How to check" runs into its text. */
+.chkhow.md>p{display:inline}
+/* The decision: Add is the main action until it is made. */
+.recdecide button.yes:not(.on){background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.recdecide button.yes:not(.on):hover{background:color-mix(in srgb,var(--ink) 85%,var(--paper))}
+/* Related checks fold quietly under the parts, with no rule of their own. */
+details.recchecks{border-left:0;padding-left:0}
+.orecs,.ofiles>summary{padding-left:10px}
+.ofl{padding-left:28px}
