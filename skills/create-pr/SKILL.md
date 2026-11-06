@@ -6,7 +6,7 @@ metadata:
   author: rolemodelsoftware
   version: "2.0"
   triggers: "open a PR, create a PR, file a PR, draft a PR, pull request, PR description, write the PR body, update the PR description, push this for review, put this up for review, ready for review"
-allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Read, Write
+allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Bash(gh stack link:*), Bash(gh stack --help:*), Read, Write
 ---
 
 # Creating a Pull Request
@@ -53,6 +53,26 @@ Write the body to a file in the scratchpad — always `--body-file`, never `--bo
 git push -u origin HEAD
 gh pr create --base <base> --title "<title>" --body-file <path> --assignee @me   # add --draft when unfinished
 ```
+
+**Stack.** When the base is another open PR, stack the new PR on top of it and print the stack number with the URL. Skip this, and say why, if `gh stack --help` fails. Look up the base PR's stack (`SKILL_DIR` is the directory this file was loaded from):
+
+```bash
+"$SKILL_DIR/scripts/pr-stack.sh" <base PR number>
+```
+
+- No `stack`: start one. Pass the base PR's own base, or it is retargeted to the default branch.
+
+  ```bash
+  gh stack link --base <its base> <base PR number> <new PR number>
+  ```
+
+- `stack.position` equals `stack.size`: the base PR is on top, so add to the stack.
+
+  ```bash
+  gh stack link <stack.number> <new PR number>
+  ```
+
+- Otherwise the base PR is mid-stack: ask the user what to do.
 
 `--assignee @me` assigns whoever `gh` is authenticated as; if it fails, use `gh api user --jq .login`. Add the reviewers the user names, or those the repo's `AGENTS.md` or contributing docs ask for; otherwise none.
 
