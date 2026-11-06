@@ -411,8 +411,10 @@
   const sections = groups.length ? groups : [{ title: null, why: '', summary: '', points: [], files }];
   const fileOrder = sections.flatMap((g) => g.files);
 
+  // Pages built before the fix carry "**Nit:** nit: ...": keep the bold label, drop the agent's own.
+  const oneLabel = (body) => body.replace(/^(\*\*(Blocking|Should|Nit):\*\* )\s*(\*\*)?(blocking|should|nit)\s*:\s*(\*\*)?\s*/i, '$1');
   const suggestions = (GUIDE.suggestions || []).map((s) =>
-    Object.assign({ subject: s.line == null ? 'file' : 'line', side: 'RIGHT' }, s, { sid: 's' + hash(JSON.stringify(s)) }));
+    Object.assign({ subject: s.line == null ? 'file' : 'line', side: 'RIGHT' }, s, { sid: 's' + hash(JSON.stringify(s)) }, s.body ? { body: oneLabel(s.body) } : {}));
   const pendingSuggestions = () => suggestions.filter((s) =>
     !state.dismissed.includes(s.sid) && !state.comments.some((c) => c.sid === s.sid));
   const commentFrom = (s) => ({ id: uid('c'), sid: s.sid, path: s.path, subject: s.subject, side: s.side, line: s.line,
@@ -2269,7 +2271,7 @@
   splitBtn.onclick = () => setSplit(!split);
 
   // --- keyboard -------------------------------------------------------------
-  const KEYS = [['j / k', 'Next / previous file'], ['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
+  const KEYS = [['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
     ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['j / k', 'Next / previous, through every step and each recommendation (also → / ←); files in Code'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');

@@ -991,3 +991,5 @@ details.recchecks{border-left:0;padding-left:0}
 .thread .tcm+.tcm{border-top:1px solid var(--rule)}
 /* Narrow windows: the file count gives way so the header keeps to two rows. */
 @media (max-width:1000px){.hend .stats{display:none}}
+/* You write prose in the editor, so it uses the text face; code blocks inside still read as code once previewed. */
+.editor textarea{font:15px/1.55 var(--sans)}
