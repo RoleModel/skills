@@ -960,3 +960,34 @@ nav.side .og>summary .gct{flex:none;margin-left:auto}
 details.recchecks{border-left:0;padding-left:0}
 .orecs,.ofiles>summary{padding-left:10px}
 .ofl{padding-left:28px}
+/* The proposal's tint stays inside the column, so it never crowds the sidebar. */
+#recsview .recpart.proposal{margin-left:0}
+/* A comment in the code: the same card as in Recommendations. */
+.fcomments .card,tr.cmt .card{border:1px solid var(--rule-2);border-radius:6px;overflow:hidden;background:var(--paper);margin:8px 0;max-width:820px}
+.fcomments .card .chead,tr.cmt .card .chead{padding:8px 14px;background:var(--wash);border-bottom:1px solid var(--rule);font:12.5px var(--mono);color:var(--ink-2)}
+.fcomments .card>.md,tr.cmt .card>.md{padding:12px 14px 4px}
+.card.yes{border-color:color-mix(in srgb,var(--pos) 55%,var(--rule-2))}
+.card.yes .chead{background:var(--pos-wash)}
+.card.sugg-pending{border-top:1px solid var(--rule-2);border-style:dashed}
+/* A GitHub thread in the code: the same card, its posts inside. */
+.fcomments .thread,tr.cmt .thread{border:1px solid var(--rule-2);border-radius:6px;overflow:hidden;background:var(--paper);margin:8px 0;max-width:820px}
+.thread>.chead{padding:7px 10px 7px 14px;background:var(--wash);font-size:13px}
+.thread.open>.chead{border-bottom:1px solid var(--rule)}
+.thread>.chead button{border-color:transparent;color:var(--ink-3)}
+.thread>.chead button:hover{color:var(--ink);border-color:var(--rule-2)}
+.thread .tposts{border-left:0;margin:0;padding:4px 14px 8px}
+.thread.resolved{border-style:dashed}
+/* Comment cards look the same wherever they appear: in the code, in a thread, on Submit. */
+.card{border:1px solid var(--rule-2)!important;border-radius:6px;overflow:hidden;background:var(--paper);margin:8px 0 12px;max-width:820px}
+.card .chead{padding:8px 14px;background:var(--wash);border-bottom:1px solid var(--rule);font:12.5px var(--mono);color:var(--ink-2)}
+.card>.md,.card>.snippet+.md{padding:12px 14px 4px}
+.card>.snippet{border:0;border-bottom:1px solid var(--rule);border-radius:0}
+.card.yes{border-color:color-mix(in srgb,var(--pos) 55%,var(--rule-2))!important}
+.card.sugg-pending{border-style:dashed!important}
+/* One rule under the step bar, not two, whatever the recommendation's state. */
+#recsview .rec,#recsview .rec.yes,#recsview .rec.no,#recsview .rec.mixed{border-top:0!important}
+/* A thread's posts: rules between them, none after the last. */
+.thread .tcm{border-bottom:0}
+.thread .tcm+.tcm{border-top:1px solid var(--rule)}
+/* Narrow windows: the file count gives way so the header keeps to two rows. */
+@media (max-width:1000px){.hend .stats{display:none}}
