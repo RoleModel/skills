@@ -6,23 +6,23 @@
   --mono:"Review Mono","Source Code Pro",ui-monospace,SFMono-Regular,Menlo,monospace;
   --measure:68ch;
 
-  --paper:#fdfdfb; --ink:#1b1a18; --ink-2:#55524c; --ink-3:#8b877f;
+  --paper:#fdfdfb; --ink:#1b1a18; --ink-2:#55524c; --ink-3:#6d6961;
   --rule:#e7e4dd; --rule-2:#cdc9c0; --wash:#f4f2ec; --wash-2:#ece9e2;
-  --link:#24539a; --pos:#2c6a3a; --neg:#a2342a; --warn:#94650f;
+  --link:#24539a; --pos:#2c6a3a; --neg:#a2342a; --warn:#835a0c;
   --pos-wash:#e9f3ea; --neg-wash:#f9eae7; --warn-wash:#f8f0de;
 
   /* The original page's names, kept as aliases: hand-written diagrams use them. */
   --bg:var(--paper); --panel:var(--wash); --border:var(--rule); --text:var(--ink); --muted:var(--ink-3);
   --accent:var(--link); --add-b:var(--pos); --del-b:var(--neg); --add-bg:var(--pos-wash); --del-bg:var(--neg-wash); --hunk:var(--wash);
 
-  --xc:#8b877f;--xs:#2c5a2e;--xn:#24539a;--xk:#8a2c48;--xl:#24539a;--xf:#5a3d8c;--xt:#8a5410;--xv:#8a5410;--xa:#2c6a3a;--xy:#24539a;
+  --xc:#6d6961;--xs:#2c5a2e;--xn:#24539a;--xk:#8a2c48;--xl:#24539a;--xf:#5a3d8c;--xt:#8a5410;--xv:#8a5410;--xa:#2c6a3a;--xy:#24539a;
 }
 @media (prefers-color-scheme:dark){:root{
-  --paper:#151514; --ink:#e8e5de; --ink-2:#aaa69d; --ink-3:#7c7870;
+  --paper:#151514; --ink:#e8e5de; --ink-2:#bdb9b0; --ink-3:#99958c;
   --rule:#2b2a27; --rule-2:#403e3a; --wash:#1d1c1a; --wash-2:#252421;
   --link:#93b3e6; --pos:#86bf90; --neg:#e3907f; --warn:#d8ad5e;
   --pos-wash:#1c2a1f; --neg-wash:#2f1e1b; --warn-wash:#2a2416;
-  --xc:#7c7870;--xs:#a9cfa0;--xn:#93b3e6;--xk:#e39bb3;--xl:#93b3e6;--xf:#c3a8ec;--xt:#e0b072;--xv:#e0b072;--xa:#86bf90;--xy:#93b3e6;
+  --xc:#99958c;--xs:#a9cfa0;--xn:#93b3e6;--xk:#e39bb3;--xl:#93b3e6;--xf:#c3a8ec;--xt:#e0b072;--xv:#e0b072;--xa:#86bf90;--xy:#93b3e6;
 }}
 
 *{box-sizing:border-box}
@@ -54,7 +54,7 @@ mark{background:color-mix(in srgb,var(--warn) 22%,transparent);color:inherit}
 /* --- header ---------------------------------------------------------------- */
 header{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--rule);
   padding:12px 28px;display:flex;gap:10px 22px;align-items:center;flex-wrap:wrap}
-h1{font:600 17px/1.25 var(--serif);margin:0;letter-spacing:-.005em;flex:0 1 auto;min-width:0;max-width:46ch;
+header h1{font:600 17px/1.25 var(--serif);margin:0;letter-spacing:-.005em;flex:0 1 auto;min-width:0;max-width:46ch;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stats{color:var(--ink-3);font-size:13.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .add{color:var(--pos)}.del{color:var(--neg)}
@@ -86,10 +86,10 @@ nav.side{position:sticky;top:var(--hh);width:280px;flex:0 0 280px;height:calc(10
 nav.side>.meta,nav.side>.navlbl{flex:0 0 auto}
 /* Only the file list scrolls; the meta block stays pinned at the top of the sidebar. */
 #navlist{flex:1 1 auto;min-height:0;overflow:auto;padding:0 8px 32px 0;margin-right:-8px}
-#navlist>a{display:block;color:var(--ink-2);text-decoration:none;font:12.5px/1.4 var(--mono);padding:3px 0;
+:where(#navlist)>a{display:block;color:var(--ink-2);text-decoration:none;font:12.5px/1.4 var(--mono);padding:3px 0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#navlist>a:hover{color:var(--link)}
-#navlist>a .c{float:right;margin-left:10px;white-space:nowrap;font-size:11.5px;font-variant-numeric:tabular-nums}
+:where(#navlist)>a:hover{color:var(--link)}
+:where(#navlist)>a .c{float:right;margin-left:10px;white-space:nowrap;font-size:11.5px;font-variant-numeric:tabular-nums}
 nav.side a.viewed{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--rule-2)}
 nav.side a.auto{color:var(--ink-3)}
 nav.side a.since::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--link);margin:0 6px 2px 0}
