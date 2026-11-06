@@ -1,5 +1,39 @@
 # Developing the page
 
+## Design
+
+The page is typeset, not boxed. Keep to these when changing it:
+
+- **No box in a box.** Sections are separated by space and a single hairline
+  rule. Only controls, inputs, figures, snippets and the diff get a border.
+  No coloured side rails, pills, badges or shadows (the lightbox and menus
+  are the only shadows).
+- **Nesting shows in rule weight, indent and size.** In Recommendations, the
+  group title sits over a dark rule and the one item in focus reads below it
+  as plain type; the outline in the sidebar marks where you are with a thin
+  rule, not a filled box.
+- **Three faces, one job each**, inlined from `page/fonts/` as base64 woff2 by
+  `lib/page.cjs` (about 360 KB; SIL OFL 1.1, with the copyright notice
+  and licence text inside each file's `name` table, IDs 0 and 13, so keep them
+  there if you ever replace a font): Source Serif 4 for headings and
+  prose in the reading views (17px/1.6, a 68ch measure, old-style figures),
+  Source Sans 3 for the interface (header, sidebar, buttons, tables, metadata,
+  tabular figures), Source Code Pro for code and paths, ligatures off.
+- **Colour has meaning or it is ink.** One link blue; green and red for added
+  and removed (and Looks right / Concern); amber for "look here". A
+  recommendation's kind colours its top rule and label (bugs and risks red,
+  questions blue, design and tests amber) until it is decided. Labels are
+  sentence case in the sans, never uppercase with tracking. Words, not icons:
+  no check marks, crosses or arrows in button labels.
+- **Run-in paragraphs** for a recommendation's parts ("Problem. ..."), numerals
+  hung in the margin for the feature-overview steps, and Ignore and Add at
+  the foot of each recommendation.
+- The header holds the title, the step rail, settings and View code; the
+  step rail and step tabs are underlined text, not filled pills. The code
+  view's toggles sit in a second header row shown only in Code.
+
+Check a change in light and dark at 1440 and 900 px wide.
+
 Read this before changing the scripts or `scripts/page/`. None of it is needed
 to run a review.
 
