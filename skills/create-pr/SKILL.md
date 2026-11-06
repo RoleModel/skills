@@ -6,7 +6,7 @@ metadata:
   author: rolemodelsoftware
   version: "2.0"
   triggers: "open a PR, create a PR, file a PR, draft a PR, pull request, PR description, write the PR body, update the PR description, push this for review, put this up for review, ready for review"
-allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Bash(gh stack link:*), Bash(gh stack --help:*), Read, Write
+allowed-tools: Bash(git status:*), Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(git switch:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ls:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh api user:*), Bash(git merge-base:*), Bash(git rev-list:*), Bash(git rev-parse:*), Bash(bash ~/.claude/skills/create-pr/scripts/pr-stack.sh:*), Bash(bash .claude/skills/create-pr/scripts/pr-stack.sh:*), Bash(bash skills/create-pr/scripts/pr-stack.sh:*), Bash(gh stack link:*), Bash(gh stack --help:*), Read, Write
 ---
 
 # Creating a Pull Request
@@ -54,10 +54,10 @@ git push -u origin HEAD
 gh pr create --base <base> --title "<title>" --body-file <path> --assignee @me   # add --draft when unfinished
 ```
 
-**Stack.** When the base is another open PR's branch, register the new PR in a GitHub PR stack on top of it, and print the stack number with the URL. If `gh stack --help` fails, the `github/gh-stack` extension is missing: tell the user and skip this step. Read the base PR's stack and its own base:
+**Stack.** When the base is another open PR's branch, register the new PR in a GitHub PR stack on top of it, and print the stack number with the URL. If `gh stack --help` fails, the `github/gh-stack` extension is missing: tell the user and skip this step. Read the base PR's stack and its own base with the bundled script, which only ever reads (`SKILL_DIR` is the directory this file was loaded from):
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/<base PR number> --jq '{stack, base: .base.ref}'
+bash <SKILL_DIR>/scripts/pr-stack.sh <base PR number>
 ```
 
 - `stack` is null: start a stack, keeping the base PR's own base — without `--base`, the bottom PR is retargeted to the default branch.
