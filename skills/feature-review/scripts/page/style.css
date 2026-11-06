@@ -3,7 +3,7 @@
   --hh:57px;
   --serif:"Review Serif","Source Serif 4",Charter,"Iowan Old Style",Georgia,serif;
   --sans:"Review Sans","Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --mono:"Review Mono","Source Code Pro",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --mono:"Review Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --measure:68ch;
 
   --paper:#fdfdfb; --ink:#1b1a18; --ink-2:#55524c; --ink-3:#6d6961;
@@ -156,7 +156,7 @@ nav.side .ghead .gct{font-size:12px}
 .dnote{color:var(--ink-2);font:italic 15px var(--serif);padding:10px 14px}
 
 /* --- the diff: one table per file ------------------------------------------- */
-table{border-collapse:collapse;width:100%;font:12.75px/1.65 var(--mono);font-variant-ligatures:none}
+table{border-collapse:collapse;width:100%;font:12.5px/1.7 var(--mono);font-variant-ligatures:none}
 td{padding:0 8px;vertical-align:top;white-space:pre-wrap;word-break:break-word}
 td.n{width:1%;min-width:48px;text-align:right;color:var(--ink-3);user-select:none;position:sticky;padding:0 10px 0 8px;white-space:nowrap;
   border-right:1px solid var(--rule)}
@@ -1014,11 +1014,12 @@ details.recchecks{border-left:0;padding-left:0}
 .setlbl+.seg+.setlbl{margin-top:14px}
 /* Diff rows get their own, deeper fills, a solid edge on the line numbers, and word changes that
    stand out against the fill. */
-:root.hc{--hc-add:#b4e2bd;--hc-del:#f4bcb1}
-@media (prefers-color-scheme:dark){:root.hc{--hc-add:#1f5c2e;--hc-del:#732a1f}}
+:root.hc{--hc-add:#c4ebcb;--hc-del:#f9cdc4}
+/* In the dark the fills stay deep so the text keeps its contrast; the bright edge marks the change. */
+@media (prefers-color-scheme:dark){:root.hc{--hc-add:#0f2a16;--hc-del:#35120d}}
 .hc tr.a td.c,.hc tr.a td.n,.hc td.ra{background:var(--hc-add)}
 .hc tr.d td.c,.hc tr.d td.n,.hc td.rd{background:var(--hc-del)}
-.hc tr.a>td:first-child,.hc td.ra:first-child{box-shadow:inset 3px 0 0 var(--pos)}
-.hc tr.d>td:first-child,.hc td.rd:first-child{box-shadow:inset 3px 0 0 var(--neg)}
+.hc tr.a>td:first-child,.hc td.ra:first-child{box-shadow:inset 4px 0 0 var(--pos)}
+.hc tr.d>td:first-child,.hc td.rd:first-child{box-shadow:inset 4px 0 0 var(--neg)}
 .hc tr.a td.c mark,.hc td.ra mark{background:color-mix(in srgb,var(--pos) 45%,transparent)}
 .hc tr.d td.c mark,.hc td.rd mark{background:color-mix(in srgb,var(--neg) 45%,transparent)}
