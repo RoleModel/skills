@@ -1196,7 +1196,7 @@
       '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' <kbd>j</kbd></button>' : '') + '</div>';
   };
   function checksByStep() {
-    const block = (title, list) => list.length ? '<section class="ovblock">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
+    const block = (title, list) => list.length ? '<section class="ovblock' + (title ? '' : ' untitled') + '">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
     const stepBlock = (st, i) => {
       const list = (st.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
       if (!list.length) return '';
@@ -1315,14 +1315,14 @@
   function recCommentHtml(s) {
     const c = state.comments.find((x) => x.sid === s.sid);
     const st = c ? 'yes' : state.dismissed.includes(s.sid) ? 'no' : 'open';
-    const btn = (act, label) => '<button type="button" data-rc="' + act + '" data-sid="' + esc(s.sid) + '">' + label + '</button>';
-    const acts = st === 'open' ? btn('accept', 'Accept') + btn('edit', 'Edit') + btn('dismiss', 'Dismiss')
-      : st === 'yes' ? '<span class="tag done">In review</span>' + btn('edit', 'Edit') + btn('remove', 'Remove')
-        : '<span class="tag">Dismissed</span>' + btn('restore', 'Restore');
+    const btn = (act, label, cls) => '<button type="button"' + (cls ? ' class="' + cls + '"' : '') + ' data-rc="' + act + '" data-sid="' + esc(s.sid) + '">' + label + '</button>';
+    // The actions sit in the card's own footer: the state on the left, the quiet choices, then the main one.
+    const acts = st === 'open' ? '<span class="reccst">Suggested comment</span><span class="sp"></span>' + btn('dismiss', 'Dismiss', 'quiet') + btn('edit', 'Edit', 'quiet') + btn('accept', 'Accept', 'primary')
+      : st === 'yes' ? '<span class="reccst yes">In your review</span><span class="sp"></span>' + btn('remove', 'Remove', 'quiet') + btn('edit', 'Edit')
+        : '<span class="reccst">Dismissed</span><span class="sp"></span>' + btn('restore', 'Restore');
     const mine = editing && editing.inRecs && editing.sid === s.sid;
-    return '<div class="recc ' + st + '" data-sid="' + esc(s.sid) + '"><div class="svfile">' + goLink(s, esc(s.path) + ' &middot; ' + esc(locLabel(s))) +
-      '<span class="sp"></span>' + (mine ? '' : acts) + '</div>' + snippetHtml(s) +
-      (mine ? '<div class="recedit"></div>' : '<div class="md">' + renderBody(c || s) + '</div>') + '</div>';
+    return '<div class="recc ' + st + '" data-sid="' + esc(s.sid) + '"><div class="svfile">' + goLink(s, esc(s.path) + ' &middot; ' + esc(locLabel(s))) + '</div>' + snippetHtml(s) +
+      (mine ? '<div class="recedit"></div>' : '<div class="md">' + renderBody(c || s) + '</div><div class="reccfoot">' + acts + '</div>') + '</div>';
   }
   // The guide section a recommendation rests on, folded: the standard, a click away, in its own words.
   const principleHtml = (r) => {
@@ -1340,8 +1340,10 @@
         mixed: inReview + ' of ' + plural(n, 'comment') + ' in your review' }[st];
     const parts = partsHtml(r), mine = (r.checks || []).map((id) => checks.find((c) => c.id === id)).filter(Boolean);
     return '<article class="rec ' + st + '" data-rid="' + esc(r.rid) + '"><div class="rectop">' +
-      (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span>' : '') +
-      (SEV[r.severity] ? '<span class="sevtag ' + esc(r.severity) + '">' + SEV[r.severity] + '</span>' : '') +
+      // Kind and severity read as one quiet line over the title, not as badges beside it.
+      (r.kind || SEV[r.severity] ? '<div class="recmeta">' +
+        (r.kind ? '<span class="stag ' + esc(r.kind) + '">' + esc(KIND[r.kind] || r.kind) + '</span>' : '') +
+        (SEV[r.severity] ? '<span class="sevtag ' + esc(r.severity) + '">' + SEV[r.severity] + '</span>' : '') + '</div>' : '') +
       '<h3 class="rectitle">' + inlineMd(r.title) + '</h3></div>' +
       // A picture often says what the prose can't, so it comes first.
       ((r.visuals || []).length ? '<div class="recvis" data-recvis="' + esc(r.rid) + '"></div>' : '') +
