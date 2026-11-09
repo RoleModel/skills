@@ -322,10 +322,9 @@ today, then each thing the change adds.
 
 With two or more connection steps, give one diagram `"section": "connection"`
 whose parts name their steps; its stages are the steps' titles. It shows whole
-above the steps. Each step then shows just its own parts of the map, blown up
-(with what they connect to faint around them), and a small copy of the whole
-map floats beside the steps, lit at the step being read. Clicking either opens
-the walkthrough at that step. An edge with no `step` appears with the
+above the steps, and a small copy floats beside the steps while they're on
+screen, lit at the step being read. Clicking it opens the walkthrough at that
+step. An edge with no `step` appears with the
 later of its two ends; a part with no step is context, always faint. The build
 fails without a map, or with one that tags no part.
 

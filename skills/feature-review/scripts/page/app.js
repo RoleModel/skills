@@ -1170,7 +1170,7 @@
   // and files that do it, and carries the checks that test it.
   const gIndex = (t) => sections.findIndex((g) => g.title === t);
   // The map: the connection diagram whose parts name their steps. It shows whole above the steps, and
-  // again in each step, built up to that step: its parts draw in as the step scrolls into view.
+  // a small copy floats beside them, lit at the step being read (mini, below).
   const connectionMap = () => {
     const m = (cxSteps.length > 1 ? diagramsIn('connection').find(DIAG.isStaged) : null) || null;
     // The map's steps are the connection steps, so its breadcrumbs carry their titles.
@@ -1184,8 +1184,7 @@
           '"><span class="gnum">' + (gIndex(t) + 1) + '.</span> ' + esc(t) + '</a>').join('') +
         (st.files || []).map((n) => fileLink(n, '<span class="rfile">' + esc(n.split('/').pop()) + '</span>')).join('');
       const vis = (st.visuals || []).length;
-      return '<li class="cxstep' + (vis || connectionMap() ? '' : ' novis') + '"><div class="cxnum">' + (i + 1) + '</div><div class="cxbody">' +
-        (connectionMap() ? '<div class="cxmapn" data-cxmapn="' + (i + 1) + '"></div>' : '') +
+      return '<li class="cxstep' + (vis ? '' : ' novis') + '"><div class="cxnum">' + (i + 1) + '</div><div class="cxbody">' +
         (vis ? '<div class="cxvis" data-cxvis="' + i + '"></div>' : '') + '<div class="cxtext"><h4>' + inlineMd(st.title) + '</h4>' +
         (st.user ? '<div class="md cxuser">' + mdHtml(st.user) + '</div>' : '') +
         (links ? '<div class="cxlinks">' + links + '</div>' : '') + '</div></div></li>';
@@ -1243,25 +1242,7 @@
       const list = diagramsIn(sec);
       if (slot && list.length) slot.replaceWith(figures(list));
     });
-    const map = connectionMap(), seen = 'IntersectionObserver' in window && new IntersectionObserver((es) => es.forEach((x) => {
-      if (!x.isIntersecting) return;
-      seen.unobserve(x.target);
-      DIAG.focus(x.target, +x.target.dataset.n);
-    }), { threshold: 0.35 });
-    // Each step shows its own parts of the map, blown up; clicking opens the walkthrough there.
-    ovv.querySelectorAll('[data-cxmapn]').forEach((slot) => {
-      const n = +slot.dataset.cxmapn, fig = DIAG.render(Object.assign({}, map, { title: null, caption: null }), mdHtml, { plain: true });
-      fig.dataset.n = n;
-      fig.classList.add('cxzoom');
-      fig.title = 'Open the walkthrough';
-      fig.querySelectorAll('.dexpand').forEach((b) => b.remove());
-      slot.appendChild(fig);
-      DIAG.focus(fig, n, !!seen);
-      DIAG.zoom(fig, n);
-      if (seen) seen.observe(fig);
-      fig.addEventListener('click', () => openWalk(map, n));
-    });
-    mini.set(map);
+    mini.set(connectionMap());
     cxSteps.forEach((st, i) => {
       const slot = ovv.querySelector('[data-cxvis="' + i + '"]');
       if (slot) (st.visuals || []).forEach((d) => slot.appendChild(DIAG.render(d, mdHtml)));

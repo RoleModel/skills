@@ -511,11 +511,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dtime>li.removed::before{border-color:var(--neg);border-style:dashed}.dtime>li.removed .dtl{text-decoration:line-through;color:var(--ink-3)}
 .dtat{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;min-height:1em}.dtl{font-weight:600}.dtn{color:var(--ink-2);font-size:13px}
 .dtpin{display:inline-grid;place-items:center;vertical-align:1px;margin-right:6px;width:17px;height:17px;border-radius:50%;background:var(--link);color:var(--paper);font:700 10px var(--sans)}
-/* A step's own parts of the map, blown up. The whole map floats beside the steps (.cxmini). */
-.cxmapn figure.diagram{border-top:0;padding:0;cursor:zoom-in}
-.cxmapn .dbody{display:flex;justify-content:center}
-.cxmapn .dsvg{max-height:300px}
-.cxmapn .dlegend,.cxmapn .dhover{display:none}
+/* The whole map, small, floating beside the steps while they're on screen. */
 .cxmini{position:fixed;right:20px;bottom:20px;z-index:15;width:220px;padding:10px 12px 8px;background:var(--paper);border:1px solid var(--rule-2);
   border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.16);cursor:zoom-in;transition:opacity .2s,transform .2s}
 .cxmini.gutter{top:calc(var(--hh) + 24px);bottom:auto;width:240px}

@@ -654,32 +654,6 @@ const DIAG = (function () {
       if (g === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
     });
   }
-  // Points the picture at step n's own parts and what they connect to, blown up to fill the width;
-  // the rest stays in the drawing, faint, at the edges. 0 shows it whole again.
-  function zoom(fig, n) {
-    const svg = fig && fig.querySelector('.dsvg');
-    if (!svg || !svg.getBBox) return;
-    if (!svg.dataset.vb) svg.dataset.vb = svg.getAttribute('viewBox');
-    const full = svg.dataset.vb.split(' ').map(Number);
-    if (!n) { svg.setAttribute('viewBox', full.join(' ')); svg.style.width = ''; return; }
-    const on = (el) => (el.dataset.step || '').split(' ').map(Number).includes(n);
-    const ids = new Set();
-    svg.querySelectorAll('.dn[data-step]').forEach((el) => { if (on(el)) ids.add(el.dataset.id); });
-    svg.querySelectorAll('.de[data-step]').forEach((el) => { if (on(el)) { ids.add(el.dataset.from); ids.add(el.dataset.to); } });
-    let box = null;
-    const add = (b) => { box = box ? { l: Math.min(box.l, b.x), t: Math.min(box.t, b.y), r: Math.max(box.r, b.x + b.width), b: Math.max(box.b, b.y + b.height) } : { l: b.x, t: b.y, r: b.x + b.width, b: b.y + b.height }; };
-    svg.querySelectorAll('.dn[data-id]').forEach((el) => { if (ids.has(el.dataset.id)) add(el.getBBox()); });
-    svg.querySelectorAll('.de[data-step]').forEach((el) => { if (on(el)) add(el.getBBox()); });
-    if (!box) return;
-    const P = 26, minW = Math.min(full[2], 380);
-    let l = box.l - P, r = box.r + P;
-    if (r - l < minW) { const c = (l + r) / 2; l = c - minW / 2; r = c + minW / 2; }
-    l = Math.max(full[0], l); r = Math.min(full[0] + full[2], r);
-    const t = Math.max(full[1], box.t - P), b = Math.min(full[1] + full[3], box.b + P);
-    svg.setAttribute('viewBox', l + ' ' + t + ' ' + (r - l) + ' ' + (b - t));
-    // Drawn at up to twice its natural size, so the step's few boxes read large.
-    svg.style.width = Math.min((r - l) * 1.6, full[2] * 1.3) + 'px';
-  }
   // The walkthrough: a building diagram with its breadcrumbs above and previous / next below, for the
   // full-screen view. Arrow keys (the page sends them), the buttons, the crumbs and the scroll wheel
   // move through it.
@@ -715,25 +689,6 @@ const DIAG = (function () {
     return wrap;
   }
 
-  // Trims a drawn diagram to the parts shown at step n (and those arriving at it), so a step early in
-  // the walk doesn't carry the empty space of everything still to come.
-  function crop(fig, n) {
-    const svg = fig && fig.querySelector('.dsvg');
-    if (!svg || !n || !svg.getBBox) return;
-    let box = null;
-    svg.querySelectorAll('.dn, .de, g[data-from], .dpin').forEach((el) => {
-      const ss = (el.dataset.step || (el.closest('[data-step]') || {}).dataset?.step || '').split(' ').filter(Boolean).map(Number);
-      if (ss.length && Math.min(...ss) > n) return;
-      const b = el.getBBox();
-      if (!b.width && !b.height) return;
-      box = box ? { l: Math.min(box.l, b.x), t: Math.min(box.t, b.y), r: Math.max(box.r, b.x + b.width), b: Math.max(box.b, b.y + b.height) }
-        : { l: b.x, t: b.y, r: b.x + b.width, b: b.y + b.height };
-    });
-    if (!box) return;
-    const vb = svg.viewBox.baseVal, P = 14;
-    // Keep the full width, so every step's map lines up with the others; trim only the height.
-    svg.setAttribute('viewBox', vb.x + ' ' + Math.max(vb.y, box.t - P) + ' ' + vb.width + ' ' + (Math.min(vb.y + vb.height, box.b + P) - Math.max(vb.y, box.t - P)));
-  }
   function drawIn(el) {
     if (!el.animate || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
     if (el.matches('path.de') && !el.matches('.removed,.reply') && el.getTotalLength) {
@@ -842,7 +797,7 @@ const DIAG = (function () {
     return out;
   }
 
-  const api = { render, body, problems, focus, crop, zoom, walk, trace, isStaged, stagesOf, KINDS };
+  const api = { render, body, problems, focus, walk, trace, isStaged, stagesOf, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();
