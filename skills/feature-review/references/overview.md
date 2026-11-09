@@ -432,11 +432,9 @@ loop; `divider` separates phases.
 ### `compare`: before and after
 
 `{ "kind": "compare", "before": <diagram>, "after": <diagram> }`, side by side.
-Each side is any other kind, and its `title` replaces the "Before"/"After"
-label. Two drawings show one at a time, full size, with a Before / After
-switch (`"side": true` puts them side by side). Screenshots stay side by
-side. If a change is better told in steps than as two states, draw one
-diagram that builds instead.
+Each side is any other kind, its `title` replaces the "Before"/"After"
+label, and each side expands on its own. If a change is better told in steps
+than as two states, draw one diagram that builds instead.
 
 ### `html` and `svg`: anything else
 

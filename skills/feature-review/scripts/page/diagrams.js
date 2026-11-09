@@ -583,20 +583,7 @@ const DIAG = (function () {
     else if (d.kind === 'states') box.innerHTML = ranked(d, 'state');
     else if (d.kind === 'table') box.innerHTML = table(d);
     else if (d.kind === 'timeline') box.innerHTML = timeline(d);
-    else if (d.kind === 'compare' && d.before && d.after && d.side !== true && !['image', 'video'].includes(d.before.kind)) {
-      // Two drawings, one at a time at full size, with a switch: flipping shows what moved, where
-      // side by side halves each picture and leaves the reader to match them up by eye.
-      box.className = 'dbody dflip';
-      const names = [(d.before.title || 'Before'), (d.after.title || 'After')];
-      box.innerHTML = '<div class="dflipsw" role="tablist">' + names.map((t, i) => '<button type="button" role="tab" data-flip="' + i + '"' +
-        (i ? ' class="on" aria-selected="true"' : '') + '>' + esc(t) + '</button>').join('') + '</div>';
-      ['before', 'after'].forEach((k, i) => {
-        const side = document.createElement('div');
-        side.className = 'dflipside' + (i ? ' on' : '');
-        side.appendChild(body(Object.assign({}, d[k], { title: null })));
-        box.appendChild(side);
-      });
-    } else if (d.kind === 'compare') {
+    else if (d.kind === 'compare') {
       box.className = 'dbody dcompare';
       [['before', 'Before'], ['after', 'After']].forEach(([k, t]) => {
         const side = document.createElement('div');
@@ -769,14 +756,8 @@ const DIAG = (function () {
   // Whether a diagram has anything to build up step by step.
   if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
-      const b = e.target.closest && e.target.closest('[data-flip], .dsteps [data-go]');
+      const b = e.target.closest && e.target.closest('.dsteps [data-go]');
       if (!b) return;
-      if (b.dataset.flip != null) {
-        const box = b.closest('.dflip'), i = +b.dataset.flip;
-        box.querySelectorAll('[data-flip]').forEach((x) => { x.classList.toggle('on', +x.dataset.flip === i); x.setAttribute('aria-selected', String(+x.dataset.flip === i)); });
-        box.querySelectorAll(':scope > .dflipside').forEach((x, j) => x.classList.toggle('on', j === i));
-        return;
-      }
       const host = b.closest('.dwalk') || b.closest('figure.diagram');
       if (host && host.go) host.go(+b.dataset.go);
     });
