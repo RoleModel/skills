@@ -1247,6 +1247,7 @@
       const n = +slot.dataset.cxmapn, fig = DIAG.render(Object.assign({}, map, { title: null, caption: null }), mdHtml);
       fig.dataset.n = n;
       slot.appendChild(fig);
+      DIAG.crop(fig, n);
       DIAG.focus(fig, n, !!seen);
       if (seen) seen.observe(fig);
     });

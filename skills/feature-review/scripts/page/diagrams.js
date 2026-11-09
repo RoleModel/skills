@@ -92,7 +92,18 @@ const DIAG = (function () {
     // Order each row by where its neighbours sit, sweeping down, up and down again: enough to untangle
     // most review-sized diagrams without a layout engine.
     const banded = d.bands !== false && layers.some(Boolean);
-    const GAP = 28, LBL = banded ? 120 : 16;
+    // In a flow or a state machine, a line back up (a retry, "send back") runs up the right of the
+    // picture and a line that skips a rank runs down the left, each in a lane of its own, so the main
+    // path stays a clean column.
+    edges.forEach((e) => {
+      const a = byId.get(e.from), b = byId.get(e.to);
+      e.side = !d.ranked || a === b ? null : a.ri > b.ri ? 'right' : b.ri - a.ri > 1 ? 'left' : null;
+    });
+    const sideW = (k) => {
+      const list = edges.filter((e) => e.side === k);
+      return list.length ? 30 + list.length * 14 + Math.max(0, ...list.map((e) => (e.label ? tw(e.label, 11) + 16 : 0))) : 0;
+    };
+    const GAP = 28, LBL = banded ? 120 : 16 + sideW('left');
     const place = (row) => { let x = 0; row.forEach((n) => { n.x = x; x += n.w + GAP; }); row.width = x - GAP; };
     rows.forEach(place);
     const sweep = (ri, ref) => {
@@ -111,7 +122,7 @@ const DIAG = (function () {
     for (let ri = rows.length - 2; ri >= 0; ri--) sweep(ri, [ri + 1]);
     for (let ri = 1; ri < rows.length; ri++) sweep(ri, [ri - 1, ri - 2]);
     const inner = Math.max(...rows.map((r) => r.width), 200);
-    const W = LBL + inner + 24;
+    const W = LBL + inner + 24 + sideW('right');
     rows.forEach((row) => { const off = LBL + (inner - row.width) / 2; row.forEach((n) => { n.x += off; n.h = NH(n); }); row.h = Math.max(...row.map(NH)); });
 
     // Ports: edges sharing a side of a box spread across its middle, ordered by where the other end sits.
@@ -122,7 +133,7 @@ const DIAG = (function () {
     };
     const ports = new Map(), portX = new Map();
     edges.forEach((e) => {
-      if (e.from === e.to) return;
+      if (e.from === e.to || e.side) return;
       [[byId.get(e.from), byId.get(e.to)], [byId.get(e.to), byId.get(e.from)]].forEach(([n, other]) => {
         const k = n.id + ':' + sideOf(e, n);
         if (!ports.has(k)) ports.set(k, []);
@@ -163,9 +174,16 @@ const DIAG = (function () {
       if (Math.abs(x1 - x2) > 0.5) { if (!runs.has(gap)) runs.set(gap, []); runs.get(gap).push({ lo: Math.min(x1, x2), hi: Math.max(x1, x2), ref }); }
       return ref;
     };
+    const colL = Math.min(...nodes.map((n) => n.x)), colR = Math.max(...nodes.map((n) => n.x + n.w)), sideN = { left: 0, right: 0 };
     const routes = edges.map((e) => {
       const a = byId.get(e.from), b = byId.get(e.to);
       if (a === b) return { e, self: true };
+      if (e.side) {
+        const k = sideN[e.side]++, R = e.side === 'right';
+        const x = R ? colR + 22 + k * 14 : colL - 22 - k * 14, ax = R ? a.x + a.w : a.x, bx = R ? b.x + b.w : b.x;
+        const lw = e.label ? tw(e.label, 11) + 12 : 0;
+        return { e, pts: [[ax, { mid: a }], [x, { mid: a }], [x, { mid: b }], [bx, { mid: b }]], lbl: { x: R ? x + 6 + lw / 2 : x - 6 - lw / 2, side: [a, b] } };
+      }
       const pa = portX.get(e).a, pb = portX.get(e).b;
       if (a.ri === b.ri) {
         const g = addRun(a.ri - 1, pa, pb);
@@ -193,7 +211,9 @@ const DIAG = (function () {
       const used = [];
       list.sort((p, q) => (q.hi - q.lo) - (p.hi - p.lo)).forEach((r) => {
         let t = 0;
-        while ((used[t] || []).some((o) => r.lo < o.hi + 12 && r.hi > o.lo - 12)) t++;
+        // Runs that only meet end to end (a decision's yes going left, no going right) share a track.
+        const clash = (o) => (r.lo === o.hi || r.hi === o.lo ? false : r.lo < o.hi + 12 && r.hi > o.lo - 12);
+        while ((used[t] || []).some(clash)) t++;
         (used[t] = used[t] || []).push(r);
         r.ref.t = t;
       });
@@ -212,7 +232,7 @@ const DIAG = (function () {
       const n = tracks.get(ref.gap) || 1, top = gapTop(ref.gap), h = gapH(ref.gap);
       return top + h / 2 + (ref.t - (n - 1) / 2) * TR;
     };
-    const yOf = (v) => (typeof v === 'number' ? v : v.top ? v.top.y : v.bottom ? v.bottom.y + v.bottom.h : trackY(v));
+    const yOf = (v) => (typeof v === 'number' ? v : v.mid ? v.mid.y + v.mid.h / 2 : v.top ? v.top.y : v.bottom ? v.bottom.y + v.bottom.h : trackY(v));
 
     const used = new Set();
     let svg = '', labels = '', over = '';
@@ -234,7 +254,7 @@ const DIAG = (function () {
         lx = x + 28 + tw(e.label, 11) / 2; ly = y0;
       } else {
         p = rounded(r.pts.map(([x, v]) => [x, yOf(v)]), 16);
-        lx = r.lbl.x; ly = trackY(r.lbl.g);
+        lx = r.lbl.x; ly = r.lbl.side ? (r.lbl.side[0].y + r.lbl.side[0].h / 2 + r.lbl.side[1].y + r.lbl.side[1].h / 2) / 2 : trackY(r.lbl.g);
       }
       // An edge with no step of its own appears with the later of its two ends.
       const own = steps(e.step), at = own.length ? own : [Math.max(firstStep(a), firstStep(b))].filter(Boolean);
@@ -244,7 +264,7 @@ const DIAG = (function () {
       // A wide, invisible twin takes the pointer, so a 1px line is easy to hover and click.
       svg += '<path class="dhit" d="' + p + '"' + partAttrs(Object.assign({}, e, { step: at }), (a.label || e.from) + ' → ' + (b.label || e.to) + (e.label ? ': ' + e.label : '')) +
         ' data-from="' + esc(e.from) + '" data-to="' + esc(e.to) + '"/>';
-      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 12, text: e.label, s, at, pin: e.pin, from: e.from, to: e.to });
+      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 12, text: e.label, s, at, pin: e.pin, side: !!e.side, from: e.from, to: e.to });
       else if (e.pin != null) over += '<g' + partAttrs({ step: at }, (a.label || e.from) + ' → ' + (b.label || e.to)) + '>' + pinSvg(lx, ly, e.pin) + '</g>';
     });
     // Labels sit on their line's run across the gap, nudged along it until clear of boxes and each other.
@@ -252,8 +272,8 @@ const DIAG = (function () {
     const hit = (q, list) => list.some((o) => q.l < o.r && q.r > o.l && q.t < o.b && q.b > o.t);
     const placedL = [];
     lbls.forEach((L) => {
-      const at = (dx, dy) => { const x = Math.min(Math.max(L.x + dx, LBL + L.w / 2), W - L.w / 2 - 4); return { x, l: x - L.w / 2, r: x + L.w / 2, t: L.y + dy - 8, b: L.y + dy + 8 }; };
-      const tries = [[0, 0], [-40, 0], [40, 0], [-80, 0], [80, 0], [0, -14], [0, 14], [-120, 0], [120, 0]];
+      const at = (dx, dy) => { const x = Math.min(Math.max(L.x + dx, (banded ? LBL : 0) + L.w / 2 + 4), W - L.w / 2 - 4); return { x, l: x - L.w / 2, r: x + L.w / 2, t: L.y + dy - 8, b: L.y + dy + 8 }; };
+      const tries = L.side ? [[0, 0], [0, -18], [0, 18], [0, -36], [0, 36]] : [[0, 0], [-40, 0], [40, 0], [-80, 0], [80, 0], [0, -14], [0, 14], [-120, 0], [120, 0]];
       const ok = tries.find(([dx, dy]) => !hit(at(dx, dy), boxes) && !hit(at(dx, dy), placedL)) || [0, 0];
       const q = at(ok[0], ok[1]);
       placedL.push(q);
@@ -299,7 +319,7 @@ const DIAG = (function () {
     const rank = new Map(nodes.map((n) => [n.id, 0]));
     order.reverse().forEach((u) => out.get(u).forEach((v) => { if (!back.has(u + '>' + v)) rank.set(v, Math.max(rank.get(v), rank.get(u) + 1)); }));
     const layers = [...new Set(rank.values())].sort((a, b) => a - b).map((r) => 'r' + r);
-    return structure(Object.assign({}, d, { bands: false, layers, edges,
+    return structure(Object.assign({}, d, { bands: false, ranked: true, layers, edges,
       nodes: nodes.map((n) => Object.assign({ shape: n.initial ? 'start' : n.final ? 'end' : shape }, n, { layer: 'r' + rank.get(n.id) })) }));
   }
 
@@ -326,8 +346,8 @@ const DIAG = (function () {
     return '<ol class="dtime">' + events.map((e) => {
       const s = st(e.status);
       used.add(s);
-      return '<li class="' + s + '"' + partAttrs(e, e.label) + '>' + (e.pin != null ? '<span class="dtpin">' + esc(e.pin) + '</span>' : '') +
-        '<span class="dtat">' + esc(e.at || '') + '</span><span class="dtl">' + esc(e.label) + '</span>' +
+      return '<li class="' + s + '"' + partAttrs(e, e.label) + '><span class="dtat">' + esc(e.at || '') + '</span><span class="dtl">' +
+        (e.pin != null ? '<span class="dtpin">' + esc(e.pin) + '</span>' : '') + esc(e.label) + '</span>' +
         (e.note ? '<span class="dtn">' + esc(e.note) + '</span>' : '') + '</li>';
     }).join('') + '</ol>' + legend(used);
   }
@@ -425,13 +445,13 @@ const DIAG = (function () {
     '.timeline>*::before{content:"";position:absolute;top:4px;left:8px;width:9px;height:9px;border-radius:50%;background:var(--accent)}' +
     '.timeline>*::after{content:"";position:absolute;top:8px;left:20px;right:-4px;height:1px;background:var(--border)}.timeline>:last-child::after{display:none}' +
     '.timeline>.new::before{background:var(--add-b)}.timeline>.removed::before{background:var(--del-b)}.timeline>.ghost::before{background:var(--muted)}' +
-    '.meter{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}' +
+    '.meter{display:grid;max-width:480px;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}' +
     '.meter>i{display:block;height:10px;border-radius:3px;background:var(--accent);width:var(--v,50%)}.meter>i.new{background:var(--add-b)}.meter>i.removed{background:var(--del-b)}' +
     '.cross{color:var(--del-b)}' +
     // More of the app, sketched: frames, controls, overlays and a pointer, for drawing a screen the
     // review couldn't capture with the parts that matter outlined.
     '.screen.browser>.bar::after{content:attr(data-url);flex:1;margin-left:6px;padding:1px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--border);font:11px ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-    '.phone{width:var(--w,190px);border:1px solid var(--border);border-radius:22px;padding:14px 8px;background:var(--panel)}.phone>.body{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:var(--h,260px)}' +
+    '.phone{width:var(--w,190px);border:1px solid var(--border);border-radius:22px;padding:14px 8px;background:var(--panel)}.phone>.body{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:var(--h,0)}' +
     '.ui-select{display:inline-flex;justify-content:space-between;gap:12px;min-width:110px;border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:12px;background:var(--bg)}.ui-select::after{content:"\\25BE";color:var(--muted)}' +
     '.ui-check,.ui-radio{display:inline-flex;align-items:center;gap:6px;font-size:12px}.ui-check::before,.ui-radio::before{content:"";width:11px;height:11px;border:1px solid var(--muted);border-radius:2px;background:var(--bg)}' +
     '.ui-radio::before{border-radius:50%}.ui-check.on::before,.ui-radio.on::before{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--bg)}' +
@@ -440,7 +460,7 @@ const DIAG = (function () {
     '.ui-tabs{display:flex;gap:14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}.ui-tabs>*{padding:3px 0}.ui-tabs>.on{color:var(--text);box-shadow:inset 0 -2px var(--accent)}' +
     '.ui-nav{display:flex;flex-direction:column;gap:2px;font-size:12px;min-width:110px}.ui-nav>*{padding:3px 8px;border-radius:4px;color:var(--muted)}.ui-nav>.on{background:var(--panel);color:var(--text)}' +
     '.ui-menu{display:inline-flex;flex-direction:column;border:1px solid var(--border);border-radius:6px;background:var(--bg);padding:4px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.18)}.ui-menu>*{padding:3px 10px;border-radius:3px}.ui-menu>.on{background:var(--panel)}' +
-    '.ui-toast{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-left-width:3px;border-radius:6px;padding:5px 10px;font-size:12px;background:var(--bg)}.ui-toast.new{border-left-color:var(--add-b)}.ui-toast.removed{border-left-color:var(--del-b)}' +
+    '.ui-toast{width:max-content;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-left-width:3px;border-radius:6px;padding:5px 10px;font-size:12px;background:var(--bg)}.ui-toast.new{border-left-color:var(--add-b)}.ui-toast.removed{border-left-color:var(--del-b)}' +
     '.ui-banner{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;background:var(--panel)}' +
     '.ui-chip{display:inline-block;border:1px solid var(--border);border-radius:11px;padding:0 8px;font-size:11px;background:var(--panel)}' +
     '.ui-avatar{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--border);font-size:10px;font-weight:600}' +
@@ -448,7 +468,7 @@ const DIAG = (function () {
     '.ui-card{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);display:flex;flex-direction:column;gap:6px}' +
     '.ui-empty{border:1px dashed var(--border);border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:12px}' +
     '.ui-table{border-collapse:collapse;width:100%;font-size:12px}.ui-table th,.ui-table td{border:0;border-bottom:1px solid var(--border);padding:4px 8px}.ui-table th{background:none;color:var(--muted);font-weight:500}' +
-    'tr.new td{background:var(--add-bg)}tr.removed td{background:var(--del-bg);text-decoration:line-through;color:var(--muted)}tr.changed td,td.changed{box-shadow:inset 2px 0 #d29922}' +
+    'tr.new,tr.removed,tr.changed{border:0;opacity:1}tr.new td{background:var(--add-bg)}tr.removed td{background:var(--del-bg);text-decoration:line-through;color:var(--muted)}tr.changed td,td.changed{box-shadow:inset 2px 0 #d29922}' +
     '.scrim{position:relative;padding:18px;background:color-mix(in srgb,var(--text) 14%,var(--bg));border-radius:6px;display:grid;place-items:center}' +
     '.modal{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;min-width:180px;display:flex;flex-direction:column;gap:8px}.modal>.title{margin:0}' +
     '.cursor{display:inline-block;width:12px;height:16px;vertical-align:middle;background:var(--text);clip-path:polygon(0 0,0 100%,30% 72%,52% 100%,64% 94%,44% 66%,85% 66%)}' +
@@ -485,14 +505,36 @@ const DIAG = (function () {
   // so "this button" points at the button instead of a red rectangle drawn into the image.
   function marksHtml(list) {
     return (list || []).map((m) => {
-      const area = m.w != null && m.h != null, s = STATUS.includes(m.status) ? m.status : 'look';
+      const area = m.at || (m.w != null && m.h != null), s = STATUS.includes(m.status) ? m.status : 'look';
       return '<div class="dmark ' + s + (area ? '' : ' point') + '"' + partAttrs(m, m.label || (m.pin != null ? 'Mark ' + m.pin : 'Mark')) +
-        ' style="left:' + (+m.x || 0) + '%;top:' + (+m.y || 0) + '%' + (area ? ';width:' + (+m.w) + '%;height:' + (+m.h) + '%' : '') + '">' +
+        (m.at ? ' data-at="' + esc(m.at) + '" style="visibility:hidden">'
+          : ' style="left:' + (+m.x || 0) + '%;top:' + (+m.y || 0) + '%' + (area ? ';width:' + (+m.w) + '%;height:' + (+m.h) + '%' : '') + '">') +
         (m.pin != null ? '<span class="dmpin">' + esc(m.pin) + '</span>' : '') + (m.label ? '<span class="dmlbl">' + esc(m.label) + '</span>' : '') + '</div>';
     }).join('');
   }
   const staged = (inner, d) => (d.marks && d.marks.length ? '<div class="dstage">' + inner + marksHtml(d.marks) + '</div>' +
     legend(new Set(d.marks.map((m) => m.status).filter((x) => STATUS.includes(x)))) : inner);
+
+  // A mark on a sketch can name its target, `"at": ".ui-select"`, instead of coordinates: it is placed
+  // around that element once the sketch is laid out, and again whenever it resizes.
+  function placeMarks(stage) {
+    const host = stage.querySelector('.draw'), root = host && host.shadowRoot;
+    if (!root) return;
+    const sr = stage.getBoundingClientRect();
+    stage.querySelectorAll('.dmark[data-at]').forEach((m) => {
+      let el = null;
+      try { el = root.querySelector(m.dataset.at); } catch (e) { /* a bad selector leaves the mark hidden */ }
+      if (!el || !sr.width) return;
+      const r = el.getBoundingClientRect(), z = parseFloat(getComputedStyle(host).zoom) || 1, k = 1 / (z || 1);
+      Object.assign(m.style, { left: ((r.left - sr.left) * k - 4) + 'px', top: ((r.top - sr.top) * k - 4) + 'px',
+        width: (r.width * k + 8) + 'px', height: (r.height * k + 8) + 'px', visibility: '' });
+    });
+  }
+  function watchMarks(box) {
+    const stage = box.querySelector('.dstage');
+    if (!stage || !stage.querySelector('.dmark[data-at]') || typeof ResizeObserver === 'undefined') return;
+    new ResizeObserver(() => placeMarks(stage)).observe(stage);
+  }
 
   function body(d) {
     const box = document.createElement('div');
@@ -529,7 +571,7 @@ const DIAG = (function () {
         box.appendChild(side);
       });
     } else if (d.kind === 'html' || d.kind === 'svg') {
-      if (d.marks && d.marks.length) { box.innerHTML = staged('<i class="draw-slot"></i>', d); box.querySelector('.draw-slot').replaceWith(raw(d.html || d.svg)); }
+      if (d.marks && d.marks.length) { box.innerHTML = staged('<i class="draw-slot"></i>', d); box.querySelector('.draw-slot').replaceWith(raw(d.html || d.svg)); watchMarks(box); }
       else box.appendChild(raw(d.html || d.svg));
     }
     else if (d.kind === 'image' || d.kind === 'video') {
@@ -578,6 +620,25 @@ const DIAG = (function () {
       if (next) el.dataset.reveal = next; else delete el.dataset.reveal;
       if (next === 'is-focus' && (was === 'is-future' || !was)) drawIn(el);
     }));
+  }
+  // Trims a drawn diagram to the parts shown at step n (and those arriving at it), so a step early in
+  // the walk doesn't carry the empty space of everything still to come.
+  function crop(fig, n) {
+    const svg = fig && fig.querySelector('.dsvg');
+    if (!svg || !n || !svg.getBBox) return;
+    let box = null;
+    svg.querySelectorAll('.dn, .de, g[data-from], .dpin').forEach((el) => {
+      const ss = (el.dataset.step || (el.closest('[data-step]') || {}).dataset?.step || '').split(' ').filter(Boolean).map(Number);
+      if (ss.length && Math.min(...ss) > n) return;
+      const b = el.getBBox();
+      if (!b.width && !b.height) return;
+      box = box ? { l: Math.min(box.l, b.x), t: Math.min(box.t, b.y), r: Math.max(box.r, b.x + b.width), b: Math.max(box.b, b.y + b.height) }
+        : { l: b.x, t: b.y, r: b.x + b.width, b: b.y + b.height };
+    });
+    if (!box) return;
+    const vb = svg.viewBox.baseVal, P = 14;
+    // Keep the full width, so every step's map lines up with the others; trim only the height.
+    svg.setAttribute('viewBox', vb.x + ' ' + Math.max(vb.y, box.t - P) + ' ' + vb.width + ' ' + (Math.min(vb.y + vb.height, box.b + P) - Math.max(vb.y, box.t - P)));
   }
   function drawIn(el) {
     if (!el.animate || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
@@ -657,7 +718,9 @@ const DIAG = (function () {
       if (!(d.data || d.src)) out.push(at + ': ' + d.kind + ' needs a src file');
     } else if (!(d.html || d.svg)) out.push(at + ': ' + d.kind + ' diagram has no markup');
     (d.marks || []).forEach((m, i) => {
-      if (!m || !['x', 'y'].every((k) => +m[k] >= 0 && +m[k] <= 100)) out.push(at + ': mark ' + (i + 1) + ' needs x and y in percent (0 to 100)');
+      if (m && m.at && !['html', 'svg'].includes(d.kind)) out.push(at + ': mark ' + (i + 1) + ' uses "at", which only works on html and svg sketches');
+      else if (m && m.at) return;
+      else if (!m || !['x', 'y'].every((k) => +m[k] >= 0 && +m[k] <= 100)) out.push(at + ': mark ' + (i + 1) + ' needs x and y in percent (0 to 100), or "at" with a selector on a sketch');
       else if ((m.w != null) !== (m.h != null)) out.push(at + ': mark ' + (i + 1) + ' needs both w and h, or neither for a point');
     });
     if (ctx) {
@@ -671,7 +734,7 @@ const DIAG = (function () {
     return out;
   }
 
-  const api = { render, body, problems, focus, trace, isStaged, KINDS };
+  const api = { render, body, problems, focus, crop, trace, isStaged, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();

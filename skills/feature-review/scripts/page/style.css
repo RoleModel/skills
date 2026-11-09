@@ -472,7 +472,8 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .diagram [data-reveal]{transition:opacity .45s ease,stroke-width .2s}
 .diagram.staged [data-reveal=is-future]{opacity:0;pointer-events:none}
 .diagram.staged [data-reveal=is-past],.diagram.staged .dsvg [data-el]:not([data-step]):not(.dhit),.diagram.staged .dmark:not([data-step]){opacity:.3}
-.diagram.staged .dsvg .dn[data-reveal=is-focus] rect{stroke-width:2}
+.diagram.staged .dsvg .dn[data-reveal=is-focus] rect,.diagram.staged .dsvg .dn[data-reveal=is-focus] polygon{stroke-width:2;stroke:var(--ink-2)}
+.diagram.staged .dsvg .dn.new[data-reveal=is-focus] :is(rect,polygon){stroke:var(--pos)}.diagram.staged .dsvg .dn.changed[data-reveal=is-focus] :is(rect,polygon){stroke:var(--warn)}
 .diagram.staged .dsvg .de[data-reveal=is-focus]{stroke-width:1.8;stroke:var(--ink)}
 .diagram.staged .dsvg .de.new[data-reveal=is-focus]{stroke:var(--pos)}.diagram.staged .dsvg .de.changed[data-reveal=is-focus]{stroke:var(--warn)}
 .dsvg .de.new{stroke:var(--pos)}.dsvg .de.changed{stroke:var(--warn)}.dsvg .de.removed{stroke:var(--neg);stroke-dasharray:4 3}
@@ -485,7 +486,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dsvg .dlife{stroke:var(--rule-2);stroke-dasharray:2 4}
 .dsvg .ddiv{stroke:var(--rule)}
 .dsvg .dlbl.div text{fill:var(--ink);font-weight:600}
-.dlegend{display:flex;gap:18px;font-size:13px;color:var(--ink-3);margin-top:10px}
+.dlegend{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--ink-3);margin-top:10px}
 .dk i{display:inline-block;width:10px;height:10px;border-radius:1px;border:1px solid var(--rule-2);margin-right:6px;vertical-align:-1px}
 .dk.new i{border-color:var(--pos);background:var(--pos-wash)}.dk.changed i{border-color:var(--warn)}.dk.removed i{border-color:var(--neg);border-style:dashed}
 .gdiag{margin-top:10px}
@@ -505,7 +506,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dslt{position:absolute;top:8px;font:600 12px/1 var(--sans);padding:4px 7px;border-radius:3px;background:color-mix(in srgb,var(--paper) 88%,transparent);color:var(--ink);pointer-events:none}
 .dslt.b{left:8px}.dslt.a{right:8px}
 /* Table: a matrix with changed cells marked. */
-.dtable{border-collapse:collapse;font:14px/1.4 var(--sans);margin:0 auto;min-width:min(100%,420px)}
+.ovblock .dtable,.dtable{border-collapse:collapse;font:14px/1.4 var(--sans);margin:0 auto;width:auto;min-width:min(100%,420px)}
 .dtable th,.dtable td{padding:7px 14px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:baseline}
 .dtable thead th{font-weight:600;font-size:13px;color:var(--ink-3);border-bottom-color:var(--rule-2)}
 .dtable tbody th{font-weight:500}
@@ -521,7 +522,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dtime>li.new::before{border-color:var(--pos);background:var(--pos)}.dtime>li.changed::before{border-color:var(--warn)}
 .dtime>li.removed::before{border-color:var(--neg);border-style:dashed}.dtime>li.removed .dtl{text-decoration:line-through;color:var(--ink-3)}
 .dtat{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;min-height:1em}.dtl{font-weight:600}.dtn{color:var(--ink-2);font-size:13px}
-.dtpin{position:absolute;top:-4px;left:14px;display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--link);color:var(--paper);font:700 10px var(--sans)}
+.dtpin{display:inline-grid;place-items:center;vertical-align:1px;margin-right:6px;width:17px;height:17px;border-radius:50%;background:var(--link);color:var(--paper);font:700 10px var(--sans)}
 /* A step's own copy of the map, built up to that step. */
 .cxmapn figure.diagram{border-top:0;padding:0}
 .cxmapn .dlegend{display:none}
@@ -535,7 +536,7 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dmpin{position:absolute;left:-11px;top:-11px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
   background:var(--link);color:var(--paper);font:700 11px var(--sans);border:2px solid var(--paper)}
 .dmark.new .dmpin{background:var(--pos)}.dmark.changed .dmpin{background:var(--warn)}.dmark.removed .dmpin{background:var(--neg)}
-.dmlbl{position:absolute;left:-2px;top:calc(100% + 6px);white-space:nowrap;font:500 11.5px/1.3 var(--sans);color:var(--ink);
+.dmlbl{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);white-space:nowrap;font:500 11.5px/1.3 var(--sans);color:var(--ink);
   background:var(--paper);border:1px solid var(--rule-2);border-radius:4px;padding:2px 7px}
 .dmark.point .dmlbl{left:14px;top:-10px}
 #lightbox>.dstage{max-width:92vw;max-height:92vh}#lightbox>.dstage>img{max-width:92vw;max-height:92vh;display:block}
