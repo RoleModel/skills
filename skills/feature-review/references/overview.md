@@ -290,8 +290,8 @@ timeline event, a mark) can carry:
 - `status`: `new`, `changed`, `removed` or `same`, on every kind, with one
   legend.
 
-Hovering a box traces it: its lines and neighbours light up and the lines flow
-in their direction, and a line under the picture names it, its `note`, and
+Hovering a box traces it: its lines and neighbours light up, and a line under
+the picture names it, its `note`, and
 what it connects to. Hovering a line lights its two ends. The build fails on a
 step that doesn't exist.
 
@@ -307,13 +307,25 @@ element. In a sketch, any element can also carry `data-step="2"` directly.
 Keep diagrams about the product, not the code: what a person sees, does and
 what happens to their data. Code belongs in the Shape step and the groups.
 
+### Diagrams that build
+
+Any diagram whose parts carry `step` builds: it shows whole, with its steps as
+breadcrumbs under it, and moves through them in place. At each step that step's
+parts draw in, earlier ones stay faint and later ones are hidden. Its expand
+button opens a full-screen walkthrough with the breadcrumbs above and Previous
+and Next below; the arrow keys and the scroll wheel move through it too. Name
+the steps with `"stages": ["Today", "Review is added", ...]`; without them
+they read "Step 1", "Step 2". Use it to tell a change in order: what exists
+today, then each thing the change adds.
+
 ### The map: required for "How it comes together"
 
 With two or more connection steps, give one diagram `"section": "connection"`
-whose parts name their steps. It shows whole above the steps, then again in
-each step, full width, **built up** to that step: that step's parts draw in as
-it scrolls into view, earlier ones stay faint as context, and later ones are
-hidden. An edge with no `step` appears with the
+whose parts name their steps; its stages are the steps' titles. It shows whole
+above the steps. Each step then shows just its own parts of the map, blown up
+(with what they connect to faint around them), and a small copy of the whole
+map floats beside the steps, lit at the step being read. Clicking either opens
+the walkthrough at that step. An edge with no `step` appears with the
 later of its two ends; a part with no step is context, always faint. The build
 fails without a map, or with one that tags no part.
 
@@ -412,9 +424,12 @@ loop; `divider` separates phases.
 
 `{ "kind": "compare", "before": <diagram>, "after": <diagram> }`, side by side.
 Each side is any other kind, and its `title` replaces the "Before"/"After"
-label. When both sides are screenshots of the same screen, they stack with a
-handle to wipe between them, which shows a shift of a few pixels that side by
-side hides; `"slider": false` puts them side by side instead.
+label. Two drawings show one at a time, full size, with a Before / After
+switch (`"side": true` puts them side by side). Two screenshots of the same
+screen stack with a handle to wipe between them, which shows a shift of a few
+pixels that side by side hides; `"slider": false` puts them side by side
+instead. If a change is better told in steps than as two states, draw one
+diagram that builds instead.
 
 ### `html` and `svg`: anything else
 
