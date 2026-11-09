@@ -555,6 +555,19 @@ const DIAG = (function () {
           '<img class="dslb" src="' + esc(d.before.data) + '" alt="' + esc(d.before.title || 'Before') + '"><i class="dslh"></i>' +
           '<input type="range" class="dslr" min="0" max="100" value="50" aria-label="Wipe between before and after">' +
           '<span class="dslt b">' + esc(d.before.title || 'Before') + '</span><span class="dslt a">' + esc(d.after.title || 'After') + '</span></div>';
+    } else if (d.kind === 'compare' && d.before && d.after && d.side !== true && !['image', 'video'].includes(d.before.kind)) {
+      // Two drawings, one at a time at full size, with a switch: flipping shows what moved, where
+      // side by side halves each picture and leaves the reader to match them up by eye.
+      box.className = 'dbody dflip';
+      const names = [(d.before.title || 'Before'), (d.after.title || 'After')];
+      box.innerHTML = '<div class="dflipsw" role="tablist">' + names.map((t, i) => '<button type="button" role="tab" data-flip="' + i + '"' +
+        (i ? ' class="on" aria-selected="true"' : '') + '>' + esc(t) + '</button>').join('') + '</div>';
+      ['before', 'after'].forEach((k, i) => {
+        const side = document.createElement('div');
+        side.className = 'dflipside' + (i ? ' on' : '');
+        side.appendChild(body(Object.assign({}, d[k], { title: null })));
+        box.appendChild(side);
+      });
     } else if (d.kind === 'compare') {
       box.className = 'dbody dcompare';
       [['before', 'Before'], ['after', 'After']].forEach(([k, t]) => {
@@ -598,6 +611,13 @@ const DIAG = (function () {
       fig.insertAdjacentHTML('beforeend', '<button type="button" class="dexpand" title="Expand" aria-label="Expand diagram">&#10530;</button>');
     if (d.title) fig.insertAdjacentHTML('beforeend', '<figcaption class="dtitle">' + esc(d.title) + '</figcaption>');
     fig.appendChild(body(d));
+    // A diagram that builds gets its steps as breadcrumbs under it, and moves through them in place.
+    if (!(opts && opts.plain) && isStaged(d) && stageCount(d)) {
+      fig.classList.add('builds');
+      fig.insertAdjacentHTML('beforeend', stepperHtml(stagesOf(d)));
+      fig.go = (k) => { focus(fig, k); markStepper(fig.querySelector(':scope > .dsteps'), k); };
+      markStepper(fig.querySelector(':scope > .dsteps'), 0);
+    }
     if (d.caption) fig.insertAdjacentHTML('beforeend', '<div class="dcap md">' + (md ? md(d.caption) : esc(d.caption)) + '</div>');
     return fig;
   }
@@ -621,6 +641,90 @@ const DIAG = (function () {
       if (next === 'is-focus' && (was === 'is-future' || !was)) drawIn(el);
     }));
   }
+  // A diagram that builds: its steps, named by `stages` (or, for the connection map, the steps' titles).
+  function stageCount(d) {
+    let m = 0;
+    JSON.stringify(d || {}, (k, v) => { if (k === 'step') steps(v).forEach((x) => { if (x > m) m = x; }); return v; });
+    (((d && (d.html || d.svg)) || '').match(/data-step="[\d ]+"/g) || []).forEach((a) => a.slice(11, -1).split(' ').forEach((x) => { if (+x > m) m = +x; }));
+    return m;
+  }
+  const stagesOf = (d) => Array.from({ length: stageCount(d) }, (_, i) => (d.stages && d.stages[i]) || 'Step ' + (i + 1));
+  // Breadcrumbs through the steps: the whole picture, then each step by name. The current one is
+  // underlined; the ones before it read as done.
+  function stepperHtml(stages) {
+    return '<nav class="dsteps" aria-label="Steps"><button type="button" data-go="0">Whole picture</button>' +
+      stages.map((t, i) => '<button type="button" data-go="' + (i + 1) + '"><span class="dsn">' + (i + 1) + '</span>' + esc(t) + '</button>').join('') + '</nav>';
+  }
+  function markStepper(nav, n) {
+    if (!nav) return;
+    nav.querySelectorAll('[data-go]').forEach((b) => {
+      const g = +b.dataset.go;
+      b.classList.toggle('on', g === n);
+      b.classList.toggle('done', n > 0 && g > 0 && g < n);
+      if (g === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+    });
+  }
+  // Points the picture at step n's own parts and what they connect to, blown up to fill the width;
+  // the rest stays in the drawing, faint, at the edges. 0 shows it whole again.
+  function zoom(fig, n) {
+    const svg = fig && fig.querySelector('.dsvg');
+    if (!svg || !svg.getBBox) return;
+    if (!svg.dataset.vb) svg.dataset.vb = svg.getAttribute('viewBox');
+    const full = svg.dataset.vb.split(' ').map(Number);
+    if (!n) { svg.setAttribute('viewBox', full.join(' ')); svg.style.width = ''; return; }
+    const on = (el) => (el.dataset.step || '').split(' ').map(Number).includes(n);
+    const ids = new Set();
+    svg.querySelectorAll('.dn[data-step]').forEach((el) => { if (on(el)) ids.add(el.dataset.id); });
+    svg.querySelectorAll('.de[data-step]').forEach((el) => { if (on(el)) { ids.add(el.dataset.from); ids.add(el.dataset.to); } });
+    let box = null;
+    const add = (b) => { box = box ? { l: Math.min(box.l, b.x), t: Math.min(box.t, b.y), r: Math.max(box.r, b.x + b.width), b: Math.max(box.b, b.y + b.height) } : { l: b.x, t: b.y, r: b.x + b.width, b: b.y + b.height }; };
+    svg.querySelectorAll('.dn[data-id]').forEach((el) => { if (ids.has(el.dataset.id)) add(el.getBBox()); });
+    svg.querySelectorAll('.de[data-step]').forEach((el) => { if (on(el)) add(el.getBBox()); });
+    if (!box) return;
+    const P = 26, minW = Math.min(full[2], 380);
+    let l = box.l - P, r = box.r + P;
+    if (r - l < minW) { const c = (l + r) / 2; l = c - minW / 2; r = c + minW / 2; }
+    l = Math.max(full[0], l); r = Math.min(full[0] + full[2], r);
+    const t = Math.max(full[1], box.t - P), b = Math.min(full[1] + full[3], box.b + P);
+    svg.setAttribute('viewBox', l + ' ' + t + ' ' + (r - l) + ' ' + (b - t));
+    // Drawn at up to twice its natural size, so the step's few boxes read large.
+    svg.style.width = Math.min((r - l) * 1.6, full[2] * 1.3) + 'px';
+  }
+  // The walkthrough: a building diagram with its breadcrumbs above and previous / next below, for the
+  // full-screen view. Arrow keys (the page sends them), the buttons, the crumbs and the scroll wheel
+  // move through it.
+  function walk(d, md, n) {
+    const wrap = document.createElement('div');
+    wrap.className = 'dwalk';
+    const stages = stagesOf(d);
+    wrap.innerHTML = '<div class="dwalkh">' + (d.title ? '<div class="dwalkt">' + esc(d.title) + '</div>' : '') + stepperHtml(stages) + '</div>';
+    const fig = render(Object.assign({}, d, { title: null, caption: null }), md, { big: true, plain: true });
+    wrap.appendChild(fig);
+    wrap.insertAdjacentHTML('beforeend', '<div class="dwalkf"><button type="button" class="quiet" data-walk="-1">Previous <kbd>←</kbd></button>' +
+      '<span class="dwalkc"></span><button type="button" class="primary" data-walk="1">Next <kbd>→</kbd></button></div>');
+    let at = -1;
+    wrap.go = (k) => {
+      k = Math.max(0, Math.min(stages.length, k));
+      if (k === at) return;
+      at = k;
+      focus(fig, k);
+      markStepper(wrap.querySelector('.dsteps'), k);
+      wrap.querySelector('.dwalkc').textContent = k ? 'Step ' + k + ' of ' + stages.length : 'The whole picture';
+      wrap.querySelector('[data-walk="-1"]').disabled = k === 0;
+      wrap.querySelector('[data-walk="1"]').disabled = k === stages.length;
+    };
+    wrap.step = (dir) => wrap.go(at + dir);
+    wrap.addEventListener('click', (e) => { const b = e.target.closest('[data-walk]'); if (b) wrap.step(+b.dataset.walk); });
+    let last = 0;
+    wrap.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) < 12 || e.timeStamp - last < 450) return;
+      last = e.timeStamp; e.preventDefault();
+      wrap.step(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+    wrap.go(n || 0);
+    return wrap;
+  }
+
   // Trims a drawn diagram to the parts shown at step n (and those arriving at it), so a step early in
   // the walk doesn't carry the empty space of everything still to come.
   function crop(fig, n) {
@@ -679,9 +783,23 @@ const DIAG = (function () {
     if (cap) cap.innerHTML = text;
   }
   // Whether a diagram has anything to build up step by step.
-  if (typeof document !== 'undefined') document.addEventListener('input', (e) => {
-    if (e.target.classList && e.target.classList.contains('dslr')) e.target.parentNode.style.setProperty('--p', e.target.value + '%');
-  });
+  if (typeof document !== 'undefined') {
+    document.addEventListener('input', (e) => {
+      if (e.target.classList && e.target.classList.contains('dslr')) e.target.parentNode.style.setProperty('--p', e.target.value + '%');
+    });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('[data-flip], .dsteps [data-go]');
+      if (!b) return;
+      if (b.dataset.flip != null) {
+        const box = b.closest('.dflip'), i = +b.dataset.flip;
+        box.querySelectorAll('[data-flip]').forEach((x) => { x.classList.toggle('on', +x.dataset.flip === i); x.setAttribute('aria-selected', String(+x.dataset.flip === i)); });
+        box.querySelectorAll(':scope > .dflipside').forEach((x, j) => x.classList.toggle('on', j === i));
+        return;
+      }
+      const host = b.closest('.dwalk') || b.closest('figure.diagram');
+      if (host && host.go) host.go(+b.dataset.go);
+    });
+  }
   const isStaged = (d) => JSON.stringify(d || {}).includes('"step"') || /data-step=/.test((d && (d.html || d.svg)) || '');
 
   const KINDS = ['structure', 'flow', 'states', 'sequence', 'compare', 'table', 'timeline', 'html', 'svg', 'image', 'video'];
@@ -723,18 +841,21 @@ const DIAG = (function () {
       else if (!m || !['x', 'y'].every((k) => +m[k] >= 0 && +m[k] <= 100)) out.push(at + ': mark ' + (i + 1) + ' needs x and y in percent (0 to 100), or "at" with a selector on a sketch');
       else if ((m.w != null) !== (m.h != null)) out.push(at + ': mark ' + (i + 1) + ' needs both w and h, or neither for a point');
     });
+    if (d.stages && (!Array.isArray(d.stages) || d.stages.length < stageCount(d))) out.push(at + ': stages should name each of its ' + stageCount(d) + ' step(s)');
     if (ctx) {
       const obj = (l) => (l || []).filter((x) => x && typeof x === 'object' && !Array.isArray(x));
       const parts = [].concat(obj(d.nodes || d.states), obj(d.edges || d.transitions), obj(d.actors), obj(d.messages || d.steps), obj(d.rows), obj(d.events), d.marks || []);
       parts.forEach((o) => {
         const name = o.label || o.id || (o.from ? o.from + ' → ' + o.to : 'a part');
-        steps(o.step).forEach((n) => { if (ctx.steps != null && n > ctx.steps) out.push(at + ': ' + name + ' names step ' + n + ', but there are ' + ctx.steps); });
+        // A diagram with its own `stages` builds through those; any other names the connection steps.
+        const max = d.stages ? d.stages.length : ctx.steps;
+        steps(o.step).forEach((n) => { if (max != null && n > max) out.push(at + ': ' + name + ' names step ' + n + ', but there are ' + max); });
       });
     }
     return out;
   }
 
-  const api = { render, body, problems, focus, crop, trace, isStaged, KINDS };
+  const api = { render, body, problems, focus, crop, zoom, walk, trace, isStaged, stagesOf, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();
