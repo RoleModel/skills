@@ -493,15 +493,6 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dmedia img{cursor:zoom-in}
 .dmedia{display:flex;flex-direction:column;align-items:center}
 .dmedia>.dlegend{align-self:center}
-/* Before/after wipe: the after image underneath, the before clipped over it, a handle between. */
-.dslider{position:relative;display:inline-block;max-width:100%;line-height:0;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
-.dmedia .dslider img{border:0;border-radius:0;margin:0;max-height:460px}
-.dslider .dslb{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;clip-path:inset(0 calc(100% - var(--p)) 0 0)}
-.dslh{position:absolute;top:0;bottom:0;left:var(--p);width:2px;margin-left:-1px;background:var(--paper);box-shadow:0 0 0 1px var(--ink-3);pointer-events:none}
-.dslh::after{content:"";position:absolute;top:50%;left:50%;width:22px;height:22px;margin:-11px;border-radius:50%;background:var(--paper);border:1px solid var(--ink-3)}
-.dslr{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
-.dslt{position:absolute;top:8px;font:600 12px/1 var(--sans);padding:4px 7px;border-radius:3px;background:color-mix(in srgb,var(--paper) 88%,transparent);color:var(--ink);pointer-events:none}
-.dslt.b{left:8px}.dslt.a{right:8px}
 /* Table: a matrix with changed cells marked. */
 .ovblock .dtable,.dtable{border-collapse:collapse;font:14px/1.4 var(--sans);margin:0 auto;width:auto;min-width:min(100%,420px)}
 .dtable th,.dtable td{padding:7px 14px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:baseline}

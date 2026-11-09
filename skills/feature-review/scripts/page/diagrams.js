@@ -545,17 +545,7 @@ const DIAG = (function () {
     else if (d.kind === 'states') box.innerHTML = ranked(d, 'state');
     else if (d.kind === 'table') box.innerHTML = table(d);
     else if (d.kind === 'timeline') box.innerHTML = timeline(d);
-    else if (d.kind === 'compare' && d.before && d.after && d.before.kind === 'image' && d.after.kind === 'image' && d.slider !== false) {
-      // Two screenshots of the same screen: one over the other, with a handle to wipe between them,
-      // so a shift of a few pixels shows where side by side it wouldn't.
-      box.className = 'dbody dmedia';
-      const ok = (x) => /^data:image\//.test(x.data || '');
-      box.innerHTML = !ok(d.before) || !ok(d.after) ? '<p class="svnote">Missing image</p>'
-        : '<div class="dslider" style="--p:50%"><img src="' + esc(d.after.data) + '" alt="' + esc(d.after.title || 'After') + '">' +
-          '<img class="dslb" src="' + esc(d.before.data) + '" alt="' + esc(d.before.title || 'Before') + '"><i class="dslh"></i>' +
-          '<input type="range" class="dslr" min="0" max="100" value="50" aria-label="Wipe between before and after">' +
-          '<span class="dslt b">' + esc(d.before.title || 'Before') + '</span><span class="dslt a">' + esc(d.after.title || 'After') + '</span></div>';
-    } else if (d.kind === 'compare' && d.before && d.after && d.side !== true && !['image', 'video'].includes(d.before.kind)) {
+    else if (d.kind === 'compare' && d.before && d.after && d.side !== true && !['image', 'video'].includes(d.before.kind)) {
       // Two drawings, one at a time at full size, with a switch: flipping shows what moved, where
       // side by side halves each picture and leaves the reader to match them up by eye.
       box.className = 'dbody dflip';
@@ -784,9 +774,6 @@ const DIAG = (function () {
   }
   // Whether a diagram has anything to build up step by step.
   if (typeof document !== 'undefined') {
-    document.addEventListener('input', (e) => {
-      if (e.target.classList && e.target.classList.contains('dslr')) e.target.parentNode.style.setProperty('--p', e.target.value + '%');
-    });
     document.addEventListener('click', (e) => {
       const b = e.target.closest && e.target.closest('[data-flip], .dsteps [data-go]');
       if (!b) return;
