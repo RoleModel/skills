@@ -487,7 +487,7 @@ const DIAG = (function () {
     '.split{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding-top:20px}.split>*{position:relative}' +
     '.split>*::before{position:absolute;left:0;top:-20px;font-size:11px;color:var(--muted)}.split>:first-child::before{content:"Before"}.split>:last-child::before{content:"After"}' +
     // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
-    '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0}[data-reveal=is-past]{opacity:.32}' +
+    '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0!important}[data-reveal=is-past]{opacity:.32!important}' +
     '';
   function raw(markup) {
     const host = document.createElement('div');
@@ -635,7 +635,7 @@ const DIAG = (function () {
   function stageCount(d) {
     let m = 0;
     JSON.stringify(d || {}, (k, v) => { if (k === 'step') steps(v).forEach((x) => { if (x > m) m = x; }); return v; });
-    (((d && (d.html || d.svg)) || '').match(/data-step="[\d ]+"/g) || []).forEach((a) => a.slice(11, -1).split(' ').forEach((x) => { if (+x > m) m = +x; }));
+    (((d && (d.html || d.svg)) || '').match(/data-step=["'][\d ]+["']/g) || []).forEach((a) => a.slice(11, -1).split(' ').forEach((x) => { if (+x > m) m = +x; }));
     return m;
   }
   const stagesOf = (d) => Array.from({ length: stageCount(d) }, (_, i) => (d.stages && d.stages[i]) || 'Step ' + (i + 1));

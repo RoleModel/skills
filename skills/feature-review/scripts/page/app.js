@@ -1192,7 +1192,7 @@
     return '<section class="ovblock" id="ov-connection"><h3>How it comes together</h3>' +
       (CX.summary ? '<div class="md">' + mdHtml(CX.summary) + '</div>' : '') + '<div data-diags="connection"></div>' +
       (CX.technical ? '<h4>How it works</h4><div class="md">' + mdHtml(CX.technical) + '</div>' : '') +
-      (cxSteps.length ? '<h4>Step by step</h4><ol class="cxsteps">' + cxSteps.map(step).join('') + '</ol>' : '') + '</section>';
+      (cxSteps.length ? '<h4>Step by step</h4><ol class="cxsteps' + (connectionMap() ? ' mapped' : '') + '">' + cxSteps.map(step).join('') + '</ol>' : '') + '</section>';
   }
 
   // The first three steps each show one part of the overview: the story, the checks, the shape.

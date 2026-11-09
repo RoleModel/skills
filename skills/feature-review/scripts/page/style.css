@@ -511,8 +511,10 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dtime>li.removed::before{border-color:var(--neg);border-style:dashed}.dtime>li.removed .dtl{text-decoration:line-through;color:var(--ink-3)}
 .dtat{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;min-height:1em}.dtl{font-weight:600}.dtn{color:var(--ink-2);font-size:13px}
 .dtpin{display:inline-grid;place-items:center;vertical-align:1px;margin-right:6px;width:17px;height:17px;border-radius:50%;background:var(--link);color:var(--paper);font:700 10px var(--sans)}
-/* The whole map, small, floating beside the steps while they're on screen. */
-.cxmini{position:fixed;right:20px;bottom:20px;z-index:15;width:220px;padding:10px 12px 8px;background:var(--paper);border:1px solid var(--rule-2);
+/* The whole map, small, floating beside the steps while they're on screen. Room after the last step
+   lets it scroll up to where the floating map marks it as the step being read. */
+.cxsteps.mapped{padding-bottom:50vh}
+.cxmini{position:fixed;left:20px;bottom:20px;z-index:15;width:220px;padding:10px 12px 8px;background:var(--paper);border:1px solid var(--rule-2);
   border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.16);cursor:zoom-in;transition:opacity .2s,transform .2s}
 .cxmini.gutter{top:calc(var(--hh) + 24px);bottom:auto;width:240px}
 .cxmini.hidden{opacity:0;transform:translateY(8px);pointer-events:none}
