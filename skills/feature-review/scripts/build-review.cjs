@@ -492,6 +492,7 @@ if (groupsPath) {
     checks.forEach((c) => { if (c && c.path && !byName.has(c.path)) { console.error(`overview: check names a file not in the diff: ${c.path}`); bad++; } });
     (ov.diagrams || []).forEach((d, i) => {
       for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`, dctx)) { console.error(`overview: ${p}`); bad++; }
+      for (const w of DIAG.advice(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`)) console.error(`overview: ${w}`);
       if (d && d.group && !titles.has(d.group)) { console.error(`overview: diagram "${d.title || i + 1}" names an unknown group "${d.group}"`); bad++; }
       if (d && d.section && !['feature', 'connection', 'shape', 'recs'].includes(d.section)) { console.error(`overview: diagram "${d.title || i + 1}" section must be feature, connection, shape or recs`); bad++; }
     });

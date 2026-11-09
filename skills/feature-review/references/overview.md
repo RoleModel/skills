@@ -394,12 +394,22 @@ are boxes, edges are arrows. Keep it under about 15 nodes.
   "edges": [["ed", "rh", "rotate"], ["rh", "rot", "uses", "new"], { "from": "ed", "to": "old", "status": "removed" }] }
 ```
 
+**Keep it readable.** A structure diagram shows how a reviewer should read the
+change, not every dependency. Keep every box the change adds, changes or
+removes, but draw only the lines that explain how they fit: aim for fewer
+lines than boxes. When several paths run through the same layers (each screen
+reaching its own controller, policy and model), give each path a `step` so the
+diagram builds one path at a time instead of showing a web. A line that skips a
+layer usually means a box is in the wrong layer. The build warns when a diagram
+has many more lines than boxes, or several lines that skip layers.
+
 `status` on nodes and edges is `new` (green), `changed` (amber), `removed`
 (red, dashed) or `same` (default), shown as a dot in the box. Drawing removed
 and new parts in one diagram is usually the clearest way to show a shape
 change. Lines are routed, not curved: each runs across the gap between two
 layers on its own track, and a line that skips a layer drops through a clear
-lane between that layer's boxes. Order nodes in a layer roughly as you'd like
+lane between that layer's boxes. Lines meeting at a box join into one trunk
+with one arrowhead, and each box is placed under the boxes it connects to. Order nodes in a layer roughly as you'd like
 them; the layout reorders them to cut crossings.
 
 ### `sequence`: who calls whom, in order
