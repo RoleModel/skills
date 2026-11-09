@@ -299,8 +299,10 @@ step that doesn't exist.
 `"marks": [{ "x": 38, "y": 42, "w": 22, "h": 6, "status": "new", "pin": 1, "label": "Organization: new" }]`.
 `x`, `y`, `w` and `h` are percent of the picture; leave out `w` and `h` for a
 point. Ring the part that matters with a mark instead of drawing a box into the
-screenshot. Marks stay on when the picture opens full size. In `html` and
-`svg`, any element can carry `data-step="2"` directly.
+screenshot. Marks stay on when the picture opens full size. On an `html` or
+`svg` sketch, a mark can name its target instead of coordinates,
+`{ "at": ".ui-select", "pin": 1, "label": "New" }`, and is placed around that
+element. In a sketch, any element can also carry `data-step="2"` directly.
 
 Keep diagrams about the product, not the code: what a person sees, does and
 what happens to their data. Code belongs in the Shape step and the groups.
