@@ -1169,8 +1169,8 @@
   // using the product sees (screenshots, recordings) with what runs underneath, links to the groups
   // and files that do it, and carries the checks that test it.
   const gIndex = (t) => sections.findIndex((g) => g.title === t);
-  // The map: the connection diagram whose parts name their steps. It sits beside the steps and builds
-  // up as the reader scrolls through them.
+  // The map: the connection diagram whose parts name their steps. It shows whole above the steps, and
+  // again in each step, built up to that step: its parts draw in as the step scrolls into view.
   const connectionMap = () => (cxSteps.length > 1 ? diagramsIn('connection').find(DIAG.isStaged) : null) || null;
   function connectionHtml() {
     if (!CX) return '';
@@ -1179,7 +1179,8 @@
           '"><span class="gnum">' + (gIndex(t) + 1) + '.</span> ' + esc(t) + '</a>').join('') +
         (st.files || []).map((n) => fileLink(n, '<span class="rfile">' + esc(n.split('/').pop()) + '</span>')).join('');
       const vis = (st.visuals || []).length;
-      return '<li class="cxstep' + (vis ? '' : ' novis') + '"><div class="cxnum">' + (i + 1) + '</div><div class="cxbody">' +
+      return '<li class="cxstep' + (vis || connectionMap() ? '' : ' novis') + '"><div class="cxnum">' + (i + 1) + '</div><div class="cxbody">' +
+        (connectionMap() ? '<div class="cxmapn" data-cxmapn="' + (i + 1) + '"></div>' : '') +
         (vis ? '<div class="cxvis" data-cxvis="' + i + '"></div>' : '') + '<div class="cxtext"><h4>' + inlineMd(st.title) + '</h4>' +
         (st.user ? '<div class="md cxuser">' + mdHtml(st.user) + '</div>' : '') +
         (links ? '<div class="cxlinks">' + links + '</div>' : '') + '</div></div></li>';
@@ -1187,8 +1188,7 @@
     return '<section class="ovblock" id="ov-connection"><h3>How it comes together</h3>' +
       (CX.summary ? '<div class="md">' + mdHtml(CX.summary) + '</div>' : '') + '<div data-diags="connection"></div>' +
       (CX.technical ? '<h4>How it works</h4><div class="md">' + mdHtml(CX.technical) + '</div>' : '') +
-      (cxSteps.length ? '<h4>Step by step</h4>' + (connectionMap() ? '<div class="cxflow"><aside class="cxmap"><div class="cxmapstep"></div><div data-cxmap></div></aside>' : '') +
-        '<ol class="cxsteps">' + cxSteps.map(step).join('') + '</ol>' + (connectionMap() ? '</div>' : '') : '') + '</section>';
+      (cxSteps.length ? '<h4>Step by step</h4><ol class="cxsteps">' + cxSteps.map(step).join('') + '</ol>' : '') + '</section>';
   }
 
   // The first three steps each show one part of the overview: the story, the checks, the shape.
@@ -1235,11 +1235,21 @@
     ovv.innerHTML = '<div class="ovcol">' + h + stepFoot(step) + '</div>';
     ['feature', 'connection', 'shape'].forEach((sec) => {
       const slot = ovv.querySelector('[data-diags="' + sec + '"]');
-      const list = diagramsIn(sec).filter((d) => d !== connectionMap());
+      const list = diagramsIn(sec);
       if (slot && list.length) slot.replaceWith(figures(list));
     });
-    const mapSlot = ovv.querySelector('[data-cxmap]');
-    if (mapSlot) { mapSlot.replaceWith(DIAG.render(connectionMap(), mdHtml)); mapAt = -1; syncMap(); }
+    const map = connectionMap(), seen = 'IntersectionObserver' in window && new IntersectionObserver((es) => es.forEach((x) => {
+      if (!x.isIntersecting) return;
+      seen.unobserve(x.target);
+      DIAG.focus(x.target, +x.target.dataset.n);
+    }), { threshold: 0.35 });
+    ovv.querySelectorAll('[data-cxmapn]').forEach((slot) => {
+      const n = +slot.dataset.cxmapn, fig = DIAG.render(Object.assign({}, map, { title: null, caption: null }), mdHtml);
+      fig.dataset.n = n;
+      slot.appendChild(fig);
+      DIAG.focus(fig, n, !!seen);
+      if (seen) seen.observe(fig);
+    });
     cxSteps.forEach((st, i) => {
       const slot = ovv.querySelector('[data-cxvis="' + i + '"]');
       if (slot) (st.visuals || []).forEach((d) => slot.appendChild(DIAG.render(d, mdHtml)));
@@ -1247,26 +1257,6 @@
     const ct = $('ovchkct');
     if (ct) ct.textContent = checksLabel() + ' checked';
   }
-  // Follows the reader down the steps: the step crossing the upper part of the window is the one in
-  // focus. Above the steps, and once past them, the map shows the whole picture.
-  let mapAt = -1;
-  function syncMap() {
-    const map = ovv.querySelector('.cxmap figure.diagram'), flow = ovv.querySelector('.cxflow');
-    if (!map || !flow || !document.body.classList.contains('overviewing')) return;
-    const line = window.innerHeight * 0.42, items = flow.querySelectorAll('.cxstep');
-    let n = 0;
-    items.forEach((li, i) => { if (li.getBoundingClientRect().top < line) n = i + 1; });
-    if (flow.getBoundingClientRect().bottom < line) n = 0;
-    if (n === mapAt) return;
-    mapAt = n;
-    items.forEach((li, i) => li.classList.toggle('cxon', i + 1 === n));
-    DIAG.focus(map, n);
-    const cap = ovv.querySelector('.cxmapstep');
-    if (cap) cap.innerHTML = n ? '<b>Step ' + n + '</b> of ' + cxSteps.length + ' · ' + inlineMd(cxSteps[n - 1].title) : '<b>The whole picture</b> · scroll the steps to build it up';
-  }
-  addEventListener('scroll', () => requestAnimationFrame(syncMap), { passive: true });
-  addEventListener('resize', () => { mapAt = -1; syncMap(); });
-
   // A check can show in the overview and on a recommendation; both share its state.
   function onCheck(b, root) {
     const kid = b.closest('.chk').dataset.k, cur = state.checks[kid] || {};
@@ -2257,116 +2247,12 @@
     }
   });
 
-  // --- diagram parts: open the code, comment, trace ---------------------------
-  // A part of any diagram (a box, a line, a message, a mark on a screenshot, a tagged element in a
-  // sketch) opens a small card on click: open the code it names, or comment on it. A comment on a part
-  // whose line is in the diff becomes a line comment there; with only a file, a file comment; with no
-  // code, a quoted note in the review summary.
-  const dpop = document.createElement('div');
-  dpop.className = 'dpop hidden';
-  document.body.appendChild(dpop);
-  let dpart = null;
-  const partName = (el) => el.dataset.el || (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60) || 'this part';
-  function partFrom(e) {
-    let part = null, fig = null;
-    for (const el of e.composedPath()) {
-      if (el.nodeType !== 1 || !el.matches) continue;
-      if (!part && el.matches('[data-code], [data-el]:not([data-el=""])')) part = el;
-      if (el.matches('figure.diagram')) { fig = el; break; }
-    }
-    return part && fig && !(part.closest && part.closest('.dexpand')) ? { part, fig } : null;
-  }
-  function openCode(path, line) {
-    const f = byName.get(path);
-    if (!f) { flash('That file is not in this change', true); return; }
-    lightbox.className = 'hidden';
-    closePart();
-    history.pushState(null, '', '#f' + f.i);
-    setView();
-    goToFile(f);
-    requestAnimationFrame(() => {
-      const r = line != null && f.rowAt ? f.rowAt.RIGHT.get(line) : null, tr = r != null ? f.trOf[r] : null;
-      const el = tr || f.el;
-      window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight - (tr ? window.innerHeight / 3 : 8));
-      if (tr) { tr.classList.add('dflash'); setTimeout(() => tr.classList.remove('dflash'), 1800); }
-    });
-  }
-  function closePart() {
-    dpop.className = 'dpop hidden';
-    if (dpart) dpart.part.classList.remove('dsel');
-    dpart = null;
-  }
-  function showPart(hit) {
-    closePart();
-    dpart = hit;
-    const { part, fig } = hit, c = DIAG.codeOf(part.dataset.code), ss = (part.dataset.step || '').split(' ').filter(Boolean);
-    const status = part.dataset.status && part.dataset.status !== 'look' ? part.dataset.status : '';
-    const inMap = !!fig.closest('.cxmap');
-    part.classList.add('dsel');
-    dpop.innerHTML = '<div class="dpophead">' + esc(partName(part)) + '</div>' +
-      ((status || ss.length || c) ? '<div class="dpopmeta">' + [status && '<span class="stag ' + esc(status) + '">' + esc(status) + '</span>',
-        ss.length && (inMap ? ss.map((n) => '<a href="#" data-pstep="' + n + '">step ' + n + '</a>').join(', ') : 'step ' + ss.join(', ')),
-        c && '<code>' + esc(c.path.split('/').pop() + (c.line ? ':' + c.line : '')) + '</code>'].filter(Boolean).join(' · ') + '</div>' : '') +
-      '<div class="dpopacts">' + (c && byName.has(c.path) ? '<button type="button" class="primary" data-pact="code">Open code</button>' : '') +
-      '<button type="button" data-pact="comment">Comment</button></div>';
-    dpop.className = 'dpop';
-    const r = part.getBoundingClientRect(), w = dpop.offsetWidth, h = dpop.offsetHeight;
-    const below = r.bottom + 8 + h < window.innerHeight;
-    dpop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
-    dpop.style.top = (below ? r.bottom + 8 : Math.max(8, r.top - h - 8)) + 'px';
-  }
-  function commentOnPart(hit, text) {
-    const { part, fig } = hit, c = DIAG.codeOf(part.dataset.code), f = c && byName.get(c.path);
-    const title = fig.diag && fig.diag.title;
-    const lead = 'On “' + partName(part) + '”' + (title ? ' in “' + title + '”' : ' in the diagram') + ':';
-    if (f) {
-      const r = c.line != null && f.rowAt ? f.rowAt.RIGHT.get(c.line) : null;
-      const onLine = r != null && ['a', 'c'].includes(f.rows[r].t);
-      state.comments.push({ id: uid('c'), path: f.name, subject: onLine ? 'line' : 'file', side: onLine ? 'RIGHT' : undefined,
-        line: onLine ? c.line : undefined, body: lead + ' ' + text, attachments: [], sig: onLine ? sigOf(f.name) : undefined });
-      save(); renderFile(f); render();
-      flash('Added to your review, on ' + f.name.split('/').pop() + (onLine ? ':' + c.line : ''));
-    } else {
-      state.body = (state.body ? state.body.trimEnd() + '\n\n' : '') + '> ' + lead + '\n\n' + text;
-      save(); render();
-      flash('Added to your review summary');
-    }
-    closePart();
-  }
-  document.addEventListener('click', (e) => {
-    if (e.target.closest && e.target.closest('.dpop')) {
-      const b = e.target.closest('[data-pact], [data-pstep]');
-      if (!b || !dpart) return;
-      e.preventDefault();
-      if (b.dataset.pstep) {
-        const li = ovv.querySelectorAll('.cxflow .cxstep')[+b.dataset.pstep - 1];
-        closePart();
-        if (li) window.scrollTo({ top: li.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight - 24, behavior: 'smooth' });
-      } else if (b.dataset.pact === 'code') { const c = DIAG.codeOf(dpart.part.dataset.code); openCode(c.path, c.line); }
-      else if (b.dataset.pact === 'comment') {
-        dpop.querySelector('.dpopacts').outerHTML = '<textarea class="dpopta" rows="3" placeholder="Your comment"></textarea>' +
-          '<div class="dpopacts"><span class="sp"></span><button type="button" class="quiet" data-pact="cancel">Cancel</button>' +
-          '<button type="button" class="primary" data-pact="save">Add to review</button></div>';
-        dpop.querySelector('textarea').focus();
-      } else if (b.dataset.pact === 'cancel') closePart();
-      else if (b.dataset.pact === 'save') { const t = dpop.querySelector('textarea').value.trim(); if (t) commentOnPart(dpart, t); }
-      return;
-    }
-    const hit = partFrom(e);
-    if (hit) { e.stopPropagation(); if (dpart && dpart.part === hit.part) closePart(); else showPart(hit); return; }
-    if (dpart) closePart();
-  }, true);
-  document.addEventListener('keydown', (e) => {
-    if (!dpart) return;
-    if (e.key === 'Escape') { e.stopPropagation(); closePart(); }
-    else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.target.matches('.dpopta')) { const t = e.target.value.trim(); if (t) commentOnPart(dpart, t); }
-  }, true);
-  addEventListener('scroll', () => { if (dpart && !dpop.querySelector('textarea')) closePart(); }, { passive: true });
-  // Hovering a box traces it: its lines and neighbours light up, the rest quiets.
+  // Hovering a box or a line traces it (DIAG.trace): what it connects to lights up, the rest quiets.
   document.addEventListener('pointerover', (e) => {
-    const n = e.target.closest && e.target.closest('.dsvg .dn[data-id]');
     const svg = e.target.closest && e.target.closest('.dsvg');
-    if (svg) DIAG.trace(svg, n ? n.dataset.id : null);
+    if (!svg) return;
+    const n = e.target.closest('.dn[data-id]'), l = !n && e.target.closest('[data-from]');
+    DIAG.trace(svg, n ? { id: n.dataset.id } : l ? { from: l.dataset.from, to: l.dataset.to, label: (l.dataset.el || '').split(': ').slice(1).join(': ') } : null);
   });
   document.addEventListener('pointerout', (e) => {
     const svg = e.target.closest && e.target.closest('.dsvg');

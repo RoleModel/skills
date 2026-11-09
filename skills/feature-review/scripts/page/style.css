@@ -449,13 +449,24 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dsvg .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke}
 .dsvg rect.dhit{fill:transparent;stroke:none;pointer-events:all}
 .dsvg .dpin circle{fill:var(--link);stroke:var(--paper);stroke-width:2}.dsvg .dpin text{fill:var(--paper);font:700 10.5px var(--sans)}
-.dsvg [data-el]:not([data-el=""]){cursor:pointer}
-.dsvg .dn.hot text:first-of-type{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--link) 50%,transparent);text-underline-offset:3px}
-.dsvg .dn:hover rect,.dsvg .dsel rect{stroke-width:2}
-.dsvg .dsel.de,.dsvg .dmsgg.dsel .de{stroke-width:2.4}
-/* Tracing: hover a box and everything not touching it steps back. */
-.dsvg.tracing .dn:not(.lit),.dsvg.tracing .de:not(.lit),.dsvg.tracing .dlbl:not(.lit),.dsvg.tracing g[data-from]:not(.lit){opacity:.22}
-.dsvg.tracing .de.lit{stroke-width:2;stroke:var(--ink)}.dsvg.tracing .de.lit.new{stroke:var(--pos)}.dsvg.tracing .de.lit.changed{stroke:var(--warn)}
+.dsvg .dn polygon{fill:var(--paper);stroke:var(--rule-2);stroke-width:1}
+.dsvg .dn.new polygon{fill:var(--pos-wash);stroke:var(--pos);stroke-width:1.2}.dsvg .dn.changed polygon{stroke:var(--warn);stroke-width:1.2}
+.dsvg .dn.removed polygon{fill:var(--neg-wash);stroke:var(--neg);stroke-dasharray:4 3}
+.dsvg .dn.start rect,.dsvg .dn.end rect{fill:var(--wash-2)}.dsvg .dn.end rect{stroke-width:2}
+.dsvg .dn:hover rect,.dsvg .dn:hover polygon{stroke-width:2}
+/* Tracing: hover a box or a line and everything not touching it steps back; lit lines flow. */
+.dsvg.tracing .dn:not(.lit),.dsvg.tracing .de:not(.lit),.dsvg.tracing g[data-from]:not(.lit),.dsvg.tracing .dmsgg:not(.lit){opacity:.18}
+.dsvg.tracing .de.lit,.dsvg.tracing .dmsgg.lit .de{stroke-width:1.8;stroke:var(--ink)}
+.dsvg.tracing .de.lit.new,.dsvg.tracing .dmsgg.lit .de.new{stroke:var(--pos)}.dsvg.tracing .de.lit.changed,.dsvg.tracing .dmsgg.lit .de.changed{stroke:var(--warn)}
+.dsvg.tracing .de.lit:not(.removed):not(.reply){stroke-dasharray:7 5;animation:dflow .9s linear infinite}
+@keyframes dflow{to{stroke-dashoffset:-12}}
+@media (prefers-reduced-motion:reduce){.dsvg.tracing .de.lit{animation:none;stroke-dasharray:none}}
+.dbody{position:relative}
+.dhover{position:absolute;left:0;bottom:0;max-width:100%;box-sizing:border-box;padding:6px 10px;font:13.5px/1.35 var(--sans);color:var(--ink-2);
+  background:color-mix(in srgb,var(--paper) 92%,transparent);border:1px solid var(--rule);border-radius:4px;opacity:0;transform:translateY(4px);
+  transition:opacity .15s,transform .15s;pointer-events:none}
+.dhover.on{opacity:1;transform:none}.dhover b{color:var(--ink);font-weight:600}
+.dsvg .dn,.dsvg .dmsgg{transition:opacity .2s}
 .dsvg .dn,.dsvg g[data-from]{transition:opacity .2s}
 /* Reveal by step: the map builds up with the steps; what came before stays as faint context. */
 .diagram [data-reveal]{transition:opacity .45s ease,stroke-width .2s}
@@ -482,48 +493,52 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dmedia{margin:0}
 .dmedia img,.dmedia video{display:block;max-width:100%;max-height:460px;margin:0 auto;border:1px solid var(--rule);border-radius:2px;background:var(--wash)}
 .dmedia img{cursor:zoom-in}
+.dmedia{display:flex;flex-direction:column;align-items:center}
+.dmedia>.dlegend{align-self:center}
+/* Before/after wipe: the after image underneath, the before clipped over it, a handle between. */
+.dslider{position:relative;display:inline-block;max-width:100%;line-height:0;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.dmedia .dslider img{border:0;border-radius:0;margin:0;max-height:460px}
+.dslider .dslb{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;clip-path:inset(0 calc(100% - var(--p)) 0 0)}
+.dslh{position:absolute;top:0;bottom:0;left:var(--p);width:2px;margin-left:-1px;background:var(--paper);box-shadow:0 0 0 1px var(--ink-3);pointer-events:none}
+.dslh::after{content:"";position:absolute;top:50%;left:50%;width:22px;height:22px;margin:-11px;border-radius:50%;background:var(--paper);border:1px solid var(--ink-3)}
+.dslr{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
+.dslt{position:absolute;top:8px;font:600 12px/1 var(--sans);padding:4px 7px;border-radius:3px;background:color-mix(in srgb,var(--paper) 88%,transparent);color:var(--ink);pointer-events:none}
+.dslt.b{left:8px}.dslt.a{right:8px}
+/* Table: a matrix with changed cells marked. */
+.dtable{border-collapse:collapse;font:14px/1.4 var(--sans);margin:0 auto;min-width:min(100%,420px)}
+.dtable th,.dtable td{padding:7px 14px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:baseline}
+.dtable thead th{font-weight:600;font-size:13px;color:var(--ink-3);border-bottom-color:var(--rule-2)}
+.dtable tbody th{font-weight:500}
+.dtable td.new,.dtable tr.new>*{background:var(--pos-wash)}.dtable td.removed,.dtable tr.removed>*{background:var(--neg-wash)}
+.dtable tr.removed>*{color:var(--ink-3);text-decoration:line-through}
+.dtable td.changed{box-shadow:inset 3px 0 var(--warn)}.dtable tr.changed>th{box-shadow:inset 3px 0 var(--warn)}
+.dtable s{color:var(--ink-3)}
+/* Timeline: events in order along a line. */
+.dtime{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(110px,1fr);overflow-x:auto}
+.dtime>li{position:relative;padding:22px 14px 0 0;display:flex;flex-direction:column;gap:2px;font:14px/1.35 var(--sans)}
+.dtime>li::before{content:"";position:absolute;top:5px;left:0;width:9px;height:9px;border-radius:50%;background:var(--paper);border:2px solid var(--ink-3)}
+.dtime>li::after{content:"";position:absolute;top:10px;left:15px;right:4px;height:1px;background:var(--rule-2)}.dtime>li:last-child::after{display:none}
+.dtime>li.new::before{border-color:var(--pos);background:var(--pos)}.dtime>li.changed::before{border-color:var(--warn)}
+.dtime>li.removed::before{border-color:var(--neg);border-style:dashed}.dtime>li.removed .dtl{text-decoration:line-through;color:var(--ink-3)}
+.dtat{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;min-height:1em}.dtl{font-weight:600}.dtn{color:var(--ink-2);font-size:13px}
+.dtpin{position:absolute;top:-4px;left:14px;display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--link);color:var(--paper);font:700 10px var(--sans)}
+/* A step's own copy of the map, built up to that step. */
+.cxmapn figure.diagram{border-top:0;padding:0}
+.cxmapn .dlegend{display:none}
 /* Marks: rings and numbered pins over a screenshot or sketch, placed in percent of its box. */
 .dstage{position:relative;display:inline-block;max-width:100%;line-height:0}
 .dstage>.draw{line-height:normal}
-.dmark{position:absolute;border:2px solid var(--link);border-radius:5px;line-height:1.2;cursor:pointer;
+.dmark{position:absolute;border:2px solid var(--link);border-radius:5px;line-height:1.2;pointer-events:none;
   box-shadow:0 0 0 3px color-mix(in srgb,var(--paper) 55%,transparent);transition:opacity .45s,border-width .15s}
 .dmark.new{border-color:var(--pos)}.dmark.changed{border-color:var(--warn)}.dmark.removed{border-color:var(--neg);border-style:dashed}
 .dmark.point{width:0;height:0;border:0;box-shadow:none}
-.dmark:hover,.dmark.dsel{border-width:3px}
 .dmpin{position:absolute;left:-11px;top:-11px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
   background:var(--link);color:var(--paper);font:700 11px var(--sans);border:2px solid var(--paper)}
 .dmark.new .dmpin{background:var(--pos)}.dmark.changed .dmpin{background:var(--warn)}.dmark.removed .dmpin{background:var(--neg)}
-.dmlbl{position:absolute;left:-2px;top:calc(100% + 6px);white-space:nowrap;font:500 12px/1.3 var(--sans);color:var(--ink);
+.dmlbl{position:absolute;left:-2px;top:calc(100% + 6px);white-space:nowrap;font:500 11.5px/1.3 var(--sans);color:var(--ink);
   background:var(--paper);border:1px solid var(--rule-2);border-radius:4px;padding:2px 7px}
 .dmark.point .dmlbl{left:14px;top:-10px}
 #lightbox>.dstage{max-width:92vw;max-height:92vh}#lightbox>.dstage>img{max-width:92vw;max-height:92vh;display:block}
-/* The card a diagram part opens. */
-.dpop{position:fixed;z-index:70;width:280px;background:var(--paper);border:1px solid var(--rule-2);border-radius:6px;
-  box-shadow:0 8px 28px rgba(0,0,0,.18);padding:12px 14px;font:14px/1.4 var(--sans)}
-.dpop.hidden{display:none}
-.dpophead{font:600 15px/1.3 var(--serif);margin-bottom:4px}
-.dpopmeta{color:var(--ink-3);font-size:13px;margin-bottom:10px}.dpopmeta code{font:12px var(--mono)}
-.dpopacts{display:flex;gap:8px;margin-top:10px}.dpopacts .sp{flex:1}
-.dpopta{width:100%;box-sizing:border-box;font:14px/1.45 var(--sans);color:var(--ink);background:var(--paper);border:1px solid var(--rule-2);border-radius:4px;padding:6px 8px;resize:vertical}
-tr.dflash>td{animation:dflash 1.8s ease-out}
-@keyframes dflash{0%,30%{background:color-mix(in srgb,var(--warn) 30%,transparent)}100%{background:inherit}}
-/* The steps of "How it comes together" beside their map, which stays in view and builds up. */
-.cxflow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,44%);gap:40px;align-items:start}
-.cxflow>.cxsteps{grid-column:1;grid-row:1;margin-top:0}
-.cxmap{grid-column:2;grid-row:1;position:sticky;top:calc(var(--hh) + 16px)}
-.cxmap figure.diagram{border-top:0;padding-top:0}
-.cxmapstep{font:14px/1.35 var(--sans);color:var(--ink-3);margin:0 0 10px;min-height:1.35em}.cxmapstep b{color:var(--ink);font-weight:600}
-.cxmap .dsvg{max-height:calc(100vh - var(--hh) - 140px);width:auto;max-width:100%}
-.cxflow .cxstep{transition:opacity .3s}
-.cxflow:has(.cxon) .cxstep:not(.cxon){opacity:.55}
-.cxflow .cxstep:last-child{min-height:50vh}
-@media (max-width:1100px){
-  .cxflow{grid-template-columns:minmax(0,1fr);gap:0}
-  .cxmap{grid-column:1;z-index:5;background:var(--paper);padding:8px 0;border-bottom:1px solid var(--rule)}
-  .cxflow>.cxsteps{grid-row:2}
-  .cxmap .dsvg{max-height:34vh}
-  .cxmap .dlegend{display:none}
-}
 /* A screenshot's title reads as a caption under the picture, centered with it, not a heading off to its left. */
 .diagram.media{display:flex;flex-direction:column}
 .diagram.media .dtitle{order:1;font:500 13.5px var(--sans);color:var(--ink-3);text-align:center;margin:10px 0 0;padding:0}
