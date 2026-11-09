@@ -542,9 +542,23 @@ Ready-made classes:
   - `.flow` (`.flow.v` vertical) draws arrows between its children; `.state` is
     a state pill, so a `.flow` of `.state`s is a small state machine.
   - `.split`: two children labelled Before and After.
-- SVG: strokes `.s-new`, `.s-old` (red dashed), `.s-changed`, `.s-muted`,
-  `.s-accent`; fills `.f-new`, `.f-old`, `.f-panel`, `.f-accent`. Text is
-  already themed. Give the `<svg>` a `viewBox` and it scales to fit.
+- SVG, for drawing by hand:
+  - Strokes `.s-new`, `.s-old` (red dashed), `.s-changed`, `.s-muted`,
+    `.s-accent`, and styles `.s-thick`, `.s-dash`, `.s-dot`; `.ghost` fades.
+    A bare `<line>` or `<polyline>` is drawn in the muted colour.
+  - Fills `.f-new`, `.f-old`, `.f-panel`, `.f-accent`, `.f-hatch` (an area
+    that's gone or not allowed) and `.f-grid` (a background grid).
+  - Arrows: `.to` (a head at the end), `.both`, `.move` (a dashed accent arrow
+    for something that moved); add a stroke class to colour the head.
+    `.dim` is a measurement with end ticks.
+  - Points: `.pt` (a dot; `.new`, `.old`, `.accent`), `.handle` (a square
+    grip), `.origin` (draw a circle and two short lines with it for a
+    crosshair).
+  - Text is themed; `.lbl` gives a label a halo so it reads over lines
+    (`.new`, `.old`, `.accent`), `.mono` for numbers.
+  - Give the `<svg>` a `viewBox`; it is drawn at the viewBox's width (so
+    12px text stays 12px) and shrinks to fit a narrow window. Size the
+    viewBox to the size it should show at, around 500–800 wide.
 
 ```json
 { "kind": "svg", "title": "Shape rotated 90°", "group": "The rotation fix",

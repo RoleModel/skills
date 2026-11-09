@@ -601,6 +601,22 @@ const DIAG = (function () {
     'svg .muted{fill:var(--muted)}svg .s-new{stroke:var(--add-b)}svg .s-old{stroke:var(--del-b);stroke-dasharray:5 4}' +
     'svg .s-changed{stroke:#d29922}svg .s-muted{stroke:var(--muted)}svg .s-accent{stroke:var(--accent)}' +
     'svg .f-new{fill:var(--add-bg)}svg .f-old{fill:var(--del-bg)}svg .f-panel{fill:var(--panel)}svg .f-accent{fill:var(--accent)}' +
+    // Drawing by hand in an svg: arrows, measurements, points, fills and line styles.
+    // A bare line or polyline is visible without any class; :where keeps this below every class.
+    ':where(svg) :where(line,polyline){stroke:var(--muted);fill:none}' +
+    ':host>svg{display:block;margin-inline:auto}' +
+    'svg .s-thick{stroke-width:2.5}svg .s-dash{stroke-dasharray:6 4}svg .s-dot{stroke-dasharray:1 4;stroke-linecap:round}svg .ghost{opacity:.4}' +
+    'svg :is(.to,.both,.move,.dim){fill:none}svg .to{marker-end:url(#k)}svg .both{marker-start:url(#k);marker-end:url(#k)}' +
+    'svg .move{stroke:var(--accent);stroke-dasharray:5 4;marker-end:url(#k-accent)}' +
+    'svg .dim{stroke:var(--muted);stroke-width:.8;marker-start:url(#t);marker-end:url(#t)}' +
+        'svg .to.s-new{marker-end:url(#k-new)}svg .both.s-new{marker-start:url(#k-new);marker-end:url(#k-new)}svg .dim.s-new{marker-start:url(#t-new);marker-end:url(#t-new)}' +
+    'svg .to.s-old{marker-end:url(#k-old)}svg .both.s-old{marker-start:url(#k-old);marker-end:url(#k-old)}svg .dim.s-old{marker-start:url(#t-old);marker-end:url(#t-old)}' +
+    'svg .to.s-changed{marker-end:url(#k-changed)}svg .both.s-changed{marker-start:url(#k-changed);marker-end:url(#k-changed)}svg .dim.s-changed{marker-start:url(#t-changed);marker-end:url(#t-changed)}' +
+    'svg .to.s-accent{marker-end:url(#k-accent)}svg .both.s-accent{marker-start:url(#k-accent);marker-end:url(#k-accent)}svg .dim.s-accent{marker-start:url(#t-accent);marker-end:url(#t-accent)}' +
+    'svg .pt{fill:var(--text);stroke:var(--bg);stroke-width:1.5}svg .pt.new{fill:var(--add-b)}svg .pt.old{fill:var(--del-b)}svg .pt.accent{fill:var(--accent)}' +
+    'svg .handle{fill:var(--bg);stroke:var(--accent);stroke-width:1.5}svg .origin{stroke:var(--text);stroke-width:1}' +
+    'svg .f-hatch{fill:url(#hatch)}svg .f-grid{fill:url(#grid)}' +
+    'svg .lbl{paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round;font-size:11px}svg .lbl.new{fill:var(--add-b)}svg .lbl.old{fill:var(--del-b)}svg .lbl.accent{fill:var(--accent)}svg .mono{font-family:ui-monospace,Menlo,monospace}' +
     // Sketching: rough UI, notes and marks for drawing the picture a review is missing (a screen that
     // can't be captured, a record before and after, a timeline). Deliberately plain, so it reads as a sketch.
     '.screen{border:1px solid var(--border);border-radius:8px;background:var(--bg);overflow:hidden}' +
@@ -693,11 +709,29 @@ const DIAG = (function () {
     // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
     '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0!important}[data-reveal=is-past]{opacity:.32!important}' +
     '';
+  // Arrowheads, dimension ticks and fills for drawing by hand in an svg. They go into each svg as
+  // it is shown, so the drawing's classes (.to, .dim, .f-hatch) can point at them by id; one set per
+  // colour, because a marker can't take its line's colour everywhere yet.
+  const INK = [['', 'var(--muted)'], ['new', 'var(--add-b)'], ['old', 'var(--del-b)'], ['changed', '#d29922'], ['accent', 'var(--accent)']];
+  const SVG_DEFS = '<defs>' + INK.map(([k, c]) => {
+    const id = k ? '-' + k : '';
+    return '<marker id="k' + id + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.5L10,5L0,8.5z" style="fill:' + c + '"/></marker>' +
+      '<marker id="t' + id + '" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M5,0V10" style="stroke:' + c + ';stroke-width:1.5"/></marker>';
+  }).join('') +
+    '<pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0,0V6" style="stroke:var(--del-b);stroke-width:1.2;opacity:.55"/></pattern>' +
+    '<pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10,0H0V10" style="fill:none;stroke:var(--border);stroke-width:.5;opacity:.6"/></pattern></defs>';
   function raw(markup) {
     const host = document.createElement('div');
     host.className = 'draw';
     const root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
     root.innerHTML = '<style>' + RAW_CSS + '</style>' + String(markup || '').replace(/<script[\s\S]*?<\/script>/gi, '');
+    root.querySelectorAll('svg').forEach((el) => {
+      el.insertAdjacentHTML('afterbegin', SVG_DEFS);
+      // Drawn at its own size (the viewBox's width) rather than stretched to the column, so its text
+      // stays the size it was written at; it still shrinks to fit a narrow window.
+      const vb = (el.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+      if (!el.hasAttribute('width') && vb[2] > 0 && !el.closest('svg svg')) el.setAttribute('width', vb[2]);
+    });
     // Inline handlers would run; diagrams are pictures, so drop them.
     root.querySelectorAll('*').forEach((el) => {
       for (const a of Array.from(el.attributes)) if (/^on/i.test(a.name)) el.removeAttribute(a.name);
