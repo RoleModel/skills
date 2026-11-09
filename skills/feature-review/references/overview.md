@@ -436,6 +436,45 @@ Each side is any other kind, its `title` replaces the "Before"/"After"
 label, and each side expands on its own. If a change is better told in steps
 than as two states, draw one diagram that builds instead.
 
+### `model`: records and what they point at
+
+For a migration or a new table: each record a card of its fields, and a line
+from each reference field to the record it points at. Records others point at
+stand on the left.
+
+```json
+{ "kind": "model", "title": "Projects now belong to a company", "entities": [
+  { "id": "company", "label": "Company", "status": "new",
+    "fields": [{ "name": "id", "key": "pk", "type": "bigint" }, { "name": "name", "type": "string" }] },
+  { "id": "project", "label": "Project", "status": "changed", "fields": [
+    { "name": "company_id", "to": "company", "status": "new" },
+    { "name": "visibility", "type": "enum", "was": "boolean", "status": "changed" },
+    { "name": "user_id", "type": "bigint", "status": "removed" } ] }
+] }
+```
+
+A field takes `type`, `key: "pk"`, `to` (the record it points at, which draws
+the line), `was` (its old type, struck through) and `status`. `links` adds a
+line between two records with no field behind it. Show the fields a reviewer
+needs, not every column.
+
+### `journey`: the screens a person moves through
+
+A storyboard: sketched screens left to right, each arrow saying what the
+person does to reach the next. Better than a flow when the change is to what
+people see.
+
+```json
+{ "kind": "journey", "title": "Starting a project in a second company", "screens": [
+  { "title": "Projects", "then": "clicks New project", "html": "<div class='screen'><div class='body'>…</div></div>" },
+  { "title": "New project", "status": "new", "then": "picks Acme, saves", "html": "…" },
+  { "title": "Warehouse", "status": "changed", "note": "The company shows under the title.", "html": "…" }
+] }
+```
+
+Each screen's `html` uses the sketch classes below. `then` labels the arrow to
+the next screen; `width` (default 230) sizes a screen; `step` makes it build.
+
 ### `html` and `svg`: anything else
 
 Hand-written markup in `html` or `svg`: UI mockups, records and tables,
@@ -473,6 +512,17 @@ Ready-made classes:
     `.removed`), `.ui-table` (rows take `.new`, `.removed`, `.changed`).
   - Overlays: `.scrim` around a `.modal`; `.click` puts a pointer on an
     element, `.cursor` is a pointer on its own.
+- Forms, navigation and mail:
+  - Forms and feedback: `.ui-field` (a label over a control; `.error` with a
+    `.ui-error` line, or a `.ui-hint`), `.ui-textarea`, `.ui-search`,
+    `.ui-date`, `.ui-upload`, `.ui-slider` and `.ui-progress` (set `--v`),
+    `.ui-spinner`, `.ui-skeleton` (set `--w`, `--h`), `.ui-tooltip`.
+  - Navigation and layout: `.ui-crumbs`, `.ui-pager` and `.ui-stepper`
+    (children; one `.on`, earlier ones `.done`), `.ui-header` (a `.title` and
+    actions), `.ui-app` (a `.ui-nav` beside the main area), `.ui-drawer`,
+    `.ui-list` (rows take `.new`, `.removed`, `.changed`, `.on`), `.ui-link`,
+    `.ui-kbd`, `.ui-bars` (`<i style="--v:40%">` bars).
+  - `.email` with a `.head` (label and value pairs) and a `.body`.
 - Data, as a person would see it:
   - `.record` with a `.title` and `<div><span>Label</span><span>value</span></div>`
     rows (`.new`, `.removed`, `.changed`).

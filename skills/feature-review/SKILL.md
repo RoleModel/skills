@@ -189,9 +189,11 @@ and the recommendations.
   before and after.
 
 Diagrams go in either part, on a group's gist, and on recommendations. Draw
-the picture that's missing, in whatever form fits: `structure` and `sequence`
-are shortcuts, and hand-written `html`/`svg` (with a small sketching kit for
-mock screens, notes, timelines and bars) covers everything else. Full format, guidance and examples:
+the picture that's missing, in whatever form fits: `structure`, `sequence`,
+`model` (records and their fields, for a migration) and `journey` (sketched
+screens in order, for a UI change) are shortcuts, and hand-written
+`html`/`svg` (with a sketching kit for mock screens, forms, notes, timelines
+and bars) covers everything else. Full format, guidance and examples:
 `references/overview.md`. Without an overview the page opens on the code, and
 the Overview step shows only the computed shape.
 

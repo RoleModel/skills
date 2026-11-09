@@ -15,6 +15,8 @@
  *   states     a state machine: states and the transitions between them
  *   table      rows and columns with changed cells marked (a permissions matrix, a price list)
  *   timeline   events in order along a line
+ *   model      records with their fields, and lines from reference fields to what they point at
+ *   journey    sketched screens in order, each arrow saying what the person does next
  *
  * Node, edge and message `status` is new | changed | removed | same. Any part can also carry
  * `step` and `pin`, and image, video, html and svg diagrams take `marks` (see below).
@@ -442,6 +444,115 @@ const DIAG = (function () {
     return '<svg class="dsvg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + head + body + '</svg>' + legend(used);
   }
 
+  // --- model: records, their fields, and what points at what ----------------
+  // A data model as a reviewer reads a migration: each record a card of fields, new and removed
+  // fields marked, and a line from each reference field to the record it points at. Records sit in
+  // columns by what they depend on, so the records others point at stand on the left.
+  function model(d) {
+    const id = 'dg' + (++seq);
+    const ents = (d.entities || d.records || []).map((e) => Object.assign({}, e, { status: st(e.status), fields: (e.fields || []).map((f) => (typeof f === 'string' ? { name: f } : Object.assign({}, f))) }));
+    const byId = new Map(ents.map((e) => [e.id, e]));
+    const links = [];
+    ents.forEach((e) => e.fields.forEach((f, fi) => { if (f.to && byId.has(f.to)) links.push({ from: e.id, fi, to: f.to, status: st(f.status), label: f.label, step: f.step }); }));
+    (d.links || []).map(edgeOf).forEach((l) => { if (byId.has(l.from) && byId.has(l.to)) links.push(Object.assign({}, l, { status: st(l.status) })); });
+    // Column: one right of the furthest record it points at.
+    const col = new Map(), visiting = new Set();
+    const colOf = (e) => {
+      if (col.has(e.id)) return col.get(e.id);
+      if (visiting.has(e.id)) return 0;
+      visiting.add(e.id);
+      const c = Math.max(0, ...links.filter((l) => l.from === e.id && l.to !== e.id).map((l) => colOf(byId.get(l.to)) + 1));
+      visiting.delete(e.id); col.set(e.id, c);
+      return c;
+    };
+    ents.forEach(colOf);
+    const HEAD = 32, ROW = 23;
+    ents.forEach((e) => {
+      e.w = Math.max(160, tw(e.label || e.id, 13) + 44, ...e.fields.map((f) => tw(f.name, 12) + tw(f.type || '', 11) + tw(f.was ? 'was ' + f.was : '', 10.5) + 52));
+      e.h = HEAD + e.fields.length * ROW + 8;
+    });
+    const cols = [];
+    ents.forEach((e) => { (cols[col.get(e.id)] = cols[col.get(e.id)] || []).push(e); });
+    // Each line gets a lane of its own in the gap it turns in, so lines never share a vertical run.
+    links.forEach((l) => {
+      const a = byId.get(l.from), b = byId.get(l.to);
+      l.left = col.get(b.id) < col.get(a.id);
+      l.gap = l.left ? col.get(a.id) - 1 : col.get(b.id);
+    });
+    const lanes = [];
+    links.forEach((l) => { l.lane = (lanes[l.gap] = (lanes[l.gap] || 0) + 1) - 1; });
+    const gapW = (g) => 56 + (lanes[g] || 0) * 14;
+    let x = 8;
+    const colX = [];
+    cols.forEach((c, i) => { colX[i] = x; x += Math.max(...(c || [{ w: 0 }]).map((e) => e.w)) + gapW(i); });
+    let H = 0;
+    cols.forEach((c, i) => { let y = 8; (c || []).forEach((e) => { e.x = colX[i]; e.y = y; y += e.h + 26; }); H = Math.max(H, y); });
+    const W = Math.max(...ents.map((e) => e.x + e.w), 0) + 8 + (lanes[cols.length - 1] || 0) * 12 + (links.some((l) => !l.left) ? 24 : 0);
+    const used = new Set();
+    let svg = '', over = '';
+    links.forEach((l) => {
+      const a = byId.get(l.from), b = byId.get(l.to), s = l.status;
+      used.add(s);
+      const y0 = l.fi != null ? a.y + HEAD + l.fi * ROW + ROW / 2 : a.y + HEAD / 2, y1 = b.y + HEAD / 2;
+      const right = (ci) => colX[ci] + Math.max(...cols[ci].map((e) => e.w));
+      const tx = l.left ? right(l.gap) + 22 + l.lane * 14 : right(l.gap) + 14 + l.lane * 14;
+      const pts = l.left ? [[a.x, y0], [tx, y0], [tx, y1], [b.x + b.w, y1]] : [[a.x + a.w, y0], [tx, y0], [tx, y1], [b.x + b.w + 1, y1]];
+      const p = rounded(pts, 8), name = (a.label || a.id) + ' → ' + (b.label || b.id) + (l.label ? ': ' + l.label : '');
+      const at = steps(l.step).length ? l : { step: steps(a.step).concat(steps(b.step)).slice(-1) };
+      svg += '<path class="de ' + s + '" d="' + p + '" marker-end="url(#' + id + '-' + s + ')"' + partAttrs(Object.assign({}, l, { step: at.step }), name) + ' data-from="' + esc(l.from) + '" data-to="' + esc(l.to) + '"/>' +
+        '<circle class="dfk ' + s + '" cx="' + pts[0][0] + '" cy="' + y0 + '" r="2.5"' + partAttrs({ step: at.step }, name) + '/>' +
+        '<path class="dhit" d="' + p + '"' + partAttrs(Object.assign({}, l, { step: at.step }), name) + ' data-from="' + esc(l.from) + '" data-to="' + esc(l.to) + '"/>';
+    });
+    ents.forEach((e) => {
+      used.add(e.status);
+      let g = '<rect x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="7"/>' +
+        '<line class="dsep" x1="' + e.x + '" x2="' + (e.x + e.w) + '" y1="' + (e.y + HEAD) + '" y2="' + (e.y + HEAD) + '"/>' +
+        (e.status !== 'same' ? '<circle class="ddot" cx="' + (e.x + 14) + '" cy="' + (e.y + HEAD / 2) + '" r="3.5"/>' : '') +
+        '<text class="dent" x="' + (e.x + (e.status !== 'same' ? 26 : 12)) + '" y="' + (e.y + HEAD / 2 + 4.5) + '">' + esc(e.label || e.id) + '</text>';
+      e.fields.forEach((f, i) => {
+        const fs = st(f.status), y = e.y + HEAD + i * ROW + 4;
+        if (f.status) used.add(fs);
+        g += '<g class="dfield ' + fs + '"' + partAttrs(f, (e.label || e.id) + '.' + f.name) + '>' +
+          (fs !== 'same' ? '<rect class="dfbg" x="' + (e.x + 1) + '" y="' + y + '" width="' + (e.w - 2) + '" height="' + (ROW - 2) + '"/>' : '') +
+          '<text x="' + (e.x + 12) + '" y="' + (y + 15) + '">' + (f.key === 'pk' ? '<tspan class="dkey">⚿ </tspan>' : '') + esc(f.name) + '</text>' +
+          '<text class="dtype" x="' + (e.x + e.w - 12) + '" y="' + (y + 15) + '" text-anchor="end">' +
+          (f.was ? '<tspan class="dwas">' + esc(f.was) + '</tspan> → ' : '') + esc(f.type || (f.to ? '→ ' + ((byId.get(f.to) || {}).label || f.to) : '')) + '</text></g>';
+      });
+      svg += '<g class="dn drec ' + e.status + '"' + partAttrs(e, e.label || e.id) + ' data-id="' + esc(e.id) + '"' + (e.note ? ' data-note="' + esc(e.note) + '"' : '') + '>' + g + '</g>';
+      if (e.pin != null) over += '<g' + partAttrs(e, e.label || e.id) + '>' + pinSvg(e.x + 2, e.y + 2, e.pin) + '</g>';
+    });
+    return '<svg class="dsvg dmodel" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + svg + over + '</svg>' + legend(used);
+  }
+
+  // --- journey: the screens a person moves through ----------------------------
+  // A storyboard: small sketched screens left to right, each arrow saying what the person does to get
+  // to the next. Each screen is sketch markup (the same classes as `html`), drawn in its own shadow root.
+  function journey(d) {
+    const wrap = document.createElement('div');
+    wrap.className = 'djourney';
+    (d.screens || []).forEach((s, i, all) => {
+      const card = document.createElement('div');
+      card.className = 'djscreen ' + st(s.status);
+      const at = partAttrs(s, s.title || 'Screen ' + (i + 1));
+      at.replace(/ data-([\w-]+)="([^"]*)"/g, (m, k, v) => { card.setAttribute('data-' + k, v.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')); return m; });
+      card.style.setProperty('--sw', (s.width || d.width || 230) + 'px');
+      card.innerHTML = '<div class="djtitle">' + (s.pin != null ? '<span class="djpin">' + esc(s.pin) + '</span>' : '') + esc(s.title || '') + '</div>';
+      card.appendChild(raw(s.html || ''));
+      if (s.note) card.insertAdjacentHTML('beforeend', '<div class="djnote">' + esc(s.note) + '</div>');
+      wrap.appendChild(card);
+      if (i < all.length - 1) {
+        const next = all[i + 1], step = steps(next.step).length ? next : s;
+        const arrow = document.createElement('div');
+        arrow.className = 'djarrow';
+        const ss = steps(step.step);
+        if (ss.length) arrow.dataset.step = ss.join(' ');
+        arrow.innerHTML = '<span class="djact">' + esc(s.then || '') + '</span><i></i>';
+        wrap.appendChild(arrow);
+      }
+    });
+    return wrap;
+  }
+
   // --- raw markup ---------------------------------------------------------
   // Shown in a shadow root: page styles can't reach in and its styles can't
   // leak out. The page's colour variables still inherit, and these primitives
@@ -524,6 +635,32 @@ const DIAG = (function () {
     '.state{display:inline-block;border:1px solid var(--border);border-radius:14px;padding:2px 12px;font-size:12px;background:var(--panel)}.state.new{border-color:var(--add-b)}.state.removed{border-color:var(--del-b);border-style:dashed}.state.changed{border-color:#d29922}' +
     '.split{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding-top:20px}.split>*{position:relative}' +
     '.split>*::before{position:absolute;left:0;top:-20px;font-size:11px;color:var(--muted)}.split>:first-child::before{content:"Before"}.split>:last-child::before{content:"After"}' +
+    // Forms, feedback and navigation: enough to sketch a settings page, a wizard or an inbox.
+    '.ui-field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}.ui-field>.ui-input,.ui-field>.ui-select,.ui-field>.ui-textarea{color:var(--text)}' +
+    '.ui-field.error>.ui-input,.ui-field.error>.ui-select,.ui-field.error>.ui-textarea{border-color:var(--del-b)}.ui-error{color:var(--del-b);font-size:11px}.ui-hint{color:var(--muted);font-size:11px}' +
+    '.ui-textarea{display:block;min-height:46px;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:12px;color:var(--muted);background:var(--bg)}' +
+    '.ui-search{display:inline-flex;align-items:center;gap:6px;min-width:140px;border:1px solid var(--border);border-radius:14px;padding:2px 10px;font-size:12px;color:var(--muted);background:var(--bg)}.ui-search::before{content:"\\2315";font-size:13px}' +
+    '.ui-date{display:inline-flex;justify-content:space-between;gap:10px;min-width:110px;border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:12px;background:var(--bg)}.ui-date::after{content:"\\25A6";color:var(--muted)}' +
+    '.ui-upload{border:1px dashed var(--border);border-radius:8px;padding:12px;text-align:center;font-size:12px;color:var(--muted)}.ui-upload::before{content:"\\2191  "}' +
+    '.ui-slider{position:relative;height:4px;min-width:120px;border-radius:2px;margin:6px 0;background:linear-gradient(90deg,var(--accent) var(--v,50%),var(--border) 0)}.ui-slider::after{content:"";position:absolute;left:var(--v,50%);top:50%;width:11px;height:11px;border-radius:50%;background:var(--bg);border:2px solid var(--accent);transform:translate(-50%,-50%)}' +
+    '.ui-progress{height:6px;min-width:120px;border-radius:3px;background:linear-gradient(90deg,var(--accent) var(--v,50%),var(--border) 0)}' +
+    '.ui-spinner{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);vertical-align:middle}' +
+    '.ui-skeleton{height:var(--h,10px);width:var(--w,100%);border-radius:4px;background:repeating-linear-gradient(90deg,var(--border) 0 40%,color-mix(in srgb,var(--border) 50%,var(--bg)) 40% 60%,var(--border) 60% 100%)}' +
+    '.ui-tooltip{position:relative;display:inline-block;padding:3px 8px;border-radius:5px;background:var(--text);color:var(--bg);font-size:11px}.ui-tooltip::after{content:"";position:absolute;left:12px;bottom:-4px;width:8px;height:8px;background:inherit;transform:rotate(45deg)}' +
+    '.ui-crumbs{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--muted)}.ui-crumbs>:not(:last-child)::after{content:"/";margin-left:6px}.ui-crumbs>:last-child{color:var(--text)}' +
+    '.ui-pager{display:flex;gap:4px;font-size:12px}.ui-pager>*{min-width:22px;text-align:center;padding:1px 6px;border:1px solid var(--border);border-radius:4px}.ui-pager>.on{background:var(--accent);border-color:var(--accent);color:var(--bg)}' +
+    '.ui-stepper{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);counter-reset:s}.ui-stepper>*{display:inline-flex;align-items:center;gap:5px;counter-increment:s}' +
+    '.ui-stepper>::before{content:counter(s);display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--border);font-size:10px}' +
+    '.ui-stepper>:not(:last-child)::after{content:"";width:18px;height:1px;background:var(--border);margin-left:3px}.ui-stepper>.on{color:var(--text)}.ui-stepper>.on::before{border-color:var(--accent);color:var(--accent)}.ui-stepper>.done::before{content:"\\2713";background:var(--accent);border-color:var(--accent);color:var(--bg)}' +
+    '.ui-link{color:var(--accent);text-decoration:underline;text-underline-offset:2px;font-size:12px}.ui-kbd{display:inline-block;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:0 5px;font:11px ui-monospace,Menlo,monospace}' +
+    '.ui-list{display:flex;flex-direction:column;font-size:12px}.ui-list>*{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)}.ui-list>:last-child{border-bottom:0}' +
+    '.ui-list>.new{background:var(--add-bg)}.ui-list>.removed{border-style:solid;border-color:var(--border);opacity:1;background:var(--del-bg);text-decoration:line-through;color:var(--muted)}.ui-list>.changed{box-shadow:inset 3px 0 #d29922}.ui-list>.on{background:var(--panel)}' +
+    '.ui-header{display:flex;align-items:center;gap:10px;padding:4px 0 8px;border-bottom:1px solid var(--border);font-size:12px}.ui-header>.title{margin:0;flex:1}' +
+    '.ui-app{display:grid;grid-template-columns:auto 1fr;gap:12px;min-height:var(--h,0)}.ui-app>.ui-nav{border-right:1px solid var(--border);padding-right:8px}' +
+    '.ui-drawer{border-left:1px solid var(--border);padding-left:10px;display:flex;flex-direction:column;gap:6px;box-shadow:-8px 0 14px -10px rgba(0,0,0,.35)}' +
+    '.ui-bars{display:flex;align-items:flex-end;gap:4px;height:var(--h,60px)}.ui-bars>i{flex:1;min-width:6px;height:var(--v,50%);background:var(--border);border-radius:2px 2px 0 0}.ui-bars>i.on{background:var(--accent)}.ui-bars>i.new{background:var(--add-b)}.ui-bars>i.removed{background:var(--del-b)}' +
+    '.email{border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:12px;overflow:hidden}.email>.head{padding:6px 12px;border-bottom:1px solid var(--border);background:var(--panel);display:grid;grid-template-columns:auto 1fr;gap:1px 10px}' +
+    '.email>.head>:nth-child(odd){color:var(--muted)}.email>.body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}' +
     // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
     '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0!important}[data-reveal=is-past]{opacity:.32!important}' +
     '';
@@ -583,6 +720,8 @@ const DIAG = (function () {
     else if (d.kind === 'states') box.innerHTML = ranked(d, 'state');
     else if (d.kind === 'table') box.innerHTML = table(d);
     else if (d.kind === 'timeline') box.innerHTML = timeline(d);
+    else if (d.kind === 'model') box.innerHTML = model(d);
+    else if (d.kind === 'journey') box.appendChild(journey(d));
     else if (d.kind === 'compare') {
       box.className = 'dbody dcompare';
       [['before', 'Before'], ['after', 'After']].forEach(([k, t]) => {
@@ -610,7 +749,7 @@ const DIAG = (function () {
       else box.innerHTML = staged('<video src="' + esc(d.data) + '" controls muted loop playsinline preload="metadata"></video>', d);
     }
     else box.innerHTML = '<p class="svnote">Unknown diagram kind: ' + esc(d.kind) + '</p>';
-    if (['structure', 'flow', 'states', 'sequence'].includes(d.kind)) box.insertAdjacentHTML('beforeend', '<div class="dhover" aria-live="polite"></div>');
+    if (['structure', 'flow', 'states', 'sequence', 'model'].includes(d.kind)) box.insertAdjacentHTML('beforeend', '<div class="dhover" aria-live="polite"></div>');
     return box;
   }
 
@@ -659,7 +798,11 @@ const DIAG = (function () {
   // A diagram that builds: its steps, named by `stages` (or, for the connection map, the steps' titles).
   function stageCount(d) {
     let m = 0;
-    JSON.stringify(d || {}, (k, v) => { if (k === 'step') steps(v).forEach((x) => { if (x > m) m = x; }); return v; });
+    JSON.stringify(d || {}, (k, v) => {
+      if (k === 'step') steps(v).forEach((x) => { if (x > m) m = x; });
+      if (k === 'html' && typeof v === 'string') (v.match(/data-step=["'][\d ]+["']/g) || []).forEach((a) => a.slice(11, -1).split(' ').forEach((x) => { if (+x > m) m = +x; }));
+      return v;
+    });
     (((d && (d.html || d.svg)) || '').match(/data-step=["'][\d ]+["']/g) || []).forEach((a) => a.slice(11, -1).split(' ').forEach((x) => { if (+x > m) m = +x; }));
     return m;
   }
@@ -762,9 +905,9 @@ const DIAG = (function () {
       if (host && host.go) host.go(+b.dataset.go);
     });
   }
-  const isStaged = (d) => JSON.stringify(d || {}).includes('"step"') || /data-step=/.test((d && (d.html || d.svg)) || '');
+  const isStaged = (d) => { const j = JSON.stringify(d || {}); return j.includes('"step"') || /data-step=/.test(j); };
 
-  const KINDS = ['structure', 'flow', 'states', 'sequence', 'compare', 'table', 'timeline', 'html', 'svg', 'image', 'video'];
+  const KINDS = ['structure', 'flow', 'states', 'sequence', 'compare', 'table', 'timeline', 'model', 'journey', 'html', 'svg', 'image', 'video'];
   // Problems the build reports before writing the page; [] when the diagram is drawable.
   // With ctx ({ steps }), also checks that each step names a real connection step.
   function problems(d, where, ctx) {
@@ -794,6 +937,15 @@ const DIAG = (function () {
       if (!(d.rows || []).length) out.push(at + ': table has no rows');
     } else if (d.kind === 'timeline') {
       if (!(d.events || []).length) out.push(at + ': timeline has no events');
+    } else if (d.kind === 'model') {
+      const ids = new Set();
+      (d.entities || d.records || []).forEach((e) => { if (!e.id) out.push(at + ': a record has no id'); else if (ids.has(e.id)) out.push(at + ': duplicate record ' + e.id); ids.add(e.id); });
+      if (!ids.size) out.push(at + ': no records');
+      (d.entities || d.records || []).forEach((e) => (e.fields || []).forEach((f) => { if (f && f.to && !ids.has(f.to)) out.push(at + ': ' + e.id + '.' + f.name + ' points at unknown record ' + f.to); }));
+      (d.links || []).map(edgeOf).forEach((l) => { if (!ids.has(l.from) || !ids.has(l.to)) out.push(at + ': link ' + l.from + ' → ' + l.to + ' names an unknown record'); });
+    } else if (d.kind === 'journey') {
+      if (!(d.screens || []).length) out.push(at + ': journey has no screens');
+      (d.screens || []).forEach((s, i) => { if (!s || !s.html) out.push(at + ': screen ' + (i + 1) + ' has no html'); });
     } else if (d.kind === 'image' || d.kind === 'video') {
       if (!(d.data || d.src)) out.push(at + ': ' + d.kind + ' needs a src file');
     } else if (!(d.html || d.svg)) out.push(at + ': ' + d.kind + ' diagram has no markup');
@@ -806,7 +958,7 @@ const DIAG = (function () {
     if (d.stages && (!Array.isArray(d.stages) || d.stages.length < stageCount(d))) out.push(at + ': stages should name each of its ' + stageCount(d) + ' step(s)');
     if (ctx) {
       const obj = (l) => (l || []).filter((x) => x && typeof x === 'object' && !Array.isArray(x));
-      const parts = [].concat(obj(d.nodes || d.states), obj(d.edges || d.transitions), obj(d.actors), obj(d.messages || d.steps), obj(d.rows), obj(d.events), d.marks || []);
+      const parts = [].concat(obj(d.nodes || d.states), obj(d.edges || d.transitions), obj(d.actors), obj(d.messages || d.steps), obj(d.rows), obj(d.events), obj(d.entities || d.records), ...obj(d.entities || d.records).map((e) => obj(e.fields)), obj(d.links), obj(d.screens), d.marks || []);
       parts.forEach((o) => {
         const name = o.label || o.id || (o.from ? o.from + ' → ' + o.to : 'a part');
         // A diagram with its own `stages` builds through those; any other names the connection steps.

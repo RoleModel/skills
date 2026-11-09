@@ -1127,3 +1127,23 @@ details.recchecks{border-left:0;padding-left:0}
 @media (prefers-color-scheme:dark){:root.hc{--hc-addw:#1e5a2b;--hc-delw:#6e2117}}
 .hc tr.a td.c mark,.hc td.ra mark{background:var(--hc-addw)}
 .hc tr.d td.c mark,.hc td.rd mark{background:var(--hc-delw)}
+
+/* Data model: records as cards of fields, reference lines to what they point at. */
+.dsvg.dmodel .dsep{stroke:var(--rule-2)}.dsvg.dmodel .dent{font-weight:600}
+.dsvg.dmodel .dfield text{font-size:12px}.dsvg.dmodel .dtype{fill:var(--ink-3);font:11px ui-monospace,SFMono-Regular,Menlo,monospace}
+.dsvg.dmodel .dkey{fill:var(--warn)}.dsvg.dmodel .dwas{text-decoration:line-through;fill:var(--neg)}
+.dsvg.dmodel .dfbg{fill:transparent}.dsvg.dmodel .dfield.new .dfbg{fill:var(--pos-wash)}.dsvg.dmodel .dfield.removed .dfbg{fill:var(--neg-wash)}
+.dsvg.dmodel .dfield.removed text{fill:var(--neg);text-decoration:line-through}.dsvg.dmodel .dfield.changed .dfbg{fill:color-mix(in srgb,var(--warn) 12%,transparent)}
+.dsvg.dmodel .dfk{fill:var(--ink-3)}.dsvg.dmodel .dfk.new{fill:var(--pos)}.dsvg.dmodel .dfk.changed{fill:var(--warn)}.dsvg.dmodel .dfk.removed{fill:var(--neg)}
+/* Journey: sketched screens left to right, an arrow saying what the person does next. */
+.djourney{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px 0}
+.djscreen{width:var(--sw,230px);display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid transparent;transition:opacity .45s}
+.djscreen.new{border-color:var(--pos);background:var(--pos-wash)}.djscreen.changed{border-color:var(--warn)}.djscreen.removed{border-color:var(--neg);border-style:dashed;opacity:.7}
+.djtitle{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.djpin{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--paper);font-size:11px}
+.djnote{font-size:12px;color:var(--ink-3)}
+.djarrow{display:flex;flex-direction:column;align-items:center;gap:2px;width:96px;padding:0 4px;transition:opacity .45s}
+.djarrow>i{display:block;width:100%;height:10px;background:linear-gradient(var(--ink-3),var(--ink-3)) 0 50%/calc(100% - 7px) 1.25px no-repeat;clip-path:none;position:relative}
+.djarrow>i::after{content:"";position:absolute;right:0;top:0;border:5px solid transparent;border-left:7px solid var(--ink-3);border-right:0}
+.djact{font-size:11.5px;color:var(--ink-2);text-align:center;line-height:1.3}
+.djscreen[data-reveal=is-future],.djarrow[data-reveal=is-future]{opacity:0}.djscreen[data-reveal=is-past],.djarrow[data-reveal=is-past]{opacity:.32}
