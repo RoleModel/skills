@@ -316,7 +316,7 @@ const DIAG = (function () {
   // draw it again, larger (a raw diagram's shadow root doesn't survive cloneNode).
   function render(d, md, opts) {
     const fig = document.createElement('figure');
-    fig.className = 'diagram';
+    fig.className = d.kind === 'image' || d.kind === 'video' ? 'diagram media' : 'diagram';
     fig.diag = d; fig.md = md;
     if (d.kind !== 'image' && d.kind !== 'compare' && !(opts && opts.big))
       fig.insertAdjacentHTML('beforeend', '<button type="button" class="dexpand" title="Expand" aria-label="Expand diagram">&#10530;</button>');
