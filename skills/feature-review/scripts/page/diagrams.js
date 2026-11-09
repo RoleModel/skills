@@ -99,6 +99,8 @@ const DIAG = (function () {
       const a = byId.get(e.from), b = byId.get(e.to);
       e.side = !d.ranked || a === b ? null : a.ri > b.ri ? 'right' : b.ri - a.ri > 1 ? 'left' : null;
     });
+    // Neighbours in one row (nothing between them, once placed) are joined straight across.
+    const beside = (e) => { const a = byId.get(e.from), b = byId.get(e.to), row = rows[a.ri]; return a.ri === b.ri && a !== b && Math.abs(row.indexOf(a) - row.indexOf(b)) === 1; };
     const sideW = (k) => {
       const list = edges.filter((e) => e.side === k);
       return list.length ? 30 + list.length * 14 + Math.max(0, ...list.map((e) => (e.label ? tw(e.label, 11) + 16 : 0))) : 0;
@@ -121,9 +123,39 @@ const DIAG = (function () {
     for (let ri = 1; ri < rows.length; ri++) sweep(ri, [ri - 1]);
     for (let ri = rows.length - 2; ri >= 0; ri--) sweep(ri, [ri + 1]);
     for (let ri = 1; ri < rows.length; ri++) sweep(ri, [ri - 1, ri - 2]);
-    const inner = Math.max(...rows.map((r) => r.width), 200);
+    // Then place each box under the boxes it connects to, so a chain runs straight down instead of
+    // jogging sideways across every gap. Rows start centred; each pass pulls a row toward its
+    // neighbours' centres, then pushes boxes apart where they'd overlap, keeping their order.
+    rows.forEach((row) => row.forEach((n) => { n.x -= row.width / 2; }));
+    const cx = (n) => n.x + n.w / 2;
+    const align = (ri, ref) => {
+      const row = rows[ri];
+      const want = row.map((n) => {
+        // Neighbours on the side being aligned to count most; those further off still pull, less.
+        let sum = 0, wt = 0;
+        edges.forEach((e) => {
+          const m = e.side ? null : e.from === n.id ? byId.get(e.to) : e.to === n.id ? byId.get(e.from) : null;
+          if (!m || m.ri === n.ri || (m.ri - n.ri) * (ref - n.ri) < 0) return;
+          const k = 1 / Math.abs(m.ri - n.ri);
+          sum += cx(m) * k; wt += k;
+        });
+        return wt ? sum / wt - n.w / 2 : null;
+      });
+      const x0 = row.map((n) => n.x);
+      row.forEach((n, i) => { if (want[i] != null) n.x = want[i]; });
+      for (let i = 1; i < row.length; i++) row[i].x = Math.max(row[i].x, row[i - 1].x + row[i - 1].w + GAP);
+      // The push only goes right; shift the row back so on balance its boxes sit where they wanted to.
+      const off = row.reduce((sum, n, i) => sum + ((want[i] != null ? want[i] : x0[i]) - n.x), 0) / row.length;
+      row.forEach((n) => { n.x += off; });
+    };
+    for (let pass = 0; pass < 4; pass++) {
+      for (let ri = 1; ri < rows.length; ri++) align(ri, ri - 1);
+      for (let ri = rows.length - 2; ri >= 0; ri--) align(ri, ri + 1);
+    }
+    const minX = Math.min(...nodes.map((n) => n.x)), maxX = Math.max(...nodes.map((n) => n.x + n.w));
+    const inner = Math.max(maxX - minX, 200), pad = (inner - (maxX - minX)) / 2;
     const W = LBL + inner + 24 + sideW('right');
-    rows.forEach((row) => { const off = LBL + (inner - row.width) / 2; row.forEach((n) => { n.x += off; n.h = NH(n); }); row.h = Math.max(...row.map(NH)); });
+    rows.forEach((row) => { row.forEach((n) => { n.x += LBL + pad - minX; n.h = NH(n); }); row.h = Math.max(...row.map(NH)); });
 
     // Ports: edges sharing a side of a box spread across its middle, ordered by where the other end sits.
     const sideOf = (e, n) => {
@@ -133,7 +165,7 @@ const DIAG = (function () {
     };
     const ports = new Map(), portX = new Map();
     edges.forEach((e) => {
-      if (e.from === e.to || e.side) return;
+      if (e.from === e.to || e.side || beside(e)) return;
       [[byId.get(e.from), byId.get(e.to)], [byId.get(e.to), byId.get(e.from)]].forEach(([n, other]) => {
         const k = n.id + ':' + sideOf(e, n);
         if (!ports.has(k)) ports.set(k, []);
@@ -143,7 +175,9 @@ const DIAG = (function () {
     ports.forEach((list) => {
       list.sort((p, q) => p.ox - q.ox);
       list.forEach((p, i) => {
-        const span = p.n.shape === 'decision' ? 0 : Math.min(p.n.w - 28, (list.length - 1) * 18);
+        // Lines meeting a box share one point on its side, so they join into a trunk with one
+        // arrowhead instead of a fan of them.
+        const span = 0;
         portX.set(p.e, Object.assign(portX.get(p.e) || {}, {
           [p.n === byId.get(p.e.from) ? 'a' : 'b']: p.n.x + p.n.w / 2 + (list.length > 1 ? -span / 2 + span * i / (list.length - 1) : 0),
         }));
@@ -178,6 +212,10 @@ const DIAG = (function () {
     const routes = edges.map((e) => {
       const a = byId.get(e.from), b = byId.get(e.to);
       if (a === b) return { e, self: true };
+      if (beside(e)) {
+        const R = b.x > a.x, y = (n) => ({ mid: n });
+        return { e, pts: [[R ? a.x + a.w : a.x, y(a)], [R ? b.x : b.x + b.w, y(a)]], lbl: { x: R ? (a.x + a.w + b.x) / 2 : (b.x + b.w + a.x) / 2, side: [a, a] } };
+      }
       if (e.side) {
         const k = sideN[e.side]++, R = e.side === 'right';
         const x = R ? colR + 22 + k * 14 : colL - 22 - k * 14, ax = R ? a.x + a.w : a.x, bx = R ? b.x + b.w : b.x;
@@ -798,7 +836,26 @@ const DIAG = (function () {
     return out;
   }
 
-  const api = { render, body, problems, focus, walk, trace, isStaged, stagesOf, KINDS };
+  // Warnings, not failures: a diagram that is drawable but likely hard to read. A web of lines is
+  // the usual one; the cure is to make it build (each path a step) or to split it, not to drop parts.
+  function advice(d, where) {
+    const at = where || (d && d.title) || 'diagram';
+    if (!d || !['structure', 'flow', 'states'].includes(d.kind) || DIAG_STAGED(d)) return [];
+    const nodes = (d.nodes || d.states || []).map((n) => (typeof n === 'string' ? { id: n } : n));
+    const edges = (d.edges || d.transitions || []).map(edgeOf);
+    const out = [];
+    if (edges.length > 8 && edges.length > nodes.length)
+      out.push(at + ': ' + edges.length + ' lines for ' + nodes.length + ' boxes is a web; give each path through it a "step" so it builds, or split it');
+    if (d.kind === 'structure' && d.layers) {
+      const li = new Map(nodes.map((n) => [n.id, d.layers.indexOf(n.layer)]));
+      const skips = edges.filter((e) => Math.abs((li.get(e.from) || 0) - (li.get(e.to) || 0)) > 1).length;
+      if (skips > 1) out.push(at + ': ' + skips + ' lines skip a layer; a line that crosses a layer usually means a box belongs in another layer, or the diagram should build');
+    }
+    return out;
+  }
+  const DIAG_STAGED = (d) => isStaged(d);
+
+  const api = { render, body, problems, advice, focus, walk, trace, isStaged, stagesOf, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();
