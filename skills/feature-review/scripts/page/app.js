@@ -1263,12 +1263,18 @@
       const list = ovv.querySelector('.cxsteps'), fig = el.querySelector('figure');
       const show = !!(map && list && fig && document.body.dataset.view === 'story' && lightbox.classList.contains('hidden'));
       const r = show && list.getBoundingClientRect();
-      const inView = show && r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.4;
+      // Shown while the steps fill a fair part of the window, not only while they cross its middle, so
+      // the first step is lit as soon as the list arrives and the last stays lit until it leaves.
+      const inView = show && r.top < window.innerHeight * 0.7 && r.bottom > window.innerHeight * 0.25;
       el.classList.toggle('hidden', !inView);
       if (!inView) return;
       el.classList.toggle('gutter', (window.innerWidth - Math.min(list.closest('.ovcol').offsetWidth, window.innerWidth)) / 2 > 280);
-      let n = 0;
-      list.querySelectorAll(':scope > .cxstep').forEach((li, i) => { if (li.getBoundingClientRect().top < window.innerHeight * 0.45) n = i + 1; });
+      // The step under a reading line a third of the way down; the first until the second reaches it,
+      // and the last once the page can't scroll any further, however short it is.
+      const items = list.querySelectorAll(':scope > .cxstep');
+      let n = items.length ? 1 : 0;
+      items.forEach((li, i) => { if (li.getBoundingClientRect().top < window.innerHeight * 0.35) n = i + 1; });
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) n = items.length;
       if (n === at) return;
       at = n;
       DIAG.focus(fig, n);
