@@ -279,60 +279,90 @@ Screenshots and screen recordings are diagrams too: `{"kind": "image" | "video",
 "src": "<file>"}`, inlined by the build. Use them for any UI change. Format,
 limits and how to capture them: `references/recommendations.md`.
 
-### Parts: code, steps, pins and marks
+### Parts: steps, pins and marks
 
-Every part of a diagram (a `structure` node or edge, a `sequence` actor or
-message, a mark) can carry:
+Every part of a diagram (a node or edge, an actor or message, a table row, a
+timeline event, a mark) can carry:
 
-- `code`: `"path:line"` or a path, a file in the diff. Clicking the part offers
-  **Open code**, which jumps to that line and flashes it. A part with code is
-  underlined.
 - `step`: the connection step it belongs to (a number, or a list). See the map
   below.
-- `pin`: a number drawn on the part, so prose can say "the guard at ②".
+- `pin`: a number drawn on the part, so prose can say "the button at ②".
 - `status`: `new`, `changed`, `removed` or `same`, on every kind, with one
   legend.
 
-Any part also takes a comment: the reviewer clicks it, writes, and the comment
-lands on the part's line if that line is in the diff, on its file otherwise, or
-in the review summary, quoting the diagram and the part, when it has no code.
-Hovering a box traces it: its lines and neighbours light up. The build fails on
-code outside the diff and on a step that doesn't exist.
+Hovering a box traces it: its lines and neighbours light up and the lines flow
+in their direction, and a line under the picture names it, its `note`, and
+what it connects to. Hovering a line lights its two ends. The build fails on a
+step that doesn't exist.
 
 **Marks** go on an `image`, `video`, `html` or `svg` diagram:
-`"marks": [{ "x": 38, "y": 42, "w": 22, "h": 6, "status": "new", "pin": 1, "label": "Organization: new", "code": "app/views/projects/_form.html.erb:12" }]`.
+`"marks": [{ "x": 38, "y": 42, "w": 22, "h": 6, "status": "new", "pin": 1, "label": "Organization: new" }]`.
 `x`, `y`, `w` and `h` are percent of the picture; leave out `w` and `h` for a
 point. Ring the part that matters with a mark instead of drawing a box into the
-screenshot. Marks stay on when the picture opens full size.
+screenshot. Marks stay on when the picture opens full size. In `html` and
+`svg`, any element can carry `data-step="2"` directly.
 
-In `html` and `svg`, any element can carry `data-step="2"` and
-`data-code="path:line"` directly.
+Keep diagrams about the product, not the code: what a person sees, does and
+what happens to their data. Code belongs in the Shape step and the groups.
 
 ### The map: required for "How it comes together"
 
 With two or more connection steps, give one diagram `"section": "connection"`
-whose parts name their steps. It sits beside the steps and stays in view while
-the reader scrolls. It **builds up**: at each step, that step's parts draw in,
-earlier ones stay faint as context, and later ones are hidden. Above and below
-the steps it shows the whole picture. An edge with no `step` appears with the
+whose parts name their steps. It shows whole above the steps, then again in
+each step, full width, **built up** to that step: that step's parts draw in as
+it scrolls into view, earlier ones stay faint as context, and later ones are
+hidden. An edge with no `step` appears with the
 later of its two ends; a part with no step is context, always faint. The build
 fails without a map, or with one that tags no part.
 
-Draw the feature end to end, from the person to the data, usually a `structure`
-with a layer per tier. Tag every node with the first step it matters in, and
-link each to its code, so the map doubles as an index into the change.
+Draw the feature end to end in product language, usually a `flow` or a
+`structure` with a layer per place the person goes. Tag every node with the
+first step it matters in.
 
 ```json
-{ "kind": "structure", "section": "connection", "title": "From the picker to the saved project",
-  "layers": ["Screen", "Server", "Data"],
+{ "kind": "flow", "section": "connection", "title": "Starting a project for a company",
   "nodes": [
-    { "id": "form", "label": "New project form", "layer": "Screen", "step": 1, "status": "changed", "code": "app/views/projects/_form.html.erb:8" },
-    { "id": "ctl", "label": "ProjectsController", "layer": "Server", "step": 2, "code": "app/controllers/projects_controller.rb:21", "pin": 1 },
-    { "id": "pol", "label": "OrganizationPolicy", "layer": "Server", "step": 2, "status": "new" },
-    { "id": "proj", "label": "Project", "sub": "organization_id", "layer": "Data", "step": 3, "status": "changed" }
+    { "id": "open", "label": "Opens New Project", "shape": "start", "step": 1 },
+    { "id": "pick", "label": "Picks the company", "status": "new", "step": 2, "pin": 1 },
+    { "id": "many", "label": "In more than one?", "shape": "decision", "step": 2 },
+    { "id": "save", "label": "Project saved to that company", "status": "changed", "step": 3 },
+    { "id": "done", "label": "Sees it in the list", "shape": "end", "step": 3 }
   ],
-  "edges": [["form", "ctl", "create"], ["ctl", "pol", "authorize"], ["ctl", "proj", "save"]] }
+  "edges": [["open", "many"], ["many", "pick", "yes"], ["many", "save", "no"], ["pick", "save"], ["save", "done"]] }
 ```
+
+### `flow`: steps and decisions
+
+`nodes` with an optional `shape` (`step`, the default; `decision`, a diamond;
+`start` and `end`, pills) and `edges` as in `structure`. There are no layers:
+each node is placed by its longest path from a start, so the flow reads top to
+bottom, and an edge back to an earlier node (a retry, "back to edit") climbs
+instead of tangling the order.
+
+### `states`: a state machine
+
+`states` (strings or `{ id, label, status, initial, final }`) and
+`transitions` (`[from, to, label, status]`), laid out like a flow with each
+state as a pill. Mark a new state or transition `new`, and one that goes away
+`removed`.
+
+```json
+{ "kind": "states", "title": "A project's status",
+  "states": [{ "id": "draft", "label": "Draft", "initial": true }, { "id": "review", "label": "In review", "status": "new" }, "Active", { "id": "closed", "label": "Closed", "final": true }],
+  "transitions": [["draft", "review", "submit", "new"], ["review", "Active", "approve", "new"], ["review", "draft", "send back", "new"], ["draft", "Active", "publish", "removed"], ["Active", "closed", "close"]] }
+```
+
+### `table`: a matrix with changes marked
+
+`columns` and `rows`; a row is a list of cells or `{ "cells": [...], "status" }`,
+and a cell is a value or `{ "v": "Edit", "was": "View", "status": "changed" }`.
+The first cell heads its row. For who can do what, prices by plan, settings by
+environment.
+
+### `timeline`: events in order
+
+`events`: strings or `{ "label", "at", "note", "status", "pin" }`, along a line
+left to right. For what happens on save, a job's retries, a rollout.
 
 ### `structure`: objects in layers
 
@@ -380,7 +410,9 @@ loop; `divider` separates phases.
 
 `{ "kind": "compare", "before": <diagram>, "after": <diagram> }`, side by side.
 Each side is any other kind, and its `title` replaces the "Before"/"After"
-label.
+label. When both sides are screenshots of the same screen, they stack with a
+handle to wipe between them, which shows a shift of a few pixels that side by
+side hides; `"slider": false` puts them side by side instead.
 
 ### `html` and `svg`: anything else
 
@@ -419,11 +451,9 @@ Ready-made classes:
     `.removed`), `.ui-table` (rows take `.new`, `.removed`, `.changed`).
   - Overlays: `.scrim` around a `.modal`; `.click` puts a pointer on an
     element, `.cursor` is a pointer on its own.
-- Data and code:
-  - `.record` with a `.title` and `<div><span>key</span><span>value</span></div>`
+- Data, as a person would see it:
+  - `.record` with a `.title` and `<div><span>Label</span><span>value</span></div>`
     rows (`.new`, `.removed`, `.changed`).
-  - `.code` with one child per line (`.add`, `.del`, `.hl`).
-  - `.req`: `<span class='req'><b>POST</b>/projects</span>`.
   - `.flow` (`.flow.v` vertical) draws arrows between its children; `.state` is
     a state pill, so a `.flow` of `.state`s is a small state machine.
   - `.split`: two children labelled Before and After.

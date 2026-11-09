@@ -177,8 +177,8 @@ and the recommendations.
   sees or does (with screenshots or recordings) and links the groups that do
   it; its checks show with it on the Checks step. Make it as visual as you can.
   With two or more steps it needs a **map**: one `"section": "connection"`
-  diagram whose parts name their `step` and link their `code`, which builds up
-  beside the steps as the reader scrolls (`references/overview.md`, "The map").
+  diagram whose parts name their `step`, shown again in each step built up to
+  it (`references/overview.md`, "The map").
   Ring the parts of screenshots that matter with `marks`.
 - **The shape**: the shape of this change (layers, objects, new dependencies,
   departures from the architecture instructions) and how it moves the shape
