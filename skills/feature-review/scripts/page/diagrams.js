@@ -51,11 +51,16 @@ const DIAG = (function () {
   // a list), `pin` (a number drawn on it) and `status`. A diagram with steps builds up as the reader
   // moves through them.
   const steps = (v) => [].concat(v == null ? [] : v).map(Number).filter((n) => n > 0);
+  // `link` ("diagram-id", or "diagram-id#part-id") makes a part open another diagram when clicked;
+  // `id` lets another diagram's link land on this part.
   const partAttrs = (o, name) => {
     const ss = steps(o.step);
     return ' data-el="' + esc(name || '') + '"' + (ss.length ? ' data-step="' + ss.join(' ') + '"' : '') +
-      (o.status && o.status !== 'same' ? ' data-status="' + esc(o.status) + '"' : '');
+      (o.status && o.status !== 'same' ? ' data-status="' + esc(o.status) + '"' : '') +
+      (o.id != null ? ' data-part="' + esc(o.id) + '"' : '') + (o.link ? ' data-link="' + esc(o.link) + '"' : '');
   };
+  // A small arrow in a linked box's corner says it opens another picture.
+  const linkMark = (o, x, y) => (o.link ? '<text class="dlinkmark" x="' + x + '" y="' + y + '" text-anchor="end">↗</text>' : '');
   const pinSvg = (x, y, n) => n == null ? '' : '<g class="dpin"><circle cx="' + x + '" cy="' + y + '" r="9"/><text x="' + x + '" y="' + (y + 3.5) +
     '" text-anchor="middle">' + esc(n) + '</text></g>';
   // A polyline with its corners rounded, so routed lines read as one stroke rather than a staircase.
@@ -332,7 +337,7 @@ const DIAG = (function () {
         (marked(n) ? '<circle class="ddot" cx="' + (n.x + (['start', 'end', 'state'].includes(n.shape) ? 18 : 14)) + '" cy="' + (n.y + (n.sub ? 18 : n.h / 2)) + '" r="3.5"/>' : '') +
         '<text x="' + cx + '" y="' + (n.y + (n.sub ? 22 : n.h / 2 + 4.5)) + '" text-anchor="middle">' + esc(n.label || n.id) + '</text>' +
         (n.sub ? '<text class="dsub" x="' + cx + '" y="' + (n.y + 40) + '" text-anchor="middle">' + esc(n.sub) + '</text>' : '') +
-        '</g>';
+        linkMark(n, n.x + n.w - 6, n.y + 13) + '</g>';
       if (n.pin != null) over += '<g' + partAttrs(n, n.label || n.id) + '>' + pinSvg(n.shape === 'decision' ? n.x + n.w / 2 : n.x + 2, n.y + 2, n.pin) + '</g>';
     });
     return '<svg class="dsvg' + (banded ? ' banded' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' +
@@ -518,7 +523,7 @@ const DIAG = (function () {
           '<text class="dtype" x="' + (e.x + e.w - 12) + '" y="' + (y + 15) + '" text-anchor="end">' +
           (f.was ? '<tspan class="dwas">' + esc(f.was) + '</tspan> → ' : '') + esc(f.type || (f.to ? '→ ' + ((byId.get(f.to) || {}).label || f.to) : '')) + '</text></g>';
       });
-      svg += '<g class="dn drec ' + e.status + '"' + partAttrs(e, e.label || e.id) + ' data-id="' + esc(e.id) + '"' + (e.note ? ' data-note="' + esc(e.note) + '"' : '') + '>' + g + '</g>';
+      svg += '<g class="dn drec ' + e.status + '"' + partAttrs(e, e.label || e.id) + ' data-id="' + esc(e.id) + '"' + (e.note ? ' data-note="' + esc(e.note) + '"' : '') + '>' + g + linkMark(e, e.x + e.w - 8, e.y + 20) + '</g>';
       if (e.pin != null) over += '<g' + partAttrs(e, e.label || e.id) + '>' + pinSvg(e.x + 2, e.y + 2, e.pin) + '</g>';
     });
     return '<svg class="dsvg dmodel" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + svg + over + '</svg>' + legend(used);
@@ -536,7 +541,7 @@ const DIAG = (function () {
       const at = partAttrs(s, s.title || 'Screen ' + (i + 1));
       at.replace(/ data-([\w-]+)="([^"]*)"/g, (m, k, v) => { card.setAttribute('data-' + k, v.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')); return m; });
       card.style.setProperty('--sw', (s.width || d.width || 230) + 'px');
-      card.innerHTML = '<div class="djtitle">' + (s.pin != null ? '<span class="djpin">' + esc(s.pin) + '</span>' : '') + esc(s.title || '') + '</div>';
+      card.innerHTML = '<div class="djtitle">' + (s.pin != null ? '<span class="djpin">' + esc(s.pin) + '</span>' : '') + esc(s.title || '') + (s.link ? ' <span class="djlink">↗</span>' : '') + '</div>';
       card.appendChild(raw(s.html || ''));
       if (s.note) card.insertAdjacentHTML('beforeend', '<div class="djnote">' + esc(s.note) + '</div>');
       wrap.appendChild(card);
@@ -661,6 +666,8 @@ const DIAG = (function () {
     '.ui-bars{display:flex;align-items:flex-end;gap:4px;height:var(--h,60px)}.ui-bars>i{flex:1;min-width:6px;height:var(--v,50%);background:var(--border);border-radius:2px 2px 0 0}.ui-bars>i.on{background:var(--accent)}.ui-bars>i.new{background:var(--add-b)}.ui-bars>i.removed{background:var(--del-b)}' +
     '.email{border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:12px;overflow:hidden}.email>.head{padding:6px 12px;border-bottom:1px solid var(--border);background:var(--panel);display:grid;grid-template-columns:auto 1fr;gap:1px 10px}' +
     '.email>.head>:nth-child(odd){color:var(--muted)}.email>.body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}' +
+    '[data-link]{cursor:pointer}[data-link]:hover{outline:1px dashed var(--accent);outline-offset:2px}' +
+    '.dlanded{animation:dlanded 1.8s ease-out}@keyframes dlanded{0%,40%{outline:2px solid var(--accent);outline-offset:3px}100%{outline:2px solid transparent;outline-offset:6px}}' +
     // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
     '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0!important}[data-reveal=is-past]{opacity:.32!important}' +
     '';
@@ -761,6 +768,7 @@ const DIAG = (function () {
     const fig = document.createElement('figure');
     fig.className = d.kind === 'image' || d.kind === 'video' ? 'diagram media' : 'diagram';
     fig.diag = d; fig.md = md;
+    if (d.id) fig.dataset.did = d.id;
     if (d.kind !== 'image' && d.kind !== 'compare' && !(opts && opts.big))
       fig.insertAdjacentHTML('beforeend', '<button type="button" class="dexpand" title="Expand" aria-label="Expand diagram">&#10530;</button>');
     if (d.title) fig.insertAdjacentHTML('beforeend', '<figcaption class="dtitle">' + esc(d.title) + '</figcaption>');
@@ -956,6 +964,15 @@ const DIAG = (function () {
       else if ((m.w != null) !== (m.h != null)) out.push(at + ': mark ' + (i + 1) + ' needs both w and h, or neither for a point');
     });
     if (d.stages && (!Array.isArray(d.stages) || d.stages.length < stageCount(d))) out.push(at + ': stages should name each of its ' + stageCount(d) + ' step(s)');
+    if (ctx && ctx.ids) {
+      const links = [];
+      JSON.stringify(d, (k, v) => { if (k === 'link' && typeof v === 'string') links.push(v); if (k === 'html' || k === 'svg') String(v || '').replace(/data-link=["']([^"']+)["']/g, (m, l) => links.push(l)); return v; });
+      links.forEach((l) => {
+        const [did, part] = l.split('#');
+        if (!ctx.ids.has(did)) out.push(at + ': links to "' + l + '", but no diagram has the id "' + did + '"');
+        else if (part && !ctx.ids.get(did).has(part)) out.push(at + ': links to "' + l + '", but that diagram has no part with the id "' + part + '"');
+      });
+    }
     if (ctx) {
       const obj = (l) => (l || []).filter((x) => x && typeof x === 'object' && !Array.isArray(x));
       const parts = [].concat(obj(d.nodes || d.states), obj(d.edges || d.transitions), obj(d.actors), obj(d.messages || d.steps), obj(d.rows), obj(d.events), obj(d.entities || d.records), ...obj(d.entities || d.records).map((e) => obj(e.fields)), obj(d.links), obj(d.screens), d.marks || []);
@@ -988,7 +1005,17 @@ const DIAG = (function () {
   }
   const DIAG_STAGED = (d) => isStaged(d);
 
-  const api = { render, body, problems, advice, focus, walk, trace, isStaged, stagesOf, KINDS };
+  // A diagram's id and the ids of its parts (data and sketch markup alike), for checking links.
+  function partIds(d) {
+    const ids = new Set();
+    JSON.stringify(d || {}, (k, v) => {
+      if (v && typeof v === 'object' && !Array.isArray(v) && v.id != null && v !== d) ids.add(String(v.id));
+      if (k === 'html' || k === 'svg') String(v || '').replace(/data-(?:id|part)=["']([^"']+)["']/g, (m, x) => ids.add(x));
+      return v;
+    });
+    return ids;
+  }
+  const api = { render, body, problems, advice, partIds, focus, walk, trace, isStaged, stagesOf, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();

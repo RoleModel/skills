@@ -1147,3 +1147,15 @@ details.recchecks{border-left:0;padding-left:0}
 .djarrow>i::after{content:"";position:absolute;right:0;top:0;border:5px solid transparent;border-left:7px solid var(--ink-3);border-right:0}
 .djact{font-size:11.5px;color:var(--ink-2);text-align:center;line-height:1.3}
 .djscreen[data-reveal=is-future],.djarrow[data-reveal=is-future]{opacity:0}.djscreen[data-reveal=is-past],.djarrow[data-reveal=is-past]{opacity:.32}
+
+/* Links between diagrams: a linked part shows a pointer and a small arrow, and the part a link
+   lands on flashes once. */
+.diagram [data-link]{cursor:pointer}
+.dsvg .dlinkmark{fill:var(--link);font-size:11px;pointer-events:none}
+.djscreen[data-link]:hover{outline:1px dashed var(--link);outline-offset:2px}.djlink{color:var(--link);font-weight:400}
+.dsvg .dlanded{animation:dlandedsvg 1.8s ease-out}
+@keyframes dlandedsvg{0%,40%{filter:drop-shadow(0 0 5px var(--link)) drop-shadow(0 0 2px var(--link))}100%{filter:none}}
+figure.diagram.dlanded,.djscreen.dlanded{animation:dlanded 1.8s ease-out}
+@keyframes dlanded{0%,40%{outline:2px solid var(--link);outline-offset:4px}100%{outline:2px solid transparent;outline-offset:8px}}
+.dback{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;padding:6px 14px;border-radius:18px;border:1px solid var(--rule-2);background:var(--paper);color:var(--ink);font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.dback.hidden{display:none}

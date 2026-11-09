@@ -555,6 +555,17 @@ A record before and after, and a timeline:
   "html": "<div class='grid'><table><tr><th>status</th><td>shipped</td></tr><tr><th>synced_at</th><td class='cross'>2 days ago</td></tr></table><table><tr><th>status</th><td>shipped</td></tr><tr><th>synced_at</th><td class='add'>now</td></tr></table></div><div class='timeline' style='margin-top:12px'><div>Webhook arrives</div><div class='new'>Lock the order</div><div>Update</div><div class='ghost'>Email (skipped)</div></div>" }
 ```
 
+### Linking diagrams
+
+Give a diagram an `id`, and any part of another diagram can open it: add
+`"link": "data"` to a node, record, field, screen, row or event, or
+`data-link="data"` to an element in a sketch. `"link": "data#project"` also
+flashes the part with the id `project` (a node's or record's `id`, a screen's
+`id`, or `data-id` in a sketch). The target can be on another step of the page;
+a Back button returns to where the reader clicked. Link pictures that explain
+each other: a step in the flow to the screen it shows, a screen to the records
+it saves. The build fails on a link to an id that doesn't exist.
+
 ## Checking it
 
 The build validates the overview with the guide (and inlines any `image` or

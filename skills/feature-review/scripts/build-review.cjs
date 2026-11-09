@@ -473,6 +473,13 @@ if (groupsPath) {
     }
   }
   const dctx = { paths: byName, steps: ((guide.overview && guide.overview.connection && guide.overview.connection.steps) || []).length };
+  // Every diagram with an id, so a part's `link` can be checked against what it names.
+  dctx.ids = new Map();
+  const ovAll = guide.overview || {};
+  [].concat(ovAll.diagrams || [], ((ovAll.connection && ovAll.connection.steps) || []).flatMap((st) => st.visuals || []),
+    guide.groups.flatMap((g) => g.visuals || []), guide.recommendations.flatMap((r) => r.visuals || []))
+    .flatMap((d) => (d && d.kind === 'compare' ? [d, d.before, d.after] : [d]))
+    .forEach((d) => { if (d && d.id) dctx.ids.set(d.id, DIAG.partIds(d)); });
   guide.groups.forEach((g, i) => g.visuals.forEach((d, j) => {
     for (const p of DIAG.problems(d, `groups: group ${i + 1} (${g.title || 'untitled'}) visual ${j + 1}`, dctx)) { console.error(p); bad++; }
   }));

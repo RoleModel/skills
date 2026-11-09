@@ -2305,6 +2305,73 @@
     }
   });
 
+  // Links between diagrams. A part with `link` ("diagram-id" or "diagram-id#part-id") opens the
+  // diagram with that id: on this page if it's here, otherwise on the step it lives on. The part it
+  // names flashes, and a Back button returns to the spot the link was clicked from.
+  const diagramHome = (() => {
+    const home = new Map(), put = (d, where) => { if (d && d.id && !home.has(d.id)) home.set(d.id, where); };
+    ((OV && OV.diagrams) || []).forEach((d) => {
+      const sec = d.section || (d.group ? null : 'feature');
+      if (d.group) put(d, { step: 'recs', gi: sections.findIndex((g) => g.title === d.group) });
+      else put(d, { step: sec === 'shape' ? 'shape' : sec === 'recs' ? 'recs' : 'story' });
+    });
+    cxSteps.forEach((st) => (st.visuals || []).forEach((d) => put(d, { step: 'story' })));
+    (GUIDE.groups || []).forEach((g) => (g.visuals || []).forEach((d) => put(d, { step: 'recs', gi: sections.findIndex((x) => x.title === g.title) })));
+    return home;
+  })();
+  const shown = (el) => !!(el && el.getClientRects().length);
+  const findDiagram = (id) => Array.from(document.querySelectorAll('figure.diagram')).find((f) => f.dataset.did === id && shown(f));
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button'; backBtn.className = 'dback hidden';
+  document.body.appendChild(backBtn);
+  let backTo = null;
+  backBtn.addEventListener('click', () => {
+    const b = backTo;
+    backTo = null; backBtn.classList.add('hidden');
+    if (!b) return;
+    const land = () => window.scrollTo(0, b.y);
+    if (document.body.dataset.view === b.step) land(); else { goStep(b.step); setTimeout(land, 60); }
+  });
+  function land(fig, part) {
+    window.scrollTo(0, fig.getBoundingClientRect().top + window.scrollY - hdr.offsetHeight - 16);
+    // Show the whole picture, so a part a later step would hide is there to land on.
+    if (fig.go) fig.go(0);
+    const roots = [fig].concat(Array.from(fig.querySelectorAll('.draw')).map((h) => h.shadowRoot).filter(Boolean));
+    const el = part && roots.map((r) => r.querySelector('[data-part="' + CSS.escape(part) + '"], [data-id="' + CSS.escape(part) + '"]')).find(Boolean);
+    const target = el || fig;
+    target.classList.remove('dlanded'); void target.getBoundingClientRect(); target.classList.add('dlanded');
+    setTimeout(() => target.classList.remove('dlanded'), 1900);
+  }
+  function followLink(link, from) {
+    const [id, part] = link.split('#');
+    const title = (from && from.closest('figure.diagram') && from.closest('figure.diagram').diag && from.closest('figure.diagram').diag.title) || 'the diagram';
+    backTo = { step: document.body.dataset.view, y: window.scrollY };
+    backBtn.textContent = '← Back to ' + title;
+    backBtn.classList.remove('hidden');
+    if (!lightbox.classList.contains('hidden')) { lightbox.className = 'hidden'; mini.sync(); }
+    let fig = findDiagram(id);
+    if (fig) return land(fig, part);
+    const home = diagramHome.get(id);
+    if (!home) return;
+    if (home.gi >= 0) focusGroup(home.gi);
+    goStep(home.step);
+    setTimeout(() => { fig = findDiagram(id); if (fig) land(fig, part); }, 60);
+  }
+  // Clicks inside a sketch land on its shadow host, so look along the composed path for the link.
+  document.addEventListener('click', (e) => {
+    const el = e.composedPath().find((n) => n.dataset && n.dataset.link);
+    if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    followLink(el.dataset.link, el.closest ? el.closest('figure.diagram') || el : el);
+  }, true);
+  document.addEventListener('pointerover', (e) => {
+    const el = e.composedPath().find((n) => n.dataset && n.dataset.link);
+    if (!el || el.title) return;
+    const [id] = el.dataset.link.split('#');
+    const d = diagrams.concat(cxSteps.flatMap((st) => st.visuals || [])).find((x) => x.id === id);
+    el.setAttribute('title', 'Open ' + ((d && d.title) || id));
+  });
+
   // Hovering a box or a line traces it (DIAG.trace): what it connects to lights up, the rest quiets.
   document.addEventListener('pointerover', (e) => {
     const svg = e.target.closest && e.target.closest('.dsvg');
