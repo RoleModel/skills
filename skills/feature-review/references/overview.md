@@ -279,6 +279,61 @@ Screenshots and screen recordings are diagrams too: `{"kind": "image" | "video",
 "src": "<file>"}`, inlined by the build. Use them for any UI change. Format,
 limits and how to capture them: `references/recommendations.md`.
 
+### Parts: code, steps, pins and marks
+
+Every part of a diagram (a `structure` node or edge, a `sequence` actor or
+message, a mark) can carry:
+
+- `code`: `"path:line"` or a path, a file in the diff. Clicking the part offers
+  **Open code**, which jumps to that line and flashes it. A part with code is
+  underlined.
+- `step`: the connection step it belongs to (a number, or a list). See the map
+  below.
+- `pin`: a number drawn on the part, so prose can say "the guard at ②".
+- `status`: `new`, `changed`, `removed` or `same`, on every kind, with one
+  legend.
+
+Any part also takes a comment: the reviewer clicks it, writes, and the comment
+lands on the part's line if that line is in the diff, on its file otherwise, or
+in the review summary, quoting the diagram and the part, when it has no code.
+Hovering a box traces it: its lines and neighbours light up. The build fails on
+code outside the diff and on a step that doesn't exist.
+
+**Marks** go on an `image`, `video`, `html` or `svg` diagram:
+`"marks": [{ "x": 38, "y": 42, "w": 22, "h": 6, "status": "new", "pin": 1, "label": "Organization: new", "code": "app/views/projects/_form.html.erb:12" }]`.
+`x`, `y`, `w` and `h` are percent of the picture; leave out `w` and `h` for a
+point. Ring the part that matters with a mark instead of drawing a box into the
+screenshot. Marks stay on when the picture opens full size.
+
+In `html` and `svg`, any element can carry `data-step="2"` and
+`data-code="path:line"` directly.
+
+### The map: required for "How it comes together"
+
+With two or more connection steps, give one diagram `"section": "connection"`
+whose parts name their steps. It sits beside the steps and stays in view while
+the reader scrolls. It **builds up**: at each step, that step's parts draw in,
+earlier ones stay faint as context, and later ones are hidden. Above and below
+the steps it shows the whole picture. An edge with no `step` appears with the
+later of its two ends; a part with no step is context, always faint. The build
+fails without a map, or with one that tags no part.
+
+Draw the feature end to end, from the person to the data, usually a `structure`
+with a layer per tier. Tag every node with the first step it matters in, and
+link each to its code, so the map doubles as an index into the change.
+
+```json
+{ "kind": "structure", "section": "connection", "title": "From the picker to the saved project",
+  "layers": ["Screen", "Server", "Data"],
+  "nodes": [
+    { "id": "form", "label": "New project form", "layer": "Screen", "step": 1, "status": "changed", "code": "app/views/projects/_form.html.erb:8" },
+    { "id": "ctl", "label": "ProjectsController", "layer": "Server", "step": 2, "code": "app/controllers/projects_controller.rb:21", "pin": 1 },
+    { "id": "pol", "label": "OrganizationPolicy", "layer": "Server", "step": 2, "status": "new" },
+    { "id": "proj", "label": "Project", "sub": "organization_id", "layer": "Data", "step": 3, "status": "changed" }
+  ],
+  "edges": [["form", "ctl", "create"], ["ctl", "pol", "authorize"], ["ctl", "proj", "save"]] }
+```
+
 ### `structure`: objects in layers
 
 The `code-shape` format. Layers run top to bottom in the order given; nodes
@@ -297,8 +352,12 @@ are boxes, edges are arrows. Keep it under about 15 nodes.
 ```
 
 `status` on nodes and edges is `new` (green), `changed` (amber), `removed`
-(red, dashed) or `same` (default). Drawing removed and new parts in one
-diagram is usually the clearest way to show a shape change.
+(red, dashed) or `same` (default), shown as a dot in the box. Drawing removed
+and new parts in one diagram is usually the clearest way to show a shape
+change. Lines are routed, not curved: each runs across the gap between two
+layers on its own track, and a line that skips a layer drops through a clear
+lane between that layer's boxes. Order nodes in a layer roughly as you'd like
+them; the layout reorders them to cut crossings.
 
 ### `sequence`: who calls whom, in order
 
@@ -350,6 +409,24 @@ Ready-made classes:
     `.ghost` colour the dot).
   - `.meter`: a three-column grid of label, `<i style="--v:40%">` bar, value,
     for amounts before and after.
+- More of the app:
+  - Frames: `.screen.browser` (its `.bar` shows `data-url`), `.phone` with a
+    `.body` (set `--w`, `--h`).
+  - Controls: `.ui-select`, `.ui-check`, `.ui-radio`, `.ui-toggle` (add `.on`),
+    `.ui-tabs` and `.ui-nav` (children, one `.on`), `.ui-menu`, `.ui-chip`,
+    `.ui-avatar`, `.ui-badge`.
+  - Content: `.ui-card`, `.ui-empty`, `.ui-banner`, `.ui-toast` (`.new`,
+    `.removed`), `.ui-table` (rows take `.new`, `.removed`, `.changed`).
+  - Overlays: `.scrim` around a `.modal`; `.click` puts a pointer on an
+    element, `.cursor` is a pointer on its own.
+- Data and code:
+  - `.record` with a `.title` and `<div><span>key</span><span>value</span></div>`
+    rows (`.new`, `.removed`, `.changed`).
+  - `.code` with one child per line (`.add`, `.del`, `.hl`).
+  - `.req`: `<span class='req'><b>POST</b>/projects</span>`.
+  - `.flow` (`.flow.v` vertical) draws arrows between its children; `.state` is
+    a state pill, so a `.flow` of `.state`s is a small state machine.
+  - `.split`: two children labelled Before and After.
 - SVG: strokes `.s-new`, `.s-old` (red dashed), `.s-changed`, `.s-muted`,
   `.s-accent`; fills `.f-new`, `.f-old`, `.f-panel`, `.f-accent`. Text is
   already themed. Give the `<svg>` a `viewBox` and it scales to fit.
