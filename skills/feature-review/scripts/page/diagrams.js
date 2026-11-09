@@ -677,7 +677,8 @@ const DIAG = (function () {
       wrap.querySelector('[data-walk="-1"]').disabled = k === 0;
       wrap.querySelector('[data-walk="1"]').disabled = k === stages.length;
     };
-    wrap.step = (dir) => wrap.go(at + dir);
+    // Whether it moved: at either end it doesn't, so the page can move on to the next picture.
+    wrap.step = (dir) => { const was = at; wrap.go(at + dir); return at !== was; };
     wrap.addEventListener('click', (e) => { const b = e.target.closest('[data-walk]'); if (b) wrap.step(+b.dataset.walk); });
     let last = 0;
     wrap.addEventListener('wheel', (e) => {

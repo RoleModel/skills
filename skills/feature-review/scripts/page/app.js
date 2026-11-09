@@ -1192,7 +1192,7 @@
     return '<section class="ovblock" id="ov-connection"><h3>How it comes together</h3>' +
       (CX.summary ? '<div class="md">' + mdHtml(CX.summary) + '</div>' : '') + '<div data-diags="connection"></div>' +
       (CX.technical ? '<h4>How it works</h4><div class="md">' + mdHtml(CX.technical) + '</div>' : '') +
-      (cxSteps.length ? '<h4>Step by step</h4><ol class="cxsteps' + (connectionMap() ? ' mapped' : '') + '">' + cxSteps.map(step).join('') + '</ol>' : '') + '</section>';
+      (cxSteps.length ? '<h4>Step by step</h4><ol class="cxsteps">' + cxSteps.map(step).join('') + '</ol>' : '') + '</section>';
   }
 
   // The first three steps each show one part of the overview: the story, the checks, the shape.
@@ -1236,7 +1236,8 @@
         '<div data-diags="shape"></div>' + shapeFactsHtml(sh) + departuresHtml(sh) + '</section>' +
         '<section class="ovblock"><h3>Where the change lands</h3>' + (sh.codebase ? '<div class="md">' + mdHtml(sh.codebase) + '</div>' : '') + landsHtml() + '</section>';
     }
-    ovv.innerHTML = '<div class="ovcol">' + h + stepFoot(step) + '</div>';
+    // Room after the foot, so the last step can scroll up to where the floating map marks it.
+    ovv.innerHTML = '<div class="ovcol' + (step === 'story' && connectionMap() ? ' mapped' : '') + '">' + h + stepFoot(step) + '</div>';
     ['feature', 'connection', 'shape'].forEach((sec) => {
       const slot = ovv.querySelector('[data-diags="' + sec + '"]');
       const list = diagramsIn(sec);
@@ -2240,6 +2241,7 @@
     gi = (i + gallery.length) % gallery.length;
     const it = gallery[gi], nav = gallery.length > 1 ? '<button type="button" class="lbnav prev" title="Previous (←)">&#8249;</button>' +
       '<button type="button" class="lbnav next" title="Next (→)">&#8250;</button><div class="lbcount">' + (gi + 1) + ' / ' + gallery.length + '</div>' : '';
+    walking = null;
     if (it.img) {
       lightbox.className = '';
       lightbox.innerHTML = nav;
@@ -2251,8 +2253,11 @@
     const panel = document.createElement('div');
     panel.className = 'lbpanel';
     panel.innerHTML = '<button type="button" class="lbclose" title="Close (Esc)">&times;</button>';
-    panel.appendChild(DIAG.render(it.host.diag, it.fig && it.fig.md, { big: true }));
-    lightbox.className = 'lbdiag';
+    // A diagram that builds opens as its walkthrough, at the step it was showing.
+    const builds = DIAG.isStaged(it.host.diag) && DIAG.stagesOf(it.host.diag).length;
+    if (builds) panel.appendChild(walking = DIAG.walk(it.host.diag, (it.fig && it.fig.md) || mdHtml, +((it.fig || it.host).dataset.at || 0)));
+    else panel.appendChild(DIAG.render(it.host.diag, it.fig && it.fig.md, { big: true }));
+    lightbox.className = builds ? 'lbdiag lbwalk' : 'lbdiag';
     lightbox.innerHTML = nav;
     lightbox.prepend(panel);
     fitBig(panel);
@@ -2287,8 +2292,7 @@
       const host = ex.closest('.dside') || ex.closest('figure.diagram');
       if (!host || !host.diag) return;
       e.stopPropagation();
-      if (DIAG.isStaged(host.diag) && DIAG.stagesOf(host.diag).length) openWalk(host.diag, +(host.dataset.at || 0));
-      else openGallery(ex, (x) => x.host === host);
+      openGallery(ex, (x) => x.host === host);
     } else if (e.target.closest('#lightbox') && (!lightbox.classList.contains('lbdiag') || e.target === lightbox || e.target.closest('.lbclose'))) {
       lightbox.className = 'hidden';
       mini.sync();
@@ -2369,7 +2373,7 @@
   // --- keyboard -------------------------------------------------------------
   const KEYS = [['v', 'Toggle Viewed on the current file'], ['x', 'Collapse or expand the current file'],
     ['n / p', 'Next / previous comment or thread'], ['/', 'Filter files'], ['s', 'Split or unified view'],
-    ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['j / k', 'Next / previous, through every step and each recommendation (also → / ←); files in Code'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open'], ['?', 'This help'], ['Esc', 'Close this help']];
+    ['w', 'Show or hide whitespace changes'], ['a / i', 'Add or ignore the recommendation in view'], ['j / k', 'Next / previous, through every step and each recommendation (also → / ←); files in Code'], ['c', 'Open the code, or go back to where you were'], ['1 – ' + STEPS.length, STEPS.map((x) => x.label).join(', ')], ['← / →', 'Previous / next image or diagram, when one is open; through its steps first, if it builds'], ['?', 'This help'], ['Esc', 'Close this help']];
   const help = document.createElement('div');
   help.id = 'keyhelp'; help.className = 'hidden';
   help.innerHTML = '<div class="kbox"><h3>Keyboard shortcuts</h3><table>' +
@@ -2412,8 +2416,12 @@
     }
     if (e.key === '?') { toggleKeys(); e.preventDefault(); return; }
     if (e.key === 'Escape') { toggleKeys(false); lightbox.className = 'hidden'; mini.sync(); return; }
+    // In a walkthrough the arrows step through the diagram first; past its last step (or before its
+    // first) they move on to the next picture in the gallery.
     if (lightbox.classList.contains('lbwalk') && walking && ['ArrowLeft', 'ArrowRight', 'j', 'k'].includes(e.key)) {
-      walking.step(e.key === 'ArrowRight' || e.key === 'j' ? 1 : -1); e.preventDefault(); return;
+      const dir = e.key === 'ArrowRight' || e.key === 'j' ? 1 : -1;
+      if (!walking.step(dir) && gallery.length > 1) showItem(gi + dir);
+      e.preventDefault(); return;
     }
     if (!lightbox.classList.contains('hidden') && gallery.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       showItem(gi + (e.key === 'ArrowRight' ? 1 : -1)); e.preventDefault(); return;
