@@ -1132,8 +1132,9 @@ details.recchecks{border-left:0;padding-left:0}
 .dsvg.dmodel .dsep{stroke:var(--rule-2)}.dsvg.dmodel .dent{font-weight:600}
 .dsvg.dmodel .dfield text{font-size:12px}.dsvg.dmodel .dtype{fill:var(--ink-3);font:11px ui-monospace,SFMono-Regular,Menlo,monospace}
 .dsvg.dmodel .dkey{fill:var(--warn)}.dsvg.dmodel .dwas{text-decoration:line-through;fill:var(--neg)}
-.dsvg.dmodel .dfbg{fill:transparent}.dsvg.dmodel .dfield.new .dfbg{fill:var(--pos-wash)}.dsvg.dmodel .dfield.removed .dfbg{fill:var(--neg-wash)}
-.dsvg.dmodel .dfield.removed text{fill:var(--neg);text-decoration:line-through}.dsvg.dmodel .dfield.changed .dfbg{fill:color-mix(in srgb,var(--warn) 12%,transparent)}
+/* A field's highlight is a fill only: the record's border styles would otherwise box in each row. */
+.dsvg.dmodel .dn .dfbg{fill:transparent;stroke:none;stroke-dasharray:none}.dsvg.dmodel .dn .dfield.new .dfbg{fill:var(--pos-wash)}.dsvg.dmodel .dn .dfield.removed .dfbg{fill:var(--neg-wash)}
+.dsvg.dmodel .dfield.removed text{fill:var(--neg);text-decoration:line-through}.dsvg.dmodel .dn .dfield.changed .dfbg{fill:color-mix(in srgb,var(--warn) 12%,transparent)}
 .dsvg.dmodel .dfk{fill:var(--ink-3)}.dsvg.dmodel .dfk.new{fill:var(--pos)}.dsvg.dmodel .dfk.changed{fill:var(--warn)}.dsvg.dmodel .dfk.removed{fill:var(--neg)}
 /* Journey: sketched screens left to right, an arrow saying what the person does next. */
 .djourney{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px 0}
