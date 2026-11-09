@@ -559,25 +559,21 @@ const DIAG = (function () {
     // strip gives way to one screen at a time, larger, and the marked element opens the next.
     if ((d.screens || []).some((s) => /data-next=/.test(s.html || ''))) {
       wrap.classList.add('clickable');
-      wrap.insertAdjacentHTML('afterbegin', '<div class="djplay"><button type="button" data-jplay="back">← Back</button>' +
-        '<span class="djwhere"></span><button type="button" data-jplay="all">All screens</button></div>');
       wrap.insertAdjacentHTML('beforeend', '<p class="djhint">Click the outlined parts of a screen to go through it.</p>');
     }
     return wrap;
   }
-  // Show one screen of a click-through journey, or (id null) the whole strip again.
-  function play(wrap, id, how) {
-    const cards = Array.from(wrap.querySelectorAll(':scope > .djscreen'));
-    const card = id != null && cards.find((c) => c.dataset.part === id);
-    if (!card) { wrap.classList.remove('playing'); wrap.style.minHeight = ''; wrap.trail = []; cards.forEach((c) => c.classList.remove('at')); return; }
+  // Show screen n (1-based) of a click-through journey on its own, or the whole strip at 0. Its
+  // screens are its steps, so the breadcrumbs under it name them and follow along.
+  function play(wrap, n) {
+    const cards = Array.from(wrap.querySelectorAll(':scope > .djscreen')), card = cards[n - 1];
+    if (!card) { wrap.classList.remove('playing'); wrap.style.minHeight = ''; cards.forEach((c) => c.classList.remove('at')); return; }
     // Hold the strip's height, so the page below doesn't jump as screens change.
     if (!wrap.classList.contains('playing')) wrap.style.minHeight = wrap.offsetHeight + 'px';
-    if (how !== 'back') wrap.trail = (wrap.trail || []).concat(id);
     wrap.classList.add('playing');
     cards.forEach((c) => c.classList.toggle('at', c === card));
-    wrap.querySelector('.djwhere').innerHTML = '<b>' + (cards.indexOf(card) + 1) + '</b> of ' + cards.length + ' · ' + esc(card.querySelector('.djtitle').textContent);
-    wrap.querySelector('[data-jplay="back"]').disabled = wrap.trail.length < 2;
   }
+  const isClickThrough = (d) => !!d && d.kind === 'journey' && (d.screens || []).some((s) => /data-next=/.test((s && s.html) || ''));
 
   // --- raw markup ---------------------------------------------------------
   // Shown in a shadow root: page styles can't reach in and its styles can't
@@ -798,7 +794,7 @@ const DIAG = (function () {
     // A diagram that builds gets its steps as breadcrumbs under it, and moves through them in place.
     if (!(opts && opts.plain) && isStaged(d) && stageCount(d)) {
       fig.classList.add('builds');
-      fig.insertAdjacentHTML('beforeend', stepperHtml(stagesOf(d)));
+      fig.insertAdjacentHTML('beforeend', stepperHtml(stagesOf(d), isClickThrough(d) ? 'All screens' : null));
       fig.go = (k) => { focus(fig, k); markStepper(fig.querySelector(':scope > .dsteps'), k); };
       markStepper(fig.querySelector(':scope > .dsteps'), 0);
     }
@@ -814,6 +810,9 @@ const DIAG = (function () {
   }
   function focus(fig, n, pending) {
     if (!fig) return;
+    // A click-through journey moves between its screens rather than revealing parts.
+    const jw = fig.querySelector('.djourney.clickable');
+    if (jw) { play(jw, n); return; }
     fig.classList.toggle('staged', n > 0);
     fig.dataset.at = n || 0;
     roots(fig).forEach((r) => r.querySelectorAll('[data-step]').forEach((el) => {
@@ -827,6 +826,7 @@ const DIAG = (function () {
   }
   // A diagram that builds: its steps, named by `stages` (or, for the connection map, the steps' titles).
   function stageCount(d) {
+    if (isClickThrough(d)) return d.screens.length;
     let m = 0;
     JSON.stringify(d || {}, (k, v) => {
       if (k === 'step') steps(v).forEach((x) => { if (x > m) m = x; });
@@ -836,11 +836,11 @@ const DIAG = (function () {
     (((d && (d.html || d.svg)) || '').match(/data-step=["'][\d ]+["']/g) || []).forEach((a) => a.slice(11, -1).split(' ').forEach((x) => { if (+x > m) m = +x; }));
     return m;
   }
-  const stagesOf = (d) => Array.from({ length: stageCount(d) }, (_, i) => (d.stages && d.stages[i]) || 'Step ' + (i + 1));
+  const stagesOf = (d) => Array.from({ length: stageCount(d) }, (_, i) => (isClickThrough(d) ? d.screens[i].title : d.stages && d.stages[i]) || 'Step ' + (i + 1));
   // Breadcrumbs through the steps: the whole picture, then each step by name. The current one is
   // underlined; the ones before it read as done.
-  function stepperHtml(stages) {
-    return '<nav class="dsteps" aria-label="Steps"><button type="button" data-go="0">Whole picture</button>' +
+  function stepperHtml(stages, whole) {
+    return '<nav class="dsteps" aria-label="Steps"><button type="button" data-go="0">' + esc(whole || 'Whole picture') + '</button>' +
       stages.map((t, i) => '<button type="button" data-go="' + (i + 1) + '"><span class="dsn">' + (i + 1) + '</span>' + esc(t) + '</button>').join('') + '</nav>';
   }
   function markStepper(nav, n) {
@@ -859,7 +859,7 @@ const DIAG = (function () {
     const wrap = document.createElement('div');
     wrap.className = 'dwalk';
     const stages = stagesOf(d);
-    wrap.innerHTML = '<div class="dwalkh">' + (d.title ? '<div class="dwalkt">' + esc(d.title) + '</div>' : '') + stepperHtml(stages) + '</div>';
+    wrap.innerHTML = '<div class="dwalkh">' + (d.title ? '<div class="dwalkt">' + esc(d.title) + '</div>' : '') + stepperHtml(stages, isClickThrough(d) ? 'All screens' : null) + '</div>';
     const fig = render(Object.assign({}, d, { title: null, caption: null }), md, { big: true, plain: true });
     wrap.appendChild(fig);
     wrap.insertAdjacentHTML('beforeend', '<div class="dwalkf"><button type="button" class="quiet" data-walk="-1">Previous <kbd>←</kbd></button>' +
@@ -932,12 +932,11 @@ const DIAG = (function () {
       const path = e.composedPath ? e.composedPath() : [];
       const hot = path.find((n) => n.dataset && n.dataset.next != null);
       const jw = path.find((n) => n.classList && n.classList.contains('djourney'));
-      if (hot && jw) { e.preventDefault(); play(jw, hot.dataset.next); return; }
-      const jb = e.target.closest && e.target.closest('[data-jplay]');
-      if (jb) {
-        const w = jb.closest('.djourney');
-        if (jb.dataset.jplay === 'all') play(w, null);
-        else { w.trail.pop(); play(w, w.trail[w.trail.length - 1], 'back'); }
+      if (hot && jw) {
+        e.preventDefault();
+        const n = Array.from(jw.querySelectorAll(':scope > .djscreen')).findIndex((c) => c.dataset.part === hot.dataset.next) + 1;
+        const host = jw.closest('.dwalk') || jw.closest('figure.diagram');
+        if (host && host.go) host.go(n); else play(jw, n);
         return;
       }
       const b = e.target.closest && e.target.closest('.dsteps [data-go]');
@@ -946,7 +945,7 @@ const DIAG = (function () {
       if (host && host.go) host.go(+b.dataset.go);
     });
   }
-  const isStaged = (d) => { const j = JSON.stringify(d || {}); return j.includes('"step"') || /data-step=/.test(j); };
+  const isStaged = (d) => { if (isClickThrough(d)) return true; const j = JSON.stringify(d || {}); return j.includes('"step"') || /data-step=/.test(j); };
 
   const KINDS = ['structure', 'flow', 'states', 'sequence', 'compare', 'table', 'timeline', 'model', 'journey', 'html', 'svg', 'image', 'video'];
   // Problems the build reports before writing the page; [] when the diagram is drawable.

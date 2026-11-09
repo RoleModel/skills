@@ -477,8 +477,10 @@ the next screen; `width` (default 230) sizes a screen; `step` makes it build.
 
 To make it clickable, give screens an `id` and mark an element in a screen's
 sketch with `data-next="<screen id>"` (the button the person presses). The
-marked parts are outlined; clicking one shows that screen on its own, larger,
-with Back and All screens. Nothing runs: it only moves between the screens
+marked parts are outlined; clicking one shows that screen on its own, larger.
+Its screens are then its steps: breadcrumbs under it name each screen, with
+All screens first, and follow the clicks, and the arrow keys and the
+walkthrough move through them too (so leave out `step` and `stages`). Nothing runs: it only moves between the screens
 you drew, so it shows the path, not behaviour the code may not have. Use it
 when the app couldn't be recorded or the path spans several screens; a
 recording of the real app is better when there is one.
