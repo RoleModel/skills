@@ -11,8 +11,13 @@
  *   image, video  a screenshot, GIF or screen recording; the build inlines the
  *              file named by `src` as a data URL in `data`, so the page stays offline
  *
+ *   flow       steps and decisions, ranked top to bottom from the edges
+ *   states     a state machine: states and the transitions between them
+ *   table      rows and columns with changed cells marked (a permissions matrix, a price list)
+ *   timeline   events in order along a line
+ *
  * Node, edge and message `status` is new | changed | removed | same. Any part can also carry
- * `code`, `step` and `pin`, and image, video, html and svg diagrams take `marks` (see below).
+ * `step` and `pin`, and image, video, html and svg diagrams take `marks` (see below).
  */
 const DIAG = (function () {
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -39,22 +44,15 @@ const DIAG = (function () {
       '<text x="' + x + '" y="' + (y + 3) + '" text-anchor="middle">' + esc(text) + '</text></g>';
   };
 
-  // --- shared parts: code links, reveal by step, pins -----------------------
-  // Any node, edge, actor, message or mark can carry `code` ("path:line" or a path), `step` (a
-  // connection step number, or a list), `pin` (a number drawn on it) and `status`. They become data
-  // attributes the page reads: clicking a part with code opens it, any part can take a comment, and a
-  // diagram with steps builds up as the reader moves through them.
+  // --- shared parts: reveal by step, pins ----------------------------------
+  // Any node, edge, actor, message, row, event or mark can carry `step` (a connection step number, or
+  // a list), `pin` (a number drawn on it) and `status`. A diagram with steps builds up as the reader
+  // moves through them.
   const steps = (v) => [].concat(v == null ? [] : v).map(Number).filter((n) => n > 0);
-  const codeOf = (v) => {
-    if (!v) return null;
-    if (typeof v === 'object') return v.path ? { path: v.path, line: v.line ? +v.line : null } : null;
-    const m = String(v).match(/^(.*?):(\d+)$/);
-    return m ? { path: m[1], line: +m[2] } : { path: String(v), line: null };
-  };
   const partAttrs = (o, name) => {
-    const c = codeOf(o.code), ss = steps(o.step);
-    return ' data-el="' + esc(name || '') + '"' + (c ? ' data-code="' + esc(c.path + (c.line ? ':' + c.line : '')) + '"' : '') +
-      (ss.length ? ' data-step="' + ss.join(' ') + '"' : '') + (o.status && o.status !== 'same' ? ' data-status="' + esc(o.status) + '"' : '');
+    const ss = steps(o.step);
+    return ' data-el="' + esc(name || '') + '"' + (ss.length ? ' data-step="' + ss.join(' ') + '"' : '') +
+      (o.status && o.status !== 'same' ? ' data-status="' + esc(o.status) + '"' : '');
   };
   const pinSvg = (x, y, n) => n == null ? '' : '<g class="dpin"><circle cx="' + x + '" cy="' + y + '" r="9"/><text x="' + x + '" y="' + (y + 3.5) +
     '" text-anchor="middle">' + esc(n) + '</text></g>';
@@ -85,12 +83,16 @@ const DIAG = (function () {
     const rows = layers.map((l) => nodes.filter((n) => (n.layer || '') === l)).filter((r) => r.length);
     const rowLayer = rows.map((r) => r[0].layer || '');
     rows.forEach((r, ri) => r.forEach((n) => { n.ri = ri; }));
-    const NH = (n) => (n.sub ? 52 : 38);
-    const marked = (n) => n.status !== 'same';
-    nodes.forEach((n) => { n.w = Math.min(280, Math.max(96, Math.max(tw(n.label || n.id, 13), tw(n.sub, 11)) + (marked(n) ? 42 : 30))); });
+    const NH = (n) => (n.shape === 'decision' ? 62 : n.sub ? 52 : 38);
+    const marked = (n) => n.status !== 'same' && n.shape !== 'decision';
+    nodes.forEach((n) => {
+      n.w = Math.min(280, Math.max(n.shape === 'start' || n.shape === 'end' ? 72 : 96, Math.max(tw(n.label || n.id, 13), tw(n.sub, 11)) + (marked(n) ? 42 : 30)));
+      if (n.shape === 'decision') n.w = Math.min(320, n.w * 1.45);
+    });
     // Order each row by where its neighbours sit, sweeping down, up and down again: enough to untangle
     // most review-sized diagrams without a layout engine.
-    const GAP = 28, LBL = layers.some(Boolean) ? 120 : 16;
+    const banded = d.bands !== false && layers.some(Boolean);
+    const GAP = 28, LBL = banded ? 120 : 16;
     const place = (row) => { let x = 0; row.forEach((n) => { n.x = x; x += n.w + GAP; }); row.width = x - GAP; };
     rows.forEach(place);
     const sweep = (ri, ref) => {
@@ -130,7 +132,7 @@ const DIAG = (function () {
     ports.forEach((list) => {
       list.sort((p, q) => p.ox - q.ox);
       list.forEach((p, i) => {
-        const span = Math.min(p.n.w - 28, (list.length - 1) * 18);
+        const span = p.n.shape === 'decision' ? 0 : Math.min(p.n.w - 28, (list.length - 1) * 18);
         portX.set(p.e, Object.assign(portX.get(p.e) || {}, {
           [p.n === byId.get(p.e.from) ? 'a' : 'b']: p.n.x + p.n.w / 2 + (list.length > 1 ? -span / 2 + span * i / (list.length - 1) : 0),
         }));
@@ -215,7 +217,7 @@ const DIAG = (function () {
     const used = new Set();
     let svg = '', labels = '', over = '';
     rows.forEach((row, ri) => {
-      if (rowLayer[ri]) {
+      if (banded && rowLayer[ri]) {
         svg += '<rect class="dband" x="4" y="' + (row.y - 10) + '" width="' + (W - 8) + '" height="' + (row.h + 20) + '" rx="6"/>' +
           '<text class="dlayer" x="16" y="' + (row.y + row.h / 2 + 4) + '">' + esc(rowLayer[ri]) + '</text>';
       }
@@ -231,7 +233,7 @@ const DIAG = (function () {
         p = rounded([[x, y0 - 8], [x + 22, y0 - 8], [x + 22, y0 + 8], [x + 2, y0 + 8]], 6);
         lx = x + 28 + tw(e.label, 11) / 2; ly = y0;
       } else {
-        p = rounded(r.pts.map(([x, v]) => [x, yOf(v)]), 9);
+        p = rounded(r.pts.map(([x, v]) => [x, yOf(v)]), 16);
         lx = r.lbl.x; ly = trackY(r.lbl.g);
       }
       // An edge with no step of its own appears with the later of its two ends.
@@ -242,8 +244,8 @@ const DIAG = (function () {
       // A wide, invisible twin takes the pointer, so a 1px line is easy to hover and click.
       svg += '<path class="dhit" d="' + p + '"' + partAttrs(Object.assign({}, e, { step: at }), (a.label || e.from) + ' → ' + (b.label || e.to) + (e.label ? ': ' + e.label : '')) +
         ' data-from="' + esc(e.from) + '" data-to="' + esc(e.to) + '"/>';
-      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 12, text: e.label, s, at, pin: e.pin, code: e.code, from: e.from, to: e.to });
-      else if (e.pin != null) over += '<g' + partAttrs({ step: at, code: e.code }, e.label || (a.label || e.from) + ' → ' + (b.label || e.to)) + '>' + pinSvg(lx, ly, e.pin) + '</g>';
+      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 12, text: e.label, s, at, pin: e.pin, from: e.from, to: e.to });
+      else if (e.pin != null) over += '<g' + partAttrs({ step: at }, (a.label || e.from) + ' → ' + (b.label || e.to)) + '>' + pinSvg(lx, ly, e.pin) + '</g>';
     });
     // Labels sit on their line's run across the gap, nudged along it until clear of boxes and each other.
     const boxes = nodes.map((n) => ({ l: n.x - 4, r: n.x + n.w + 4, t: n.y - 4, b: n.y + n.h + 4 }));
@@ -255,24 +257,79 @@ const DIAG = (function () {
       const ok = tries.find(([dx, dy]) => !hit(at(dx, dy), boxes) && !hit(at(dx, dy), placedL)) || [0, 0];
       const q = at(ok[0], ok[1]);
       placedL.push(q);
-      labels += '<g' + partAttrs({ step: L.at, code: L.code }, L.text) + ' data-from="' + esc(L.from) + '" data-to="' + esc(L.to) + '">' + label(q.x, q.t + 8, L.text, L.s) +
+      labels += '<g' + partAttrs({ step: L.at }, L.text) + ' data-from="' + esc(L.from) + '" data-to="' + esc(L.to) + '">' + label(q.x, q.t + 8, L.text, L.s) +
         (L.pin != null ? pinSvg(q.l - 4, q.t + 8, L.pin) : '') + '</g>';
     });
     nodes.forEach((n) => {
       used.add(n.status);
       const cx = n.x + n.w / 2 + (marked(n) ? 6 : 0);
-      svg += '<g class="dn ' + n.status + (n.code ? ' hot' : '') + '"' + partAttrs(n, n.label || n.id) + ' data-id="' + esc(n.id) + '">' +
-        '<title>' + esc((n.note || n.label || n.id) + (marked(n) ? ' (' + LEGEND[n.status] + ')' : '')) + '</title>' +
-        '<rect x="' + n.x + '" y="' + n.y + '" width="' + n.w + '" height="' + n.h + '" rx="6"/>' +
+      const shape = n.shape === 'decision'
+        ? '<polygon points="' + [[cx - 6 * marked(n), n.y], [n.x + n.w, n.y + n.h / 2], [n.x + n.w / 2, n.y + n.h], [n.x, n.y + n.h / 2]].map((q) => q.join(',')).join(' ') + '"/>'
+        : '<rect x="' + n.x + '" y="' + n.y + '" width="' + n.w + '" height="' + n.h + '" rx="' + (['start', 'end', 'state'].includes(n.shape) ? n.h / 2 : 6) + '"/>';
+      svg += '<g class="dn ' + n.status + (n.shape ? ' ' + esc(n.shape) : '') + '"' + partAttrs(n, n.label || n.id) + ' data-id="' + esc(n.id) + '"' +
+        (n.note ? ' data-note="' + esc(n.note) + '"' : '') + '>' + shape +
         // The status shows as a dot inside the box rather than a tag above it, where arrows arrive.
-        (marked(n) ? '<circle class="ddot" cx="' + (n.x + 14) + '" cy="' + (n.y + (n.sub ? 18 : n.h / 2)) + '" r="3.5"/>' : '') +
-        '<text x="' + cx + '" y="' + (n.y + (n.sub ? 22 : 24)) + '" text-anchor="middle">' + esc(n.label || n.id) + '</text>' +
+        (marked(n) ? '<circle class="ddot" cx="' + (n.x + (['start', 'end', 'state'].includes(n.shape) ? 18 : 14)) + '" cy="' + (n.y + (n.sub ? 18 : n.h / 2)) + '" r="3.5"/>' : '') +
+        '<text x="' + cx + '" y="' + (n.y + (n.sub ? 22 : n.h / 2 + 4.5)) + '" text-anchor="middle">' + esc(n.label || n.id) + '</text>' +
         (n.sub ? '<text class="dsub" x="' + cx + '" y="' + (n.y + 40) + '" text-anchor="middle">' + esc(n.sub) + '</text>' : '') +
         '</g>';
-      if (n.pin != null) over += '<g' + partAttrs(n, n.label || n.id) + '>' + pinSvg(n.x + 2, n.y + 2, n.pin) + '</g>';
+      if (n.pin != null) over += '<g' + partAttrs(n, n.label || n.id) + '>' + pinSvg(n.shape === 'decision' ? n.x + n.w / 2 : n.x + 2, n.y + 2, n.pin) + '</g>';
     });
-    return '<svg class="dsvg' + (rowLayer.some(Boolean) ? ' banded' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' +
+    return '<svg class="dsvg' + (banded ? ' banded' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' +
       arrowDefs(id) + svg + labels + over + '</svg>' + legend(used);
+  }
+
+  // --- flow and states: ranked from the edges ------------------------------
+  // The author names nodes and edges; the rank of each node is its longest path from a start, ignoring
+  // the edges that loop back, so a flow reads top to bottom and a retry or a "back to draft" arrow
+  // climbs instead of tangling the order.
+  function ranked(d, shape) {
+    const nodes = (d.nodes || d.states || []).map((n) => (typeof n === 'string' ? { id: n, label: n } : n));
+    const edges = (d.edges || d.transitions || []).map(edgeOf);
+    const ids = new Set(nodes.map((n) => n.id));
+    const out = new Map(nodes.map((n) => [n.id, []]));
+    edges.forEach((e) => { if (ids.has(e.from) && ids.has(e.to) && e.from !== e.to) out.get(e.from).push(e.to); });
+    const seen = new Map(), back = new Set(), order = [];
+    const visit = (u) => {
+      seen.set(u, 1);
+      out.get(u).forEach((v) => { if (seen.get(v) === 1) back.add(u + '>' + v); else if (!seen.get(v)) visit(v); });
+      seen.set(u, 2); order.push(u);
+    };
+    nodes.filter((n) => n.shape === 'start' || n.initial).concat(nodes).forEach((n) => { if (!seen.get(n.id)) visit(n.id); });
+    const rank = new Map(nodes.map((n) => [n.id, 0]));
+    order.reverse().forEach((u) => out.get(u).forEach((v) => { if (!back.has(u + '>' + v)) rank.set(v, Math.max(rank.get(v), rank.get(u) + 1)); }));
+    const layers = [...new Set(rank.values())].sort((a, b) => a - b).map((r) => 'r' + r);
+    return structure(Object.assign({}, d, { bands: false, layers, edges,
+      nodes: nodes.map((n) => Object.assign({ shape: n.initial ? 'start' : n.final ? 'end' : shape }, n, { layer: 'r' + rank.get(n.id) })) }));
+  }
+
+  // --- table: rows and columns, changed cells marked ----------------------
+  // A cell is a value, or { "v": value, "was": old value, "status" }. The first column heads its row.
+  function table(d) {
+    const used = new Set();
+    const cell = (c, i) => {
+      const o = c && typeof c === 'object' ? c : { v: c }, s = st(o.status), tag = i ? 'td' : 'th scope="row"';
+      used.add(s);
+      return '<' + tag + (s !== 'same' ? ' class="' + s + '"' : '') + '>' + (o.was != null ? '<s>' + esc(o.was) + '</s> ' : '') + esc(o.v != null ? o.v : '') + '</' + tag.split(' ')[0] + '>';
+    };
+    const rows = (d.rows || []).map((r) => (Array.isArray(r) ? { cells: r } : r));
+    rows.forEach((r) => used.add(st(r.status)));
+    return '<table class="dtable">' + ((d.columns || []).length ? '<thead><tr>' + d.columns.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr></thead>' : '') +
+      '<tbody>' + rows.map((r) => '<tr class="' + st(r.status) + '"' + partAttrs(r, String((r.cells || [])[0] || '')) + '>' + (r.cells || []).map(cell).join('') + '</tr>').join('') +
+      '</tbody></table>' + legend(used);
+  }
+
+  // --- timeline: events in order along a line -----------------------------
+  function timeline(d) {
+    const used = new Set();
+    const events = (d.events || []).map((e) => (typeof e === 'string' ? { label: e } : e));
+    return '<ol class="dtime">' + events.map((e) => {
+      const s = st(e.status);
+      used.add(s);
+      return '<li class="' + s + '"' + partAttrs(e, e.label) + '>' + (e.pin != null ? '<span class="dtpin">' + esc(e.pin) + '</span>' : '') +
+        '<span class="dtat">' + esc(e.at || '') + '</span><span class="dtl">' + esc(e.label) + '</span>' +
+        (e.note ? '<span class="dtn">' + esc(e.note) + '</span>' : '') + '</li>';
+    }).join('') + '</ol>' + legend(used);
   }
 
   // --- sequence: who calls whom, in order ---------------------------------
@@ -321,7 +378,7 @@ const DIAG = (function () {
       used.add(a.status);
       const x = xOf(i), w = Math.min(COL - 16, tw(a.label || a.id, 13) + 24);
       head += '<line class="dlife" x1="' + x + '" x2="' + x + '" y1="44" y2="' + (H - 8) + '"/>' +
-        '<g class="dn ' + a.status + (a.code ? ' hot' : '') + '"' + partAttrs(a, a.label || a.id) + ' data-id="' + esc(a.id) + '"><title>' + esc(a.note || a.label || a.id) + '</title><rect x="' + (x - w / 2) + '" y="8" width="' + w +
+        '<g class="dn ' + a.status + '"' + partAttrs(a, a.label || a.id) + ' data-id="' + esc(a.id) + '"><title>' + esc(a.note || a.label || a.id) + '</title><rect x="' + (x - w / 2) + '" y="8" width="' + w +
         '" height="34" rx="6"/><text x="' + x + '" y="30" text-anchor="middle">' + esc(a.label || a.id) + '</text></g>' + pinSvg(x - w / 2 + 2, 10, a.pin);
     });
     return '<svg class="dsvg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + head + body + '</svg>' + legend(used);
@@ -397,22 +454,21 @@ const DIAG = (function () {
     '.cursor{display:inline-block;width:12px;height:16px;vertical-align:middle;background:var(--text);clip-path:polygon(0 0,0 100%,30% 72%,52% 100%,64% 94%,44% 66%,85% 66%)}' +
     '.click{position:relative}.click::after{content:"";position:absolute;right:-8px;bottom:-12px;width:12px;height:16px;background:var(--text);clip-path:polygon(0 0,0 100%,30% 72%,52% 100%,64% 94%,44% 66%,85% 66%);filter:drop-shadow(0 0 1px var(--bg))}' +
     // The data and the code behind the screen: a record, a payload, a chain of steps.
-    '.record{border:1px solid var(--border);border-radius:8px;font-size:12px;overflow:hidden;background:var(--bg);min-width:160px}' +
-    '.record>.title{margin:0;padding:4px 10px;background:var(--panel);border-bottom:1px solid var(--border);font:600 12px ui-monospace,Menlo,monospace}' +
-    '.record>div:not(.title){display:flex;justify-content:space-between;gap:16px;padding:3px 10px;border-top:1px solid var(--border)}.record>.title+div{border-top:0}' +
-    '.record>div>:first-child{color:var(--muted);font-family:ui-monospace,Menlo,monospace}' +
-    '.record>.new{background:var(--add-bg)}.record>.removed{background:var(--del-bg);text-decoration:line-through}.record>.changed{box-shadow:inset 2px 0 #d29922}' +
-    '.code{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-radius:6px;padding:6px 0;background:var(--panel);white-space:pre;overflow:auto}' +
-    '.code>*{display:block;padding:0 10px 0 20px;position:relative}.code>.add{background:var(--add-bg);color:var(--text)}.code>.del{background:var(--del-bg);color:var(--text)}' +
-    '.code>.add::before,.code>.del::before{position:absolute;left:7px}.code>.add::before{content:"+";color:var(--add-b)}.code>.del::before{content:"-";color:var(--del-b)}.code>.hl{outline:0;background:color-mix(in srgb,var(--accent) 16%,transparent)}' +
-    '.req{display:inline-flex;align-items:center;gap:8px;font:12px ui-monospace,Menlo,monospace}.req>b{font-size:10px;border:1px solid var(--border);border-radius:3px;padding:0 4px;color:var(--accent)}' +
+    // A record as a person would read it: a card of labelled values, the changed ones marked.
+    '.record{border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg);min-width:180px;padding:4px 0}' +
+    '.record>.title{margin:0;padding:6px 12px 8px;font-weight:600;font-size:13px}' +
+    '.record>div:not(.title){display:flex;justify-content:space-between;gap:16px;padding:5px 12px;border:0;border-top:1px solid var(--border);border-radius:0}' +
+    '.record>div>:first-child{color:var(--muted)}' +
+    '.record>.new{background:var(--add-bg)}.record>.removed{background:var(--del-bg);opacity:1}.record>.removed>:last-child{text-decoration:line-through;color:var(--muted)}' +
+    '.record>.changed{box-shadow:inset 3px 0 #d29922}' +
     '.flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 28px}.flow>*{position:relative}.flow>:not(:last-child)::after{content:"\\2192";position:absolute;right:-21px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px}' +
     '.flow.v{flex-direction:column;align-items:center;gap:22px}.flow.v>:not(:last-child)::after{content:"\\2193";right:auto;left:50%;top:auto;bottom:-21px;transform:translateX(-50%)}' +
     '.state{display:inline-block;border:1px solid var(--border);border-radius:14px;padding:2px 12px;font-size:12px;background:var(--panel)}.state.new{border-color:var(--add-b)}.state.removed{border-color:var(--del-b);border-style:dashed}.state.changed{border-color:#d29922}' +
-    '.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}.split>*::before{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}.split>:first-child::before{content:"Before"}.split>:last-child::before{content:"After"}' +
+    '.split{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding-top:20px}.split>*{position:relative}' +
+    '.split>*::before{position:absolute;left:0;top:-20px;font-size:11px;color:var(--muted)}.split>:first-child::before{content:"Before"}.split>:last-child::before{content:"After"}' +
     // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
     '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0}[data-reveal=is-past]{opacity:.32}' +
-    '[data-code]{cursor:pointer}[data-code]:hover{outline:1px solid var(--accent);outline-offset:2px;border-radius:3px}';
+    '';
   function raw(markup) {
     const host = document.createElement('div');
     host.className = 'draw';
@@ -430,7 +486,7 @@ const DIAG = (function () {
   function marksHtml(list) {
     return (list || []).map((m) => {
       const area = m.w != null && m.h != null, s = STATUS.includes(m.status) ? m.status : 'look';
-      return '<div class="dmark ' + s + (area ? '' : ' point') + (m.code ? ' hot' : '') + '"' + partAttrs(m, m.label || (m.pin != null ? 'Mark ' + m.pin : 'Mark')) +
+      return '<div class="dmark ' + s + (area ? '' : ' point') + '"' + partAttrs(m, m.label || (m.pin != null ? 'Mark ' + m.pin : 'Mark')) +
         ' style="left:' + (+m.x || 0) + '%;top:' + (+m.y || 0) + '%' + (area ? ';width:' + (+m.w) + '%;height:' + (+m.h) + '%' : '') + '">' +
         (m.pin != null ? '<span class="dmpin">' + esc(m.pin) + '</span>' : '') + (m.label ? '<span class="dmlbl">' + esc(m.label) + '</span>' : '') + '</div>';
     }).join('');
@@ -443,7 +499,21 @@ const DIAG = (function () {
     box.className = 'dbody';
     if (d.kind === 'structure') box.innerHTML = structure(d);
     else if (d.kind === 'sequence') box.innerHTML = sequence(d);
-    else if (d.kind === 'compare') {
+    else if (d.kind === 'flow') box.innerHTML = ranked(d, 'step');
+    else if (d.kind === 'states') box.innerHTML = ranked(d, 'state');
+    else if (d.kind === 'table') box.innerHTML = table(d);
+    else if (d.kind === 'timeline') box.innerHTML = timeline(d);
+    else if (d.kind === 'compare' && d.before && d.after && d.before.kind === 'image' && d.after.kind === 'image' && d.slider !== false) {
+      // Two screenshots of the same screen: one over the other, with a handle to wipe between them,
+      // so a shift of a few pixels shows where side by side it wouldn't.
+      box.className = 'dbody dmedia';
+      const ok = (x) => /^data:image\//.test(x.data || '');
+      box.innerHTML = !ok(d.before) || !ok(d.after) ? '<p class="svnote">Missing image</p>'
+        : '<div class="dslider" style="--p:50%"><img src="' + esc(d.after.data) + '" alt="' + esc(d.after.title || 'After') + '">' +
+          '<img class="dslb" src="' + esc(d.before.data) + '" alt="' + esc(d.before.title || 'Before') + '"><i class="dslh"></i>' +
+          '<input type="range" class="dslr" min="0" max="100" value="50" aria-label="Wipe between before and after">' +
+          '<span class="dslt b">' + esc(d.before.title || 'Before') + '</span><span class="dslt a">' + esc(d.after.title || 'After') + '</span></div>';
+    } else if (d.kind === 'compare') {
       box.className = 'dbody dcompare';
       [['before', 'Before'], ['after', 'After']].forEach(([k, t]) => {
         const side = document.createElement('div');
@@ -470,6 +540,7 @@ const DIAG = (function () {
       else box.innerHTML = staged('<video src="' + esc(d.data) + '" controls muted loop playsinline preload="metadata"></video>', d);
     }
     else box.innerHTML = '<p class="svnote">Unknown diagram kind: ' + esc(d.kind) + '</p>';
+    if (['structure', 'flow', 'states', 'sequence'].includes(d.kind)) box.insertAdjacentHTML('beforeend', '<div class="dhover" aria-live="polite"></div>');
     return box;
   }
 
@@ -490,17 +561,18 @@ const DIAG = (function () {
   }
 
   // Reveal by step. At step n, parts tagged with n are in focus, earlier ones stay faintly as context,
-  // later ones are hidden; 0 shows the whole picture. Parts arriving in focus draw themselves in.
+  // later ones are hidden; 0 shows the whole picture. With `pending`, step n's own parts wait hidden
+  // too, so a later call can draw them in when the reader arrives.
   function roots(fig) {
     return [fig].concat(Array.from(fig.querySelectorAll('.draw')).map((h) => h.shadowRoot).filter(Boolean));
   }
-  function focus(fig, n) {
+  function focus(fig, n, pending) {
     if (!fig) return;
     fig.classList.toggle('staged', n > 0);
     fig.dataset.at = n || 0;
     roots(fig).forEach((r) => r.querySelectorAll('[data-step]').forEach((el) => {
       const ss = el.dataset.step.split(' ').map(Number), first = Math.min(...ss);
-      const next = !n ? '' : ss.includes(n) ? 'is-focus' : first > n ? 'is-future' : 'is-past';
+      const next = !n ? '' : ss.includes(n) ? (pending ? 'is-future' : 'is-focus') : first > n ? 'is-future' : 'is-past';
       const was = el.dataset.reveal || '';
       if (was === next) return;
       if (next) el.dataset.reveal = next; else delete el.dataset.reveal;
@@ -514,33 +586,54 @@ const DIAG = (function () {
       el.animate([{ strokeDasharray: L, strokeDashoffset: L }, { strokeDasharray: L, strokeDashoffset: 0 }], { duration: 650, easing: 'cubic-bezier(.3,.7,.2,1)', delay: 120 });
     } else if (!el.matches('.dhit')) el.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'ease-out' });
   }
-  // Hovering a box lights it, its lines and its neighbours, and quiets the rest.
-  function trace(svg, nodeId) {
+  // Hovering traces: a box lights its lines and neighbours, a line lights its two ends, and the rest
+  // steps back. Lit lines flow in their direction, and a line under the picture says what is lit.
+  function trace(svg, target) {
     if (!svg) return;
-    svg.classList.toggle('tracing', !!nodeId);
+    const box = svg.parentNode, cap = box && box.querySelector(':scope > .dhover');
+    svg.classList.toggle('tracing', !!target);
     svg.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit'));
-    if (!nodeId) return;
-    const near = new Set([nodeId]);
-    svg.querySelectorAll('[data-from]').forEach((x) => {
-      if (x.dataset.from === nodeId || x.dataset.to === nodeId) { x.classList.add('lit'); near.add(x.dataset.from); near.add(x.dataset.to); }
-    });
+    if (cap) cap.classList.toggle('on', !!target);
+    if (!target) return;
+    const near = new Set(), name = (id) => { const n = svg.querySelector('[data-id="' + CSS.escape(id) + '"]'); return n ? n.dataset.el : id; };
+    let text;
+    if (target.id) {
+      near.add(target.id);
+      const ins = [], outs = [];
+      svg.querySelectorAll('[data-from]').forEach((x) => {
+        if (x.dataset.from !== target.id && x.dataset.to !== target.id) return;
+        x.classList.add('lit'); near.add(x.dataset.from); near.add(x.dataset.to);
+        if (x.matches('.de, .dmsgg')) (x.dataset.from === target.id ? outs : ins).push(name(x.dataset.from === target.id ? x.dataset.to : x.dataset.from));
+      });
+      const n = svg.querySelector('[data-id="' + CSS.escape(target.id) + '"]'), st = n && n.dataset.status;
+      text = '<b>' + esc(name(target.id)) + '</b>' + (st ? ' <span class="stag ' + esc(st) + '">' + esc(LEGEND[st] || st) + '</span>' : '') +
+        (n && n.dataset.note ? ' · ' + esc(n.dataset.note) : '') +
+        (ins.length ? ' · from ' + esc([...new Set(ins)].join(', ')) : '') + (outs.length ? ' · to ' + esc([...new Set(outs)].join(', ')) : '');
+    } else {
+      svg.querySelectorAll('[data-from]').forEach((x) => { if (x.dataset.from === target.from && x.dataset.to === target.to) x.classList.add('lit'); });
+      near.add(target.from); near.add(target.to);
+      text = '<b>' + esc(name(target.from)) + '</b> → <b>' + esc(name(target.to)) + '</b>' + (target.label ? ' · ' + esc(target.label) : '');
+    }
     svg.querySelectorAll('[data-id]').forEach((x) => { if (near.has(x.dataset.id)) x.classList.add('lit'); });
+    if (cap) cap.innerHTML = text;
   }
   // Whether a diagram has anything to build up step by step.
+  if (typeof document !== 'undefined') document.addEventListener('input', (e) => {
+    if (e.target.classList && e.target.classList.contains('dslr')) e.target.parentNode.style.setProperty('--p', e.target.value + '%');
+  });
   const isStaged = (d) => JSON.stringify(d || {}).includes('"step"') || /data-step=/.test((d && (d.html || d.svg)) || '');
 
-  const KINDS = ['structure', 'sequence', 'compare', 'html', 'svg', 'image', 'video'];
+  const KINDS = ['structure', 'flow', 'states', 'sequence', 'compare', 'table', 'timeline', 'html', 'svg', 'image', 'video'];
   // Problems the build reports before writing the page; [] when the diagram is drawable.
-  // With ctx ({ paths, steps }), also checks that each part's code names a file in the diff and each
-  // step names a real connection step.
+  // With ctx ({ steps }), also checks that each step names a real connection step.
   function problems(d, where, ctx) {
     const out = [], at = where || (d && d.title) || 'diagram';
     if (!d || !KINDS.includes(d.kind)) return [at + ': kind must be one of ' + KINDS.join(', ')];
-    if (d.kind === 'structure') {
+    if (['structure', 'flow', 'states'].includes(d.kind)) {
       const ids = new Set();
-      (d.nodes || []).forEach((n) => { if (!n.id) out.push(at + ': a node has no id'); else if (ids.has(n.id)) out.push(at + ': duplicate node ' + n.id); ids.add(n.id); });
+      (d.nodes || d.states || []).map((n) => (typeof n === 'string' ? { id: n } : n)).forEach((n) => { if (!n.id) out.push(at + ': a node has no id'); else if (ids.has(n.id)) out.push(at + ': duplicate node ' + n.id); ids.add(n.id); });
       if (!ids.size) out.push(at + ': no nodes');
-      (d.edges || []).map(edgeOf).forEach((e) => {
+      (d.edges || d.transitions || []).map(edgeOf).forEach((e) => {
         if (!ids.has(e.from)) out.push(at + ': edge from unknown node ' + e.from);
         if (!ids.has(e.to)) out.push(at + ': edge to unknown node ' + e.to);
       });
@@ -556,6 +649,10 @@ const DIAG = (function () {
     } else if (d.kind === 'compare') {
       if (!d.before || !d.after) out.push(at + ': compare needs both before and after');
       ['before', 'after'].forEach((k) => { if (d[k]) out.push(...problems(d[k], at + ' (' + k + ')', ctx)); });
+    } else if (d.kind === 'table') {
+      if (!(d.rows || []).length) out.push(at + ': table has no rows');
+    } else if (d.kind === 'timeline') {
+      if (!(d.events || []).length) out.push(at + ': timeline has no events');
     } else if (d.kind === 'image' || d.kind === 'video') {
       if (!(d.data || d.src)) out.push(at + ': ' + d.kind + ' needs a src file');
     } else if (!(d.html || d.svg)) out.push(at + ': ' + d.kind + ' diagram has no markup');
@@ -564,18 +661,17 @@ const DIAG = (function () {
       else if ((m.w != null) !== (m.h != null)) out.push(at + ': mark ' + (i + 1) + ' needs both w and h, or neither for a point');
     });
     if (ctx) {
-      const parts = [].concat(d.nodes || [], (d.edges || []).map(edgeOf), (d.actors || []).filter((a) => typeof a === 'object'),
-        (d.messages || d.steps || []).filter((m) => m && !Array.isArray(m)), d.marks || []);
+      const obj = (l) => (l || []).filter((x) => x && typeof x === 'object' && !Array.isArray(x));
+      const parts = [].concat(obj(d.nodes || d.states), obj(d.edges || d.transitions), obj(d.actors), obj(d.messages || d.steps), obj(d.rows), obj(d.events), d.marks || []);
       parts.forEach((o) => {
-        const c = codeOf(o.code), name = o.label || o.id || (o.from ? o.from + ' → ' + o.to : 'a part');
-        if (c && ctx.paths && !ctx.paths.has(c.path)) out.push(at + ': ' + name + ' links code not in the diff: ' + c.path);
+        const name = o.label || o.id || (o.from ? o.from + ' → ' + o.to : 'a part');
         steps(o.step).forEach((n) => { if (ctx.steps != null && n > ctx.steps) out.push(at + ': ' + name + ' names step ' + n + ', but there are ' + ctx.steps); });
       });
     }
     return out;
   }
 
-  const api = { render, body, problems, focus, trace, isStaged, codeOf, KINDS };
+  const api = { render, body, problems, focus, trace, isStaged, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();
