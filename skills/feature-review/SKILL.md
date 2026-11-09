@@ -183,8 +183,9 @@ and the recommendations.
   Ring the parts of screenshots that matter with `marks`.
 - **The shape**: the shape of this change (layers, objects, new dependencies,
   departures from the architecture instructions) and how it moves the shape
-  of the codebase as a whole, always with a `structure` diagram that marks
-  what was added, changed and removed. Under it the page adds two computed
+  of the codebase as a whole, always with a picture of it that marks what was
+  added, changed and removed (often a `structure`; a `model` for a schema
+  change, a `sequence` when the change is about who calls whom). Under it the page adds two computed
   blocks, from git: lines changed per area, and every touched file's length
   before and after.
 

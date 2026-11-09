@@ -85,8 +85,9 @@ seconds) and crop screenshots to the part that changed.
 
 Prose alone often fails to show what a recommendation is about, so lean toward
 a visual: the page shows a recommendation's visuals before its text. Default to
-one for any recommendation that changes structure, flow, data or UI, and
-prefer a before/after `compare` (as it is, then as proposed). The picture can
+one for any recommendation that changes structure, flow, data or UI. Showing
+it as it is and as proposed often works (a `compare`, a `journey`, or a
+`model` with the proposed fields marked). The picture can
 take any form that makes the point: a sketched screen with the problem
 outlined, a table of the inputs that break it, a short recording, a
 `sequence`, a `structure` with new and removed nodes, geometry in `svg`. When

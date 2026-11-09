@@ -214,12 +214,14 @@ and whether the code is better or worse arranged afterwards.
 - **`areas`**: optional `{label, prefix}` buckets for the "Where the change
   lands" bars. Without them, files are bucketed by their first three directories.
 
-**Always draw the shape.** Every overview gets one `structure` diagram with
-`"section": "shape"` that maps the change. Put the objects it touches in their
-layers and mark each one `new`, `changed` or `removed`. Add the untouched
-neighbours they talk to as `same` for context, and mark the edges the same way.
-It is the most useful picture on the page, because it shows at a glance what
-was added and what changed. Skip it only when the change touches no code
+**Always draw the shape.** Every overview gets at least one diagram with
+`"section": "shape"` that maps the change, marking each part `new`, `changed`
+or `removed`, with the untouched neighbours they talk to as `same` for
+context. Pick the form that fits the change: usually a `structure` with the
+objects in their layers, but a `model` when the change is mostly to the data,
+a `sequence` when it's about who calls whom, or a sketch when none of those
+fit. It is the most useful picture on the page, because it shows at a glance
+what was added and what changed. Skip it only when the change touches no code
 structure at all (copy, config, a dependency bump), and say so in the report.
 
 The page adds two computed blocks under the shape, from git, that you don't
@@ -328,8 +330,9 @@ step. An edge with no `step` appears with the
 later of its two ends; a part with no step is context, always faint. The build
 fails without a map, or with one that tags no part.
 
-Draw the feature end to end in product language, usually a `flow` or a
-`structure` with a layer per place the person goes. Tag every node with the
+Draw the feature end to end in product language, in whatever form fits: a
+`flow`, a `structure` with a layer per place the person goes, a `journey` of
+the screens, or a sketch. Tag every node with the
 first step it matters in.
 
 ```json
