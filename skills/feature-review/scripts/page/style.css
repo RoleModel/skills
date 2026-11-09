@@ -429,13 +429,15 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dside.after .dsidet{color:var(--ink)}
 
 .dsvg{display:block;height:auto;margin:0 auto;font-family:var(--sans)}
-.dsvg text{fill:var(--ink);font-size:13px}
-.dsvg .dsub{fill:var(--ink-3);font-size:11px}
+.dsvg text{fill:var(--ink);font-size:13px;font-weight:500}
+.dsvg .dsub{fill:var(--ink-3);font:400 11px var(--mono)}
 .dsvg .dtag{font-size:9px;letter-spacing:.04em;fill:var(--ink-3);paint-order:stroke;stroke:var(--paper);stroke-width:3px;stroke-linejoin:round}
 .dsvg.banded .dtag{stroke:var(--wash)}
 .dsvg .dlayer{fill:var(--ink-3);font-size:11.5px;font-style:italic;font-family:var(--serif)}
 .dsvg .dband{fill:var(--wash);stroke:none}
-.dsvg .dn rect{fill:var(--paper);stroke:var(--rule-2);stroke-width:1}
+.dsvg .dn rect{fill:var(--paper);stroke:var(--rule-2);stroke-width:1;transition:stroke-width .2s}
+.dsvg .ddot{fill:var(--ink-3)}.dsvg .dn.new .ddot{fill:var(--pos)}.dsvg .dn.changed .ddot{fill:var(--warn)}.dsvg .dn.removed .ddot{fill:var(--neg)}
+.dsvg .dlayer{font:500 12px var(--sans);font-style:normal;fill:var(--ink-3)}
 .dsvg .dn.new rect{fill:var(--pos-wash);stroke:var(--pos);stroke-width:1.2}
 .dsvg .dn.new .dtag{fill:var(--pos)}
 .dsvg .dn.changed rect{stroke:var(--warn);stroke-width:1.2}
@@ -443,11 +445,30 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dsvg .dn.removed rect{fill:var(--neg-wash);stroke:var(--neg);stroke-dasharray:4 3}
 .dsvg .dn.removed text{fill:var(--neg)}
 .dsvg .dn.removed .dtag{fill:var(--neg);text-decoration:none}
-.dsvg .de{fill:none;stroke:var(--ink-3);stroke-width:1.1}
+.dsvg .de{fill:none;stroke:color-mix(in srgb,var(--ink-3) 80%,transparent);stroke-width:1.25;stroke-linejoin:round;stroke-linecap:round;transition:opacity .2s,stroke-width .2s}
+.dsvg .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke}
+.dsvg rect.dhit{fill:transparent;stroke:none;pointer-events:all}
+.dsvg .dpin circle{fill:var(--link);stroke:var(--paper);stroke-width:2}.dsvg .dpin text{fill:var(--paper);font:700 10.5px var(--sans)}
+.dsvg [data-el]:not([data-el=""]){cursor:pointer}
+.dsvg .dn.hot text:first-of-type{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--link) 50%,transparent);text-underline-offset:3px}
+.dsvg .dn:hover rect,.dsvg .dsel rect{stroke-width:2}
+.dsvg .dsel.de,.dsvg .dmsgg.dsel .de{stroke-width:2.4}
+/* Tracing: hover a box and everything not touching it steps back. */
+.dsvg.tracing .dn:not(.lit),.dsvg.tracing .de:not(.lit),.dsvg.tracing .dlbl:not(.lit),.dsvg.tracing g[data-from]:not(.lit){opacity:.22}
+.dsvg.tracing .de.lit{stroke-width:2;stroke:var(--ink)}.dsvg.tracing .de.lit.new{stroke:var(--pos)}.dsvg.tracing .de.lit.changed{stroke:var(--warn)}
+.dsvg .dn,.dsvg g[data-from]{transition:opacity .2s}
+/* Reveal by step: the map builds up with the steps; what came before stays as faint context. */
+.diagram [data-reveal]{transition:opacity .45s ease,stroke-width .2s}
+.diagram.staged [data-reveal=is-future]{opacity:0;pointer-events:none}
+.diagram.staged [data-reveal=is-past],.diagram.staged .dsvg [data-el]:not([data-step]):not(.dhit),.diagram.staged .dmark:not([data-step]){opacity:.3}
+.diagram.staged .dsvg .dn[data-reveal=is-focus] rect{stroke-width:2}
+.diagram.staged .dsvg .de[data-reveal=is-focus]{stroke-width:1.8;stroke:var(--ink)}
+.diagram.staged .dsvg .de.new[data-reveal=is-focus]{stroke:var(--pos)}.diagram.staged .dsvg .de.changed[data-reveal=is-focus]{stroke:var(--warn)}
 .dsvg .de.new{stroke:var(--pos)}.dsvg .de.changed{stroke:var(--warn)}.dsvg .de.removed{stroke:var(--neg);stroke-dasharray:4 3}
 .dsvg .de.reply{stroke-dasharray:3 3}
 .dsvg .dm{fill:var(--ink-3)}.dsvg .dm.new{fill:var(--pos)}.dsvg .dm.changed{fill:var(--warn)}.dsvg .dm.removed{fill:var(--neg)}
-.dsvg .dlbl rect{fill:var(--paper);stroke:none;opacity:.92}
+.dsvg .dlbl rect{fill:var(--paper);stroke:none;opacity:.94}
+.dsvg.banded .dlbl rect{fill:var(--paper)}
 .dsvg .dlbl text,.dsvg .dmsg{font-size:11px;fill:var(--ink-2)}
 .dsvg .dlbl.new text{fill:var(--pos)}.dsvg .dlbl.changed text{fill:var(--warn)}.dsvg .dlbl.removed text{fill:var(--neg)}
 .dsvg .dlife{stroke:var(--rule-2);stroke-dasharray:2 4}
@@ -461,6 +482,48 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dmedia{margin:0}
 .dmedia img,.dmedia video{display:block;max-width:100%;max-height:460px;margin:0 auto;border:1px solid var(--rule);border-radius:2px;background:var(--wash)}
 .dmedia img{cursor:zoom-in}
+/* Marks: rings and numbered pins over a screenshot or sketch, placed in percent of its box. */
+.dstage{position:relative;display:inline-block;max-width:100%;line-height:0}
+.dstage>.draw{line-height:normal}
+.dmark{position:absolute;border:2px solid var(--link);border-radius:5px;line-height:1.2;cursor:pointer;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--paper) 55%,transparent);transition:opacity .45s,border-width .15s}
+.dmark.new{border-color:var(--pos)}.dmark.changed{border-color:var(--warn)}.dmark.removed{border-color:var(--neg);border-style:dashed}
+.dmark.point{width:0;height:0;border:0;box-shadow:none}
+.dmark:hover,.dmark.dsel{border-width:3px}
+.dmpin{position:absolute;left:-11px;top:-11px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
+  background:var(--link);color:var(--paper);font:700 11px var(--sans);border:2px solid var(--paper)}
+.dmark.new .dmpin{background:var(--pos)}.dmark.changed .dmpin{background:var(--warn)}.dmark.removed .dmpin{background:var(--neg)}
+.dmlbl{position:absolute;left:-2px;top:calc(100% + 6px);white-space:nowrap;font:500 12px/1.3 var(--sans);color:var(--ink);
+  background:var(--paper);border:1px solid var(--rule-2);border-radius:4px;padding:2px 7px}
+.dmark.point .dmlbl{left:14px;top:-10px}
+#lightbox>.dstage{max-width:92vw;max-height:92vh}#lightbox>.dstage>img{max-width:92vw;max-height:92vh;display:block}
+/* The card a diagram part opens. */
+.dpop{position:fixed;z-index:70;width:280px;background:var(--paper);border:1px solid var(--rule-2);border-radius:6px;
+  box-shadow:0 8px 28px rgba(0,0,0,.18);padding:12px 14px;font:14px/1.4 var(--sans)}
+.dpop.hidden{display:none}
+.dpophead{font:600 15px/1.3 var(--serif);margin-bottom:4px}
+.dpopmeta{color:var(--ink-3);font-size:13px;margin-bottom:10px}.dpopmeta code{font:12px var(--mono)}
+.dpopacts{display:flex;gap:8px;margin-top:10px}.dpopacts .sp{flex:1}
+.dpopta{width:100%;box-sizing:border-box;font:14px/1.45 var(--sans);color:var(--ink);background:var(--paper);border:1px solid var(--rule-2);border-radius:4px;padding:6px 8px;resize:vertical}
+tr.dflash>td{animation:dflash 1.8s ease-out}
+@keyframes dflash{0%,30%{background:color-mix(in srgb,var(--warn) 30%,transparent)}100%{background:inherit}}
+/* The steps of "How it comes together" beside their map, which stays in view and builds up. */
+.cxflow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,44%);gap:40px;align-items:start}
+.cxflow>.cxsteps{grid-column:1;grid-row:1;margin-top:0}
+.cxmap{grid-column:2;grid-row:1;position:sticky;top:calc(var(--hh) + 16px)}
+.cxmap figure.diagram{border-top:0;padding-top:0}
+.cxmapstep{font:14px/1.35 var(--sans);color:var(--ink-3);margin:0 0 10px;min-height:1.35em}.cxmapstep b{color:var(--ink);font-weight:600}
+.cxmap .dsvg{max-height:calc(100vh - var(--hh) - 140px);width:auto;max-width:100%}
+.cxflow .cxstep{transition:opacity .3s}
+.cxflow:has(.cxon) .cxstep:not(.cxon){opacity:.55}
+.cxflow .cxstep:last-child{min-height:50vh}
+@media (max-width:1100px){
+  .cxflow{grid-template-columns:minmax(0,1fr);gap:0}
+  .cxmap{grid-column:1;z-index:5;background:var(--paper);padding:8px 0;border-bottom:1px solid var(--rule)}
+  .cxflow>.cxsteps{grid-row:2}
+  .cxmap .dsvg{max-height:34vh}
+  .cxmap .dlegend{display:none}
+}
 /* A screenshot's title reads as a caption under the picture, centered with it, not a heading off to its left. */
 .diagram.media{display:flex;flex-direction:column}
 .diagram.media .dtitle{order:1;font:500 13.5px var(--sans);color:var(--ink-3);text-align:center;margin:10px 0 0;padding:0}
