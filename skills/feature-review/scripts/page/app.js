@@ -2095,7 +2095,7 @@
     $('steps').innerHTML = STEPS.map((st, i) => {
       const r = railState(st.id);
       return (st.sep ? '<li class="sep" aria-hidden="true"></li>' : '') + '<li class="' + [st.id === v ? 'on' : '', r.done ? 'done' : '', r.bad ? 'bad' : ''].join(' ') + '">' +
-        '<button type="button" data-step="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (i + 1) + '</span>' +
+        '<button type="button" data-goto="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (i + 1) + '</span>' +
         '<span class="rl">' + st.label + '</span>' + (r.text ? '<span class="rs">' + esc(r.text) + '</span>' : '') + '</button></li>';
     }).join('');
   }
@@ -2203,8 +2203,8 @@
     // A group link from the story opens the Recommendations at that group's gist.
     const rg = e.target.closest('[data-rg]');
     if (rg) { e.preventDefault(); focusGroup(+rg.dataset.rg); goStep('recs'); return; }
-    const b = e.target.closest('[data-step]');
-    if (b) { e.preventDefault(); goStep(b.dataset.step); return; }
+    const b = e.target.closest('[data-goto]');
+    if (b) { e.preventDefault(); goStep(b.dataset.goto); return; }
     const ac = e.target.closest('[data-across]');
     if (ac) { e.preventDefault(); stepAcross(+ac.dataset.across); }
   });
