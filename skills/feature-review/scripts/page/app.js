@@ -2359,8 +2359,10 @@
   }
   // Clicks inside a sketch land on its shadow host, so look along the composed path for the link.
   document.addEventListener('click', (e) => {
-    const el = e.composedPath().find((n) => n.dataset && n.dataset.link);
-    if (!el) return;
+    // The innermost of a link and a journey's next-screen mark wins: a button on a linked screen
+    // still clicks through to the next screen.
+    const el = e.composedPath().find((n) => n.dataset && (n.dataset.link || n.dataset.next != null));
+    if (!el || !el.dataset.link) return;
     e.preventDefault(); e.stopPropagation();
     followLink(el.dataset.link, el.closest ? el.closest('figure.diagram') || el : el);
   }, true);

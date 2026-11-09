@@ -555,7 +555,28 @@ const DIAG = (function () {
         wrap.appendChild(arrow);
       }
     });
+    // A screen whose sketch marks an element with data-next="screen-id" can be clicked through: the
+    // strip gives way to one screen at a time, larger, and the marked element opens the next.
+    if ((d.screens || []).some((s) => /data-next=/.test(s.html || ''))) {
+      wrap.classList.add('clickable');
+      wrap.insertAdjacentHTML('afterbegin', '<div class="djplay"><button type="button" data-jplay="back">← Back</button>' +
+        '<span class="djwhere"></span><button type="button" data-jplay="all">All screens</button></div>');
+      wrap.insertAdjacentHTML('beforeend', '<p class="djhint">Click the outlined parts of a screen to go through it.</p>');
+    }
     return wrap;
+  }
+  // Show one screen of a click-through journey, or (id null) the whole strip again.
+  function play(wrap, id, how) {
+    const cards = Array.from(wrap.querySelectorAll(':scope > .djscreen'));
+    const card = id != null && cards.find((c) => c.dataset.part === id);
+    if (!card) { wrap.classList.remove('playing'); wrap.style.minHeight = ''; wrap.trail = []; cards.forEach((c) => c.classList.remove('at')); return; }
+    // Hold the strip's height, so the page below doesn't jump as screens change.
+    if (!wrap.classList.contains('playing')) wrap.style.minHeight = wrap.offsetHeight + 'px';
+    if (how !== 'back') wrap.trail = (wrap.trail || []).concat(id);
+    wrap.classList.add('playing');
+    cards.forEach((c) => c.classList.toggle('at', c === card));
+    wrap.querySelector('.djwhere').innerHTML = '<b>' + (cards.indexOf(card) + 1) + '</b> of ' + cards.length + ' · ' + esc(card.querySelector('.djtitle').textContent);
+    wrap.querySelector('[data-jplay="back"]').disabled = wrap.trail.length < 2;
   }
 
   // --- raw markup ---------------------------------------------------------
@@ -666,6 +687,7 @@ const DIAG = (function () {
     '.ui-bars{display:flex;align-items:flex-end;gap:4px;height:var(--h,60px)}.ui-bars>i{flex:1;min-width:6px;height:var(--v,50%);background:var(--border);border-radius:2px 2px 0 0}.ui-bars>i.on{background:var(--accent)}.ui-bars>i.new{background:var(--add-b)}.ui-bars>i.removed{background:var(--del-b)}' +
     '.email{border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:12px;overflow:hidden}.email>.head{padding:6px 12px;border-bottom:1px solid var(--border);background:var(--panel);display:grid;grid-template-columns:auto 1fr;gap:1px 10px}' +
     '.email>.head>:nth-child(odd){color:var(--muted)}.email>.body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}' +
+    '[data-next]{cursor:pointer;outline:1px dashed color-mix(in srgb,var(--accent) 70%,transparent);outline-offset:2px;border-radius:4px}[data-next]:hover{outline:2px solid var(--accent)}' +
     '[data-link]{cursor:pointer}[data-link]:hover{outline:1px dashed var(--accent);outline-offset:2px}' +
     '.dlanded{animation:dlanded 1.8s ease-out}@keyframes dlanded{0%,40%{outline:2px solid var(--accent);outline-offset:3px}100%{outline:2px solid transparent;outline-offset:6px}}' +
     // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
@@ -907,6 +929,17 @@ const DIAG = (function () {
   // Whether a diagram has anything to build up step by step.
   if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
+      const path = e.composedPath ? e.composedPath() : [];
+      const hot = path.find((n) => n.dataset && n.dataset.next != null);
+      const jw = path.find((n) => n.classList && n.classList.contains('djourney'));
+      if (hot && jw) { e.preventDefault(); play(jw, hot.dataset.next); return; }
+      const jb = e.target.closest && e.target.closest('[data-jplay]');
+      if (jb) {
+        const w = jb.closest('.djourney');
+        if (jb.dataset.jplay === 'all') play(w, null);
+        else { w.trail.pop(); play(w, w.trail[w.trail.length - 1], 'back'); }
+        return;
+      }
       const b = e.target.closest && e.target.closest('.dsteps [data-go]');
       if (!b) return;
       const host = b.closest('.dwalk') || b.closest('figure.diagram');
@@ -954,6 +987,10 @@ const DIAG = (function () {
     } else if (d.kind === 'journey') {
       if (!(d.screens || []).length) out.push(at + ': journey has no screens');
       (d.screens || []).forEach((s, i) => { if (!s || !s.html) out.push(at + ': screen ' + (i + 1) + ' has no html'); });
+      const sids = new Set((d.screens || []).map((s) => s && s.id).filter(Boolean));
+      (d.screens || []).forEach((s, i) => String((s && s.html) || '').replace(/data-next=["']([^"']*)["']/g, (m, x) => {
+        if (!sids.has(x)) out.push(at + ': screen ' + (i + 1) + ' has data-next="' + x + '", but no screen has that id');
+      }));
     } else if (d.kind === 'image' || d.kind === 'video') {
       if (!(d.data || d.src)) out.push(at + ': ' + d.kind + ' needs a src file');
     } else if (!(d.html || d.svg)) out.push(at + ': ' + d.kind + ' diagram has no markup');
@@ -1015,7 +1052,7 @@ const DIAG = (function () {
     });
     return ids;
   }
-  const api = { render, body, problems, advice, partIds, focus, walk, trace, isStaged, stagesOf, KINDS };
+  const api = { render, body, problems, advice, partIds, play, focus, walk, trace, isStaged, stagesOf, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();

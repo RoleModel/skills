@@ -475,6 +475,14 @@ people see.
 Each screen's `html` uses the sketch classes below. `then` labels the arrow to
 the next screen; `width` (default 230) sizes a screen; `step` makes it build.
 
+To make it clickable, give screens an `id` and mark an element in a screen's
+sketch with `data-next="<screen id>"` (the button the person presses). The
+marked parts are outlined; clicking one shows that screen on its own, larger,
+with Back and All screens. Nothing runs: it only moves between the screens
+you drew, so it shows the path, not behaviour the code may not have. Use it
+when the app couldn't be recorded or the path spans several screens; a
+recording of the real app is better when there is one.
+
 ### `html` and `svg`: anything else
 
 Hand-written markup in `html` or `svg`: UI mockups, records and tables,
