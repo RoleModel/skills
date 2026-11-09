@@ -539,16 +539,10 @@ a:hover>.rfile,.rfile:hover{text-decoration:underline;text-underline-offset:.18e
 .dwalkf{display:flex;align-items:center;gap:12px;padding-top:12px;border-top:1px solid var(--rule)}
 .dwalkc{flex:1;text-align:center;color:var(--ink-3);font-size:13.5px}
 /* Before and after, one at a time. */
-.dflipsw{display:flex;justify-content:center;gap:0;margin:0 0 14px}
-.dflipsw button{border-radius:0;padding:4px 14px;font-size:13px;color:var(--ink-3)}
-.dflipsw button:first-child{border-radius:4px 0 0 4px}.dflipsw button:last-child{border-radius:0 4px 4px 0;border-left:0}
-.dflipsw button.on{color:var(--ink);background:var(--wash-2);border-color:var(--rule-2)}
-.dflip{display:grid}.dflip>.dflipsw{grid-row:1}
-.dflipside{grid-row:2;grid-column:1;opacity:0;visibility:hidden;transition:opacity .25s}
-.dflipside.on{opacity:1;visibility:visible}
 /* Marks: rings and numbered pins over a screenshot or sketch, placed in percent of its box. */
 .dstage{position:relative;display:inline-block;max-width:100%;line-height:0}
 .dstage>.draw{line-height:normal}
+.dstage:has(>.draw){display:block}
 .dmark{position:absolute;border:2px solid var(--link);border-radius:5px;line-height:1.2;pointer-events:none;
   box-shadow:0 0 0 3px color-mix(in srgb,var(--paper) 55%,transparent);transition:opacity .45s,border-width .15s}
 .dmark.new{border-color:var(--pos)}.dmark.changed{border-color:var(--warn)}.dmark.removed{border-color:var(--neg);border-style:dashed}
