@@ -11,7 +11,8 @@
  *   image, video  a screenshot, GIF or screen recording; the build inlines the
  *              file named by `src` as a data URL in `data`, so the page stays offline
  *
- * Node, edge and message `status` is new | changed | removed | same.
+ * Node, edge and message `status` is new | changed | removed | same. Any part can also carry
+ * `code`, `step` and `pin`, and image, video, html and svg diagrams take `marks` (see below).
  */
 const DIAG = (function () {
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -27,8 +28,8 @@ const DIAG = (function () {
     return '<div class="dlegend">' + list.map((s) => '<span class="dk ' + s + '"><i></i>' + LEGEND[s] + '</span>').join('') + '</div>';
   };
   const arrowDefs = (id) => '<defs>' + STATUS.map((s) =>
-    '<marker id="' + id + '-' + s + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">' +
-    '<path d="M0,0L10,5L0,10z" class="dm ' + s + '"/></marker>').join('') + '</defs>';
+    '<marker id="' + id + '-' + s + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+    '<path d="M0,1.5L10,5L0,8.5z" class="dm ' + s + '"/></marker>').join('') + '</defs>';
   let seq = 0;
   const edgeOf = (e) => (Array.isArray(e) ? { from: e[0], to: e[1], label: e[2], status: e[3] } : e);
   const label = (x, y, text, cls) => {
@@ -38,7 +39,42 @@ const DIAG = (function () {
       '<text x="' + x + '" y="' + (y + 3) + '" text-anchor="middle">' + esc(text) + '</text></g>';
   };
 
+  // --- shared parts: code links, reveal by step, pins -----------------------
+  // Any node, edge, actor, message or mark can carry `code` ("path:line" or a path), `step` (a
+  // connection step number, or a list), `pin` (a number drawn on it) and `status`. They become data
+  // attributes the page reads: clicking a part with code opens it, any part can take a comment, and a
+  // diagram with steps builds up as the reader moves through them.
+  const steps = (v) => [].concat(v == null ? [] : v).map(Number).filter((n) => n > 0);
+  const codeOf = (v) => {
+    if (!v) return null;
+    if (typeof v === 'object') return v.path ? { path: v.path, line: v.line ? +v.line : null } : null;
+    const m = String(v).match(/^(.*?):(\d+)$/);
+    return m ? { path: m[1], line: +m[2] } : { path: String(v), line: null };
+  };
+  const partAttrs = (o, name) => {
+    const c = codeOf(o.code), ss = steps(o.step);
+    return ' data-el="' + esc(name || '') + '"' + (c ? ' data-code="' + esc(c.path + (c.line ? ':' + c.line : '')) + '"' : '') +
+      (ss.length ? ' data-step="' + ss.join(' ') + '"' : '') + (o.status && o.status !== 'same' ? ' data-status="' + esc(o.status) + '"' : '');
+  };
+  const pinSvg = (x, y, n) => n == null ? '' : '<g class="dpin"><circle cx="' + x + '" cy="' + y + '" r="9"/><text x="' + x + '" y="' + (y + 3.5) +
+    '" text-anchor="middle">' + esc(n) + '</text></g>';
+  // A polyline with its corners rounded, so routed lines read as one stroke rather than a staircase.
+  function rounded(pts, r) {
+    const p = pts.filter((q, i) => !i || q[0] !== pts[i - 1][0] || q[1] !== pts[i - 1][1]);
+    let d = 'M' + p[0][0] + ',' + p[0][1];
+    for (let i = 1; i < p.length - 1; i++) {
+      const [x0, y0] = p[i - 1], [x1, y1] = p[i], [x2, y2] = p[i + 1];
+      const d1 = Math.hypot(x1 - x0, y1 - y0), d2 = Math.hypot(x2 - x1, y2 - y1), rr = Math.min(r, d1 / 2, d2 / 2);
+      d += ' L' + (x1 + (x0 - x1) / d1 * rr) + ',' + (y1 + (y0 - y1) / d1 * rr) + ' Q' + x1 + ',' + y1 + ' ' + (x1 + (x2 - x1) / d2 * rr) + ',' + (y1 + (y2 - y1) / d2 * rr);
+    }
+    const z = p[p.length - 1];
+    return d + ' L' + z[0] + ',' + z[1];
+  }
+
   // --- structure: nodes in layers, top to bottom --------------------------
+  // Lines are routed, not curved: down out of a box, across in the gap between layers on a track of
+  // their own, and down into the next. An edge that skips a layer drops through a clear lane between
+  // that layer's boxes, so no line ever runs behind a box.
   function structure(d) {
     const id = 'dg' + (++seq);
     const nodes = (d.nodes || []).map((n) => Object.assign({}, n, { status: st(n.status) }));
@@ -48,48 +84,41 @@ const DIAG = (function () {
     nodes.forEach((n) => { if (!layers.includes(n.layer || '')) layers.push(n.layer || ''); });
     const rows = layers.map((l) => nodes.filter((n) => (n.layer || '') === l)).filter((r) => r.length);
     const rowLayer = rows.map((r) => r[0].layer || '');
-    const NH = (n) => (n.sub ? 50 : 36);
-    nodes.forEach((n) => { n.w = Math.min(260, Math.max(96, Math.max(tw(n.label || n.id, 13), tw(n.sub, 11)) + 28)); });
-    // One barycenter pass: order each row by where its neighbours above sit, which
-    // untangles most small diagrams without a real layout engine.
+    rows.forEach((r, ri) => r.forEach((n) => { n.ri = ri; }));
+    const NH = (n) => (n.sub ? 52 : 38);
+    const marked = (n) => n.status !== 'same';
+    nodes.forEach((n) => { n.w = Math.min(280, Math.max(96, Math.max(tw(n.label || n.id, 13), tw(n.sub, 11)) + (marked(n) ? 42 : 30))); });
+    // Order each row by where its neighbours sit, sweeping down, up and down again: enough to untangle
+    // most review-sized diagrams without a layout engine.
     const GAP = 28, LBL = layers.some(Boolean) ? 120 : 16;
-    const place = (row) => { let x = 0; row.forEach((n) => { n.x = x; x += n.w + GAP; }); return x - GAP; };
-    rows.forEach((row, ri) => {
-      if (ri) {
-        const above = new Set(rows.slice(0, ri).flat());
-        const bary = (n) => {
-          const xs = edges.flatMap((e) => (e.from === n.id && above.has(byId.get(e.to)) ? [byId.get(e.to)]
-            : e.to === n.id && above.has(byId.get(e.from)) ? [byId.get(e.from)] : [])).map((m) => m.x + m.w / 2);
-          return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
-        };
-        const keyed = row.map((n, i) => ({ n, i, b: bary(n) }));
-        keyed.sort((a, b) => (a.b == null || b.b == null ? a.i - b.i : a.b - b.b || a.i - b.i));
-        row.splice(0, row.length, ...keyed.map((k) => k.n));
-      }
-      row.width = place(row);
-    });
+    const place = (row) => { let x = 0; row.forEach((n) => { n.x = x; x += n.w + GAP; }); row.width = x - GAP; };
+    rows.forEach(place);
+    const sweep = (ri, ref) => {
+      const row = rows[ri];
+      const bary = (n) => {
+        const xs = edges.flatMap((e) => (e.from === n.id ? [byId.get(e.to)] : e.to === n.id ? [byId.get(e.from)] : []))
+          .filter((m) => ref.includes(m.ri)).map((m) => m.x + m.w / 2 + (rows[m.ri].width ? -rows[m.ri].width / 2 : 0));
+        return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+      };
+      const keyed = row.map((n, i) => ({ n, i, b: bary(n) }));
+      keyed.sort((a, b) => (a.b == null || b.b == null ? a.i - b.i : a.b - b.b || a.i - b.i));
+      row.splice(0, row.length, ...keyed.map((k) => k.n));
+      place(row);
+    };
+    for (let ri = 1; ri < rows.length; ri++) sweep(ri, [ri - 1]);
+    for (let ri = rows.length - 2; ri >= 0; ri--) sweep(ri, [ri + 1]);
+    for (let ri = 1; ri < rows.length; ri++) sweep(ri, [ri - 1, ri - 2]);
     const inner = Math.max(...rows.map((r) => r.width), 200);
     const W = LBL + inner + 24;
-    // An edge within the top row arcs above it, so leave room for the arc.
-    const topArc = edges.some((e) => e.from !== e.to && rows[0].includes(byId.get(e.from)) && rows[0].includes(byId.get(e.to)));
-    let y = topArc ? 56 : 16;
-    rows.forEach((row) => {
-      const h = Math.max(...row.map(NH));
-      const off = LBL + (inner - row.width) / 2;
-      row.forEach((n) => { n.x += off; n.h = NH(n); n.y = y + (h - n.h) / 2; n.row = row; });
-      row.y = y; row.h = h;
-      y += h + 70;
-    });
-    const H = y - 70 + 16;
-    const used = new Set();
-    // Each edge leaves and enters a node's top or bottom side. Edges sharing a side spread across
-    // its middle, ordered by where their other end sits, so arrows don't pile onto one point.
+    rows.forEach((row) => { const off = LBL + (inner - row.width) / 2; row.forEach((n) => { n.x += off; n.h = NH(n); }); row.h = Math.max(...row.map(NH)); });
+
+    // Ports: edges sharing a side of a box spread across its middle, ordered by where the other end sits.
     const sideOf = (e, n) => {
       const a = byId.get(e.from), b = byId.get(e.to);
-      if (a.row === b.row) return 'top';
-      return (n === a) === (a.y < b.y) ? 'bottom' : 'top';
+      if (a.ri === b.ri) return 'top';
+      return (n === a) === (a.ri < b.ri) ? 'bottom' : 'top';
     };
-    const ports = new Map();
+    const ports = new Map(), portX = new Map();
     edges.forEach((e) => {
       if (e.from === e.to) return;
       [[byId.get(e.from), byId.get(e.to)], [byId.get(e.to), byId.get(e.from)]].forEach(([n, other]) => {
@@ -98,78 +127,152 @@ const DIAG = (function () {
         ports.get(k).push({ e, n, ox: other.x + other.w / 2 });
       });
     });
-    const portX = new Map();
     ports.forEach((list) => {
       list.sort((p, q) => p.ox - q.ox);
       list.forEach((p, i) => {
-        const span = Math.min(p.n.w * 0.6, (list.length - 1) * 24);
+        const span = Math.min(p.n.w - 28, (list.length - 1) * 18);
         portX.set(p.e, Object.assign(portX.get(p.e) || {}, {
           [p.n === byId.get(p.e.from) ? 'a' : 'b']: p.n.x + p.n.w / 2 + (list.length > 1 ? -span / 2 + span * i / (list.length - 1) : 0),
         }));
       });
     });
-    let svg = '', labels = '', tags = '';
-    const lbls = [];
+    // A lane through a row: the x nearest `want` that clears every box in it.
+    const lanes = [];
+    const laneThrough = (ris, want) => {
+      let free = [[-Infinity, Infinity]];
+      ris.forEach((ri) => rows[ri].forEach((n) => {
+        const l = n.x - 12, r = n.x + n.w + 12;
+        free = free.flatMap(([a, b]) => (r <= a || l >= b ? [[a, b]] : [[a, l], [r, b]].filter(([p, q]) => q - p > 0)));
+      }));
+      let best = want, cost = Infinity;
+      free.forEach(([a, b]) => {
+        let x = Math.min(Math.max(want, a + 6), b - 6);
+        while (lanes.some((u) => Math.abs(u - x) < 7) && x + 8 < b) x += 8;
+        if (Math.abs(x - want) < cost) { cost = Math.abs(x - want); best = x; }
+      });
+      lanes.push(best);
+      return best;
+    };
+    // Each edge is a list of points with symbolic y's ({gap, track} for runs across a gap), resolved once
+    // the tracks in every gap are known. Gap g sits below row g; gap -1 sits above the first row.
+    const runs = new Map(); // gap -> [{lo, hi, ref}]
+    const addRun = (gap, x1, x2) => {
+      const ref = { gap, t: 0 };
+      if (Math.abs(x1 - x2) > 0.5) { if (!runs.has(gap)) runs.set(gap, []); runs.get(gap).push({ lo: Math.min(x1, x2), hi: Math.max(x1, x2), ref }); }
+      return ref;
+    };
+    const routes = edges.map((e) => {
+      const a = byId.get(e.from), b = byId.get(e.to);
+      if (a === b) return { e, self: true };
+      const pa = portX.get(e).a, pb = portX.get(e).b;
+      if (a.ri === b.ri) {
+        const g = addRun(a.ri - 1, pa, pb);
+        return { e, pts: [[pa, { top: a }], [pa, g], [pb, g], [pb, { top: b }]], lbl: { x: (pa + pb) / 2, g } };
+      }
+      const down = a.ri < b.ri, u = down ? a : b, l = down ? b : a, ux = down ? pa : pb, lx = down ? pb : pa;
+      let pts, lbl;
+      if (l.ri - u.ri === 1) {
+        const g = addRun(u.ri, ux, lx);
+        pts = [[ux, { bottom: u }], [ux, g], [lx, g], [lx, { top: l }]];
+        lbl = { x: (ux + lx) / 2, g };
+      } else {
+        const mid = [];
+        for (let r = u.ri + 1; r < l.ri; r++) mid.push(r);
+        const lane = laneThrough(mid, (ux + lx) / 2);
+        const g1 = addRun(u.ri, ux, lane), g2 = addRun(l.ri - 1, lane, lx);
+        pts = [[ux, { bottom: u }], [ux, g1], [lane, g1], [lane, g2], [lx, g2], [lx, { top: l }]];
+        lbl = Math.abs(ux - lane) >= Math.abs(lane - lx) ? { x: (ux + lane) / 2, g: g1 } : { x: (lane + lx) / 2, g: g2 };
+      }
+      return { e, pts: down ? pts : pts.reverse(), lbl };
+    });
+    // Tracks: runs that overlap in a gap get their own heights, the widest nearest the middle.
+    const tracks = new Map();
+    runs.forEach((list, gap) => {
+      const used = [];
+      list.sort((p, q) => (q.hi - q.lo) - (p.hi - p.lo)).forEach((r) => {
+        let t = 0;
+        while ((used[t] || []).some((o) => r.lo < o.hi + 12 && r.hi > o.lo - 12)) t++;
+        (used[t] = used[t] || []).push(r);
+        r.ref.t = t;
+      });
+      tracks.set(gap, used.length);
+    });
+    const TR = 12, gapH = (g) => Math.max(g === -1 ? 0 : 58, 30 + (tracks.get(g) || 0) * TR);
+    let y = tracks.has(-1) ? gapH(-1) : 16;
+    rows.forEach((row, ri) => {
+      row.y = y;
+      row.forEach((n) => { n.y = y + (row.h - n.h) / 2; });
+      y += row.h + (ri < rows.length - 1 ? gapH(ri) : 16);
+    });
+    const H = y;
+    const gapTop = (g) => (g === -1 ? 0 : rows[g].y + rows[g].h);
+    const trackY = (ref) => {
+      const n = tracks.get(ref.gap) || 1, top = gapTop(ref.gap), h = gapH(ref.gap);
+      return top + h / 2 + (ref.t - (n - 1) / 2) * TR;
+    };
+    const yOf = (v) => (typeof v === 'number' ? v : v.top ? v.top.y : v.bottom ? v.bottom.y + v.bottom.h : trackY(v));
+
+    const used = new Set();
+    let svg = '', labels = '', over = '';
     rows.forEach((row, ri) => {
       if (rowLayer[ri]) {
-        svg += '<rect class="dband" x="4" y="' + (row.y - 8) + '" width="' + (W - 8) + '" height="' + (row.h + 16) + '" rx="6"/>' +
-          '<text class="dlayer" x="14" y="' + (row.y + row.h / 2 + 4) + '">' + esc(rowLayer[ri]) + '</text>';
+        svg += '<rect class="dband" x="4" y="' + (row.y - 10) + '" width="' + (W - 8) + '" height="' + (row.h + 20) + '" rx="6"/>' +
+          '<text class="dlayer" x="16" y="' + (row.y + row.h / 2 + 4) + '">' + esc(rowLayer[ri]) + '</text>';
       }
     });
-    edges.forEach((e) => {
-      const a = byId.get(e.from), b = byId.get(e.to), s = st(e.status);
+    const lbls = [];
+    const firstStep = (n) => Math.min(...(steps(n.step).length ? steps(n.step) : [0]));
+    routes.forEach((r) => {
+      const e = r.e, a = byId.get(e.from), b = byId.get(e.to), s = st(e.status);
       used.add(s);
       let p, lx, ly;
-      if (a === b) {
+      if (r.self) {
         const x = a.x + a.w, y0 = a.y + a.h / 2;
-        p = 'M' + x + ',' + (y0 - 8) + ' C' + (x + 40) + ',' + (y0 - 30) + ' ' + (x + 40) + ',' + (y0 + 30) + ' ' + x + ',' + (y0 + 8);
-        lx = x + 44; ly = y0;
-      } else if (a.row === b.row) {
-        // Same row: arc over the top so it doesn't run through the nodes in between.
-        const ax = portX.get(e).a, bx = portX.get(e).b, top = Math.min(a.y, b.y), lift = 26 + Math.abs(bx - ax) * 0.08;
-        p = 'M' + ax + ',' + top + ' C' + ax + ',' + (top - lift) + ' ' + bx + ',' + (top - lift) + ' ' + bx + ',' + top;
-        lx = (ax + bx) / 2; ly = top - lift * 0.75;
+        p = rounded([[x, y0 - 8], [x + 22, y0 - 8], [x + 22, y0 + 8], [x + 2, y0 + 8]], 6);
+        lx = x + 28 + tw(e.label, 11) / 2; ly = y0;
       } else {
-        const down = a.y < b.y;
-        const ax = portX.get(e).a, ay = down ? a.y + a.h : a.y, bx = portX.get(e).b, by = down ? b.y : b.y + b.h;
-        const m = (ay + by) / 2;
-        p = 'M' + ax + ',' + ay + ' C' + ax + ',' + m + ' ' + bx + ',' + m + ' ' + bx + ',' + by;
-        // An edge that skips a layer passes through it, so its middle can land on a box there. Label
-        // it in the gap just past its start instead, where the curve is still near ax.
-        const skips = Math.abs(rows.indexOf(a.row) - rows.indexOf(b.row)) > 1;
-        lx = skips ? ax : (ax + bx) / 2; ly = skips ? ay + (down ? 30 : -30) : m;
+        p = rounded(r.pts.map(([x, v]) => [x, yOf(v)]), 9);
+        lx = r.lbl.x; ly = trackY(r.lbl.g);
       }
-      svg += '<path class="de ' + s + '" d="' + p + '" marker-end="url(#' + id + '-' + s + ')"><title>' +
-        esc((byId.get(e.from).label || e.from) + ' → ' + (byId.get(e.to).label || e.to) + (e.label ? ': ' + e.label : '')) + '</title></path>';
-      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 10, text: e.label, s });
+      // An edge with no step of its own appears with the later of its two ends.
+      const own = steps(e.step), at = own.length ? own : [Math.max(firstStep(a), firstStep(b))].filter(Boolean);
+      svg += '<path class="de ' + s + '" d="' + p + '" marker-end="url(#' + id + '-' + s + ')"' +
+        partAttrs(Object.assign({}, e, { step: at }), (a.label || e.from) + ' → ' + (b.label || e.to) + (e.label ? ': ' + e.label : '')) +
+        ' data-from="' + esc(e.from) + '" data-to="' + esc(e.to) + '"/>';
+      // A wide, invisible twin takes the pointer, so a 1px line is easy to hover and click.
+      svg += '<path class="dhit" d="' + p + '"' + partAttrs(Object.assign({}, e, { step: at }), (a.label || e.from) + ' → ' + (b.label || e.to) + (e.label ? ': ' + e.label : '')) +
+        ' data-from="' + esc(e.from) + '" data-to="' + esc(e.to) + '"/>';
+      if (e.label) lbls.push({ x: lx, y: ly, w: tw(e.label, 11) + 12, text: e.label, s, at, pin: e.pin, code: e.code, from: e.from, to: e.to });
+      else if (e.pin != null) over += '<g' + partAttrs({ step: at, code: e.code }, e.label || (a.label || e.from) + ' → ' + (b.label || e.to)) + '>' + pinSvg(lx, ly, e.pin) + '</g>';
     });
-    // Labels keep clear of the layer names, the boxes and each other: each takes the nearest of a few
-    // spots above or below where it wants to be that is free.
-    const boxes = nodes.map((n) => ({ l: n.x, r: n.x + n.w, t: n.y, b: n.y + n.h }));
+    // Labels sit on their line's run across the gap, nudged along it until clear of boxes and each other.
+    const boxes = nodes.map((n) => ({ l: n.x - 4, r: n.x + n.w + 4, t: n.y - 4, b: n.y + n.h + 4 }));
     const hit = (q, list) => list.some((o) => q.l < o.r && q.r > o.l && q.t < o.b && q.b > o.t);
     const placedL = [];
     lbls.forEach((L) => {
-      const x = Math.max(L.x, LBL + L.w / 2);
-      const at = (dy) => ({ l: x - L.w / 2, r: x + L.w / 2, t: L.y + dy - 9, b: L.y + dy + 7 });
-      const dy = [0, -16, 16, -32, 32].find((d) => !hit(at(d), boxes) && !hit(at(d), placedL));
-      const q = at(dy == null ? 0 : dy);
+      const at = (dx, dy) => { const x = Math.min(Math.max(L.x + dx, LBL + L.w / 2), W - L.w / 2 - 4); return { x, l: x - L.w / 2, r: x + L.w / 2, t: L.y + dy - 8, b: L.y + dy + 8 }; };
+      const tries = [[0, 0], [-40, 0], [40, 0], [-80, 0], [80, 0], [0, -14], [0, 14], [-120, 0], [120, 0]];
+      const ok = tries.find(([dx, dy]) => !hit(at(dx, dy), boxes) && !hit(at(dx, dy), placedL)) || [0, 0];
+      const q = at(ok[0], ok[1]);
       placedL.push(q);
-      labels += label(x, q.t + 9, L.text, L.s);
+      labels += '<g' + partAttrs({ step: L.at, code: L.code }, L.text) + ' data-from="' + esc(L.from) + '" data-to="' + esc(L.to) + '">' + label(q.x, q.t + 8, L.text, L.s) +
+        (L.pin != null ? pinSvg(q.l - 4, q.t + 8, L.pin) : '') + '</g>';
     });
     nodes.forEach((n) => {
       used.add(n.status);
-      const cx = n.x + n.w / 2;
-      svg += '<g class="dn ' + n.status + '"><title>' + esc(n.note || n.label || n.id) + '</title>' +
-        '<rect x="' + n.x + '" y="' + n.y + '" width="' + n.w + '" height="' + n.h + '" rx="7"/>' +
-        '<text x="' + cx + '" y="' + (n.y + (n.sub ? 20 : 22)) + '" text-anchor="middle">' + esc(n.label || n.id) + '</text>' +
-        (n.sub ? '<text class="dsub" x="' + cx + '" y="' + (n.y + 38) + '" text-anchor="middle">' + esc(n.sub) + '</text>' : '') +
+      const cx = n.x + n.w / 2 + (marked(n) ? 6 : 0);
+      svg += '<g class="dn ' + n.status + (n.code ? ' hot' : '') + '"' + partAttrs(n, n.label || n.id) + ' data-id="' + esc(n.id) + '">' +
+        '<title>' + esc((n.note || n.label || n.id) + (marked(n) ? ' (' + LEGEND[n.status] + ')' : '')) + '</title>' +
+        '<rect x="' + n.x + '" y="' + n.y + '" width="' + n.w + '" height="' + n.h + '" rx="6"/>' +
+        // The status shows as a dot inside the box rather than a tag above it, where arrows arrive.
+        (marked(n) ? '<circle class="ddot" cx="' + (n.x + 14) + '" cy="' + (n.y + (n.sub ? 18 : n.h / 2)) + '" r="3.5"/>' : '') +
+        '<text x="' + cx + '" y="' + (n.y + (n.sub ? 22 : 24)) + '" text-anchor="middle">' + esc(n.label || n.id) + '</text>' +
+        (n.sub ? '<text class="dsub" x="' + cx + '" y="' + (n.y + 40) + '" text-anchor="middle">' + esc(n.sub) + '</text>' : '') +
         '</g>';
-      // Status tags sit just above the box, where arrows arrive; they go on top, with a halo, so a line can't hide one.
-      if (n.status === 'new' || n.status === 'removed' || n.status === 'changed')
-        tags += '<g class="dn ' + n.status + '"><text class="dtag" x="' + (n.x + n.w - 4) + '" y="' + (n.y - 4) + '" text-anchor="end">' + n.status.toUpperCase() + '</text></g>';
+      if (n.pin != null) over += '<g' + partAttrs(n, n.label || n.id) + '>' + pinSvg(n.x + 2, n.y + 2, n.pin) + '</g>';
     });
-    // Labels go on top: an edge that skips a layer can pass behind a node, and its label must stay readable.
-    return '<svg class="dsvg' + (rowLayer.some(Boolean) ? ' banded' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + svg + labels + tags + '</svg>' + legend(used);
+    return '<svg class="dsvg' + (rowLayer.some(Boolean) ? ' banded' : '') + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' +
+      arrowDefs(id) + svg + labels + over + '</svg>' + legend(used);
   }
 
   // --- sequence: who calls whom, in order ---------------------------------
@@ -197,16 +300,18 @@ const DIAG = (function () {
       if (a == null || b == null) return;
       const s = st(m.status), cls = 'de ' + s + (m.reply ? ' reply' : '');
       used.add(s);
+      const g = '<g class="dmsgg"' + partAttrs(m, m.label) + ' data-from="' + esc(m.from) + '" data-to="' + esc(m.to) + '">';
       if (a === b) {
         const x = xOf(a);
-        body += '<path class="' + cls + '" d="M' + x + ',' + y + ' h34 v18 h-34" marker-end="url(#' + id + '-' + s + ')"/>' +
-          '<text class="dmsg" x="' + (x + 40) + '" y="' + (y + 12) + '">' + esc(m.label) + '</text>';
+        body += g + '<path class="' + cls + '" d="' + rounded([[x, y], [x + 34, y], [x + 34, y + 18], [x + 2, y + 18]], 6) + '" marker-end="url(#' + id + '-' + s + ')"/>' +
+          '<text class="dmsg" x="' + (x + 40) + '" y="' + (y + 12) + '">' + esc(m.label) + '</text>' + pinSvg(x - 14, y + 9, m.pin) + '</g>';
         y += 40;
       } else {
         const x1 = xOf(a), x2 = xOf(b);
-        body += '<line class="' + cls + '" x1="' + x1 + '" x2="' + (x2 + (x2 > x1 ? -2 : 2)) + '" y1="' + (y + 12) + '" y2="' + (y + 12) +
+        body += g + '<rect class="dhit" x="' + Math.min(x1, x2) + '" y="' + (y - 6) + '" width="' + Math.abs(x2 - x1) + '" height="24"/>' +
+          '<line class="' + cls + '" x1="' + x1 + '" x2="' + (x2 + (x2 > x1 ? -2 : 2)) + '" y1="' + (y + 12) + '" y2="' + (y + 12) +
           '" marker-end="url(#' + id + '-' + s + ')"/><text class="dmsg" x="' + (x1 + x2) / 2 + '" y="' + (y + 6) + '" text-anchor="middle">' +
-          esc(m.label) + '</text>';
+          esc(m.label) + '</text>' + pinSvg(Math.min(x1, x2) - 14, y + 12, m.pin) + '</g>';
         y += 34;
       }
     });
@@ -216,8 +321,8 @@ const DIAG = (function () {
       used.add(a.status);
       const x = xOf(i), w = Math.min(COL - 16, tw(a.label || a.id, 13) + 24);
       head += '<line class="dlife" x1="' + x + '" x2="' + x + '" y1="44" y2="' + (H - 8) + '"/>' +
-        '<g class="dn ' + a.status + '"><title>' + esc(a.note || a.label || a.id) + '</title><rect x="' + (x - w / 2) + '" y="8" width="' + w +
-        '" height="34" rx="7"/><text x="' + x + '" y="30" text-anchor="middle">' + esc(a.label || a.id) + '</text></g>';
+        '<g class="dn ' + a.status + (a.code ? ' hot' : '') + '"' + partAttrs(a, a.label || a.id) + ' data-id="' + esc(a.id) + '"><title>' + esc(a.note || a.label || a.id) + '</title><rect x="' + (x - w / 2) + '" y="8" width="' + w +
+        '" height="34" rx="6"/><text x="' + x + '" y="30" text-anchor="middle">' + esc(a.label || a.id) + '</text></g>' + pinSvg(x - w / 2 + 2, 10, a.pin);
     });
     return '<svg class="dsvg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" style="max-width:100%" role="img">' + arrowDefs(id) + head + body + '</svg>' + legend(used);
   }
@@ -265,7 +370,49 @@ const DIAG = (function () {
     '.timeline>.new::before{background:var(--add-b)}.timeline>.removed::before{background:var(--del-b)}.timeline>.ghost::before{background:var(--muted)}' +
     '.meter{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}' +
     '.meter>i{display:block;height:10px;border-radius:3px;background:var(--accent);width:var(--v,50%)}.meter>i.new{background:var(--add-b)}.meter>i.removed{background:var(--del-b)}' +
-    '.cross{color:var(--del-b)}';
+    '.cross{color:var(--del-b)}' +
+    // More of the app, sketched: frames, controls, overlays and a pointer, for drawing a screen the
+    // review couldn't capture with the parts that matter outlined.
+    '.screen.browser>.bar::after{content:attr(data-url);flex:1;margin-left:6px;padding:1px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--border);font:11px ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.phone{width:var(--w,190px);border:1px solid var(--border);border-radius:22px;padding:14px 8px;background:var(--panel)}.phone>.body{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:var(--h,260px)}' +
+    '.ui-select{display:inline-flex;justify-content:space-between;gap:12px;min-width:110px;border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:12px;background:var(--bg)}.ui-select::after{content:"\\25BE";color:var(--muted)}' +
+    '.ui-check,.ui-radio{display:inline-flex;align-items:center;gap:6px;font-size:12px}.ui-check::before,.ui-radio::before{content:"";width:11px;height:11px;border:1px solid var(--muted);border-radius:2px;background:var(--bg)}' +
+    '.ui-radio::before{border-radius:50%}.ui-check.on::before,.ui-radio.on::before{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--bg)}' +
+    '.ui-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px}.ui-toggle::before{content:"";width:24px;height:13px;border-radius:7px;background:radial-gradient(circle at 6px 50%,var(--bg) 4px,var(--border) 4.5px)}' +
+    '.ui-toggle.on::before{background:radial-gradient(circle at 18px 50%,var(--bg) 4px,var(--accent) 4.5px)}' +
+    '.ui-tabs{display:flex;gap:14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}.ui-tabs>*{padding:3px 0}.ui-tabs>.on{color:var(--text);box-shadow:inset 0 -2px var(--accent)}' +
+    '.ui-nav{display:flex;flex-direction:column;gap:2px;font-size:12px;min-width:110px}.ui-nav>*{padding:3px 8px;border-radius:4px;color:var(--muted)}.ui-nav>.on{background:var(--panel);color:var(--text)}' +
+    '.ui-menu{display:inline-flex;flex-direction:column;border:1px solid var(--border);border-radius:6px;background:var(--bg);padding:4px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.18)}.ui-menu>*{padding:3px 10px;border-radius:3px}.ui-menu>.on{background:var(--panel)}' +
+    '.ui-toast{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-left-width:3px;border-radius:6px;padding:5px 10px;font-size:12px;background:var(--bg)}.ui-toast.new{border-left-color:var(--add-b)}.ui-toast.removed{border-left-color:var(--del-b)}' +
+    '.ui-banner{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;background:var(--panel)}' +
+    '.ui-chip{display:inline-block;border:1px solid var(--border);border-radius:11px;padding:0 8px;font-size:11px;background:var(--panel)}' +
+    '.ui-avatar{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--border);font-size:10px;font-weight:600}' +
+    '.ui-badge{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--bg);font-size:10px;font-weight:600}' +
+    '.ui-card{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);display:flex;flex-direction:column;gap:6px}' +
+    '.ui-empty{border:1px dashed var(--border);border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:12px}' +
+    '.ui-table{border-collapse:collapse;width:100%;font-size:12px}.ui-table th,.ui-table td{border:0;border-bottom:1px solid var(--border);padding:4px 8px}.ui-table th{background:none;color:var(--muted);font-weight:500}' +
+    'tr.new td{background:var(--add-bg)}tr.removed td{background:var(--del-bg);text-decoration:line-through;color:var(--muted)}tr.changed td,td.changed{box-shadow:inset 2px 0 #d29922}' +
+    '.scrim{position:relative;padding:18px;background:color-mix(in srgb,var(--text) 14%,var(--bg));border-radius:6px;display:grid;place-items:center}' +
+    '.modal{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;min-width:180px;display:flex;flex-direction:column;gap:8px}.modal>.title{margin:0}' +
+    '.cursor{display:inline-block;width:12px;height:16px;vertical-align:middle;background:var(--text);clip-path:polygon(0 0,0 100%,30% 72%,52% 100%,64% 94%,44% 66%,85% 66%)}' +
+    '.click{position:relative}.click::after{content:"";position:absolute;right:-8px;bottom:-12px;width:12px;height:16px;background:var(--text);clip-path:polygon(0 0,0 100%,30% 72%,52% 100%,64% 94%,44% 66%,85% 66%);filter:drop-shadow(0 0 1px var(--bg))}' +
+    // The data and the code behind the screen: a record, a payload, a chain of steps.
+    '.record{border:1px solid var(--border);border-radius:8px;font-size:12px;overflow:hidden;background:var(--bg);min-width:160px}' +
+    '.record>.title{margin:0;padding:4px 10px;background:var(--panel);border-bottom:1px solid var(--border);font:600 12px ui-monospace,Menlo,monospace}' +
+    '.record>div:not(.title){display:flex;justify-content:space-between;gap:16px;padding:3px 10px;border-top:1px solid var(--border)}.record>.title+div{border-top:0}' +
+    '.record>div>:first-child{color:var(--muted);font-family:ui-monospace,Menlo,monospace}' +
+    '.record>.new{background:var(--add-bg)}.record>.removed{background:var(--del-bg);text-decoration:line-through}.record>.changed{box-shadow:inset 2px 0 #d29922}' +
+    '.code{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-radius:6px;padding:6px 0;background:var(--panel);white-space:pre;overflow:auto}' +
+    '.code>*{display:block;padding:0 10px 0 20px;position:relative}.code>.add{background:var(--add-bg);color:var(--text)}.code>.del{background:var(--del-bg);color:var(--text)}' +
+    '.code>.add::before,.code>.del::before{position:absolute;left:7px}.code>.add::before{content:"+";color:var(--add-b)}.code>.del::before{content:"-";color:var(--del-b)}.code>.hl{outline:0;background:color-mix(in srgb,var(--accent) 16%,transparent)}' +
+    '.req{display:inline-flex;align-items:center;gap:8px;font:12px ui-monospace,Menlo,monospace}.req>b{font-size:10px;border:1px solid var(--border);border-radius:3px;padding:0 4px;color:var(--accent)}' +
+    '.flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 28px}.flow>*{position:relative}.flow>:not(:last-child)::after{content:"\\2192";position:absolute;right:-21px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px}' +
+    '.flow.v{flex-direction:column;align-items:center;gap:22px}.flow.v>:not(:last-child)::after{content:"\\2193";right:auto;left:50%;top:auto;bottom:-21px;transform:translateX(-50%)}' +
+    '.state{display:inline-block;border:1px solid var(--border);border-radius:14px;padding:2px 12px;font-size:12px;background:var(--panel)}.state.new{border-color:var(--add-b)}.state.removed{border-color:var(--del-b);border-style:dashed}.state.changed{border-color:#d29922}' +
+    '.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}.split>*::before{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}.split>:first-child::before{content:"Before"}.split>:last-child::before{content:"After"}' +
+    // Parts a diagram tags with data-step build up with the steps, the same as nodes and arrows.
+    '[data-reveal]{transition:opacity .45s ease}[data-reveal=is-future]{opacity:0}[data-reveal=is-past]{opacity:.32}' +
+    '[data-code]{cursor:pointer}[data-code]:hover{outline:1px solid var(--accent);outline-offset:2px;border-radius:3px}';
   function raw(markup) {
     const host = document.createElement('div');
     host.className = 'draw';
@@ -277,6 +424,19 @@ const DIAG = (function () {
     });
     return host;
   }
+
+  // Marks: rings and pins over a screenshot, a recording or a sketch, placed in percent of its box,
+  // so "this button" points at the button instead of a red rectangle drawn into the image.
+  function marksHtml(list) {
+    return (list || []).map((m) => {
+      const area = m.w != null && m.h != null, s = STATUS.includes(m.status) ? m.status : 'look';
+      return '<div class="dmark ' + s + (area ? '' : ' point') + (m.code ? ' hot' : '') + '"' + partAttrs(m, m.label || (m.pin != null ? 'Mark ' + m.pin : 'Mark')) +
+        ' style="left:' + (+m.x || 0) + '%;top:' + (+m.y || 0) + '%' + (area ? ';width:' + (+m.w) + '%;height:' + (+m.h) + '%' : '') + '">' +
+        (m.pin != null ? '<span class="dmpin">' + esc(m.pin) + '</span>' : '') + (m.label ? '<span class="dmlbl">' + esc(m.label) + '</span>' : '') + '</div>';
+    }).join('');
+  }
+  const staged = (inner, d) => (d.marks && d.marks.length ? '<div class="dstage">' + inner + marksHtml(d.marks) + '</div>' +
+    legend(new Set(d.marks.map((m) => m.status).filter((x) => STATUS.includes(x)))) : inner);
 
   function body(d) {
     const box = document.createElement('div');
@@ -298,13 +458,16 @@ const DIAG = (function () {
         if (d[k]) side.appendChild(body(d[k]));
         box.appendChild(side);
       });
-    } else if (d.kind === 'html' || d.kind === 'svg') box.appendChild(raw(d.html || d.svg));
+    } else if (d.kind === 'html' || d.kind === 'svg') {
+      if (d.marks && d.marks.length) { box.innerHTML = staged('<i class="draw-slot"></i>', d); box.querySelector('.draw-slot').replaceWith(raw(d.html || d.svg)); }
+      else box.appendChild(raw(d.html || d.svg));
+    }
     else if (d.kind === 'image' || d.kind === 'video') {
       box.className = 'dbody dmedia';
       // Only data URLs from the build: anything else would fetch from a host the page didn't choose.
       if (!/^data:(?:image|video)\//.test(d.data || '')) box.innerHTML = '<p class="svnote">Missing ' + d.kind + ': ' + esc(d.src || '') + '</p>';
-      else if (d.kind === 'image') box.innerHTML = '<img src="' + esc(d.data) + '" alt="' + esc(d.alt || d.title || '') + '" title="Click to enlarge">';
-      else box.innerHTML = '<video src="' + esc(d.data) + '" controls muted loop playsinline preload="metadata"></video>';
+      else if (d.kind === 'image') box.innerHTML = staged('<img src="' + esc(d.data) + '" alt="' + esc(d.alt || d.title || '') + '" title="Click to enlarge">', d);
+      else box.innerHTML = staged('<video src="' + esc(d.data) + '" controls muted loop playsinline preload="metadata"></video>', d);
     }
     else box.innerHTML = '<p class="svnote">Unknown diagram kind: ' + esc(d.kind) + '</p>';
     return box;
@@ -326,9 +489,51 @@ const DIAG = (function () {
     return fig;
   }
 
+  // Reveal by step. At step n, parts tagged with n are in focus, earlier ones stay faintly as context,
+  // later ones are hidden; 0 shows the whole picture. Parts arriving in focus draw themselves in.
+  function roots(fig) {
+    return [fig].concat(Array.from(fig.querySelectorAll('.draw')).map((h) => h.shadowRoot).filter(Boolean));
+  }
+  function focus(fig, n) {
+    if (!fig) return;
+    fig.classList.toggle('staged', n > 0);
+    fig.dataset.at = n || 0;
+    roots(fig).forEach((r) => r.querySelectorAll('[data-step]').forEach((el) => {
+      const ss = el.dataset.step.split(' ').map(Number), first = Math.min(...ss);
+      const next = !n ? '' : ss.includes(n) ? 'is-focus' : first > n ? 'is-future' : 'is-past';
+      const was = el.dataset.reveal || '';
+      if (was === next) return;
+      if (next) el.dataset.reveal = next; else delete el.dataset.reveal;
+      if (next === 'is-focus' && (was === 'is-future' || !was)) drawIn(el);
+    }));
+  }
+  function drawIn(el) {
+    if (!el.animate || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    if (el.matches('path.de') && !el.matches('.removed,.reply') && el.getTotalLength) {
+      const L = el.getTotalLength();
+      el.animate([{ strokeDasharray: L, strokeDashoffset: L }, { strokeDasharray: L, strokeDashoffset: 0 }], { duration: 650, easing: 'cubic-bezier(.3,.7,.2,1)', delay: 120 });
+    } else if (!el.matches('.dhit')) el.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'ease-out' });
+  }
+  // Hovering a box lights it, its lines and its neighbours, and quiets the rest.
+  function trace(svg, nodeId) {
+    if (!svg) return;
+    svg.classList.toggle('tracing', !!nodeId);
+    svg.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit'));
+    if (!nodeId) return;
+    const near = new Set([nodeId]);
+    svg.querySelectorAll('[data-from]').forEach((x) => {
+      if (x.dataset.from === nodeId || x.dataset.to === nodeId) { x.classList.add('lit'); near.add(x.dataset.from); near.add(x.dataset.to); }
+    });
+    svg.querySelectorAll('[data-id]').forEach((x) => { if (near.has(x.dataset.id)) x.classList.add('lit'); });
+  }
+  // Whether a diagram has anything to build up step by step.
+  const isStaged = (d) => JSON.stringify(d || {}).includes('"step"') || /data-step=/.test((d && (d.html || d.svg)) || '');
+
   const KINDS = ['structure', 'sequence', 'compare', 'html', 'svg', 'image', 'video'];
   // Problems the build reports before writing the page; [] when the diagram is drawable.
-  function problems(d, where) {
+  // With ctx ({ paths, steps }), also checks that each part's code names a file in the diff and each
+  // step names a real connection step.
+  function problems(d, where, ctx) {
     const out = [], at = where || (d && d.title) || 'diagram';
     if (!d || !KINDS.includes(d.kind)) return [at + ': kind must be one of ' + KINDS.join(', ')];
     if (d.kind === 'structure') {
@@ -350,14 +555,27 @@ const DIAG = (function () {
       });
     } else if (d.kind === 'compare') {
       if (!d.before || !d.after) out.push(at + ': compare needs both before and after');
-      ['before', 'after'].forEach((k) => { if (d[k]) out.push(...problems(d[k], at + ' (' + k + ')')); });
+      ['before', 'after'].forEach((k) => { if (d[k]) out.push(...problems(d[k], at + ' (' + k + ')', ctx)); });
     } else if (d.kind === 'image' || d.kind === 'video') {
       if (!(d.data || d.src)) out.push(at + ': ' + d.kind + ' needs a src file');
     } else if (!(d.html || d.svg)) out.push(at + ': ' + d.kind + ' diagram has no markup');
+    (d.marks || []).forEach((m, i) => {
+      if (!m || !['x', 'y'].every((k) => +m[k] >= 0 && +m[k] <= 100)) out.push(at + ': mark ' + (i + 1) + ' needs x and y in percent (0 to 100)');
+      else if ((m.w != null) !== (m.h != null)) out.push(at + ': mark ' + (i + 1) + ' needs both w and h, or neither for a point');
+    });
+    if (ctx) {
+      const parts = [].concat(d.nodes || [], (d.edges || []).map(edgeOf), (d.actors || []).filter((a) => typeof a === 'object'),
+        (d.messages || d.steps || []).filter((m) => m && !Array.isArray(m)), d.marks || []);
+      parts.forEach((o) => {
+        const c = codeOf(o.code), name = o.label || o.id || (o.from ? o.from + ' → ' + o.to : 'a part');
+        if (c && ctx.paths && !ctx.paths.has(c.path)) out.push(at + ': ' + name + ' links code not in the diff: ' + c.path);
+        steps(o.step).forEach((n) => { if (ctx.steps != null && n > ctx.steps) out.push(at + ': ' + name + ' names step ' + n + ', but there are ' + ctx.steps); });
+      });
+    }
     return out;
   }
 
-  const api = { render, body, problems, KINDS };
+  const api = { render, body, problems, focus, trace, isStaged, codeOf, KINDS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   return api;
 })();

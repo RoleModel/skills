@@ -472,8 +472,9 @@ if (groupsPath) {
       }
     }
   }
+  const dctx = { paths: byName, steps: ((guide.overview && guide.overview.connection && guide.overview.connection.steps) || []).length };
   guide.groups.forEach((g, i) => g.visuals.forEach((d, j) => {
-    for (const p of DIAG.problems(d, `groups: group ${i + 1} (${g.title || 'untitled'}) visual ${j + 1}`)) { console.error(p); bad++; }
+    for (const p of DIAG.problems(d, `groups: group ${i + 1} (${g.title || 'untitled'}) visual ${j + 1}`, dctx)) { console.error(p); bad++; }
   }));
   for (const s of guide.suggestions) {
     const f = byName.get(s.path);
@@ -490,7 +491,7 @@ if (groupsPath) {
     checks.forEach((c, i) => { if (c && typeof c === 'object' && c.kind && !['does', 'should'].includes(c.kind)) { console.error(`overview: check ${i + 1} kind must be "does" or "should"`); bad++; } });
     checks.forEach((c) => { if (c && c.path && !byName.has(c.path)) { console.error(`overview: check names a file not in the diff: ${c.path}`); bad++; } });
     (ov.diagrams || []).forEach((d, i) => {
-      for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`)) { console.error(`overview: ${p}`); bad++; }
+      for (const p of DIAG.problems(d, `diagram ${i + 1}${d && d.title ? ` "${d.title}"` : ''}`, dctx)) { console.error(`overview: ${p}`); bad++; }
       if (d && d.group && !titles.has(d.group)) { console.error(`overview: diagram "${d.title || i + 1}" names an unknown group "${d.group}"`); bad++; }
       if (d && d.section && !['feature', 'connection', 'shape', 'recs'].includes(d.section)) { console.error(`overview: diagram "${d.title || i + 1}" section must be feature, connection, shape or recs`); bad++; }
     });
@@ -503,8 +504,12 @@ if (groupsPath) {
         (st.groups || []).forEach((t) => { if (!titles.has(t)) { console.error(`overview: ${at} names an unknown group "${t}"`); bad++; } });
         (st.files || []).forEach((f) => { if (!byName.has(f)) { console.error(`overview: ${at} names a file not in the diff: ${f}`); bad++; } });
         (st.checks || []).forEach((k) => { if (!ids.has(k)) { console.error(`overview: ${at} names an unknown check id "${k}" (give the check an "id")`); bad++; } });
-        (st.visuals || []).forEach((d, j) => { for (const p of DIAG.problems(d, `${at} visual ${j + 1}`)) { console.error(`overview: ${p}`); bad++; } });
+        (st.visuals || []).forEach((d, j) => { for (const p of DIAG.problems(d, `${at} visual ${j + 1}`, dctx)) { console.error(`overview: ${p}`); bad++; } });
       });
+      // The steps are walked against one map of the feature that builds up as the reader goes.
+      const map = (ov.diagrams || []).find((d) => d && d.section === 'connection');
+      if ((cx.steps || []).length > 1 && !map) { console.error('overview: "How it comes together" needs a map: a diagram with "section": "connection" whose parts name the steps they belong to ("step": 2)'); bad++; }
+      else if (map && (cx.steps || []).length > 1 && !DIAG.isStaged(map)) { console.error(`overview: the connection map "${map.title || ''}" tags no part with a step, so it can't build up; give its nodes and edges "step"`); bad++; }
     }
     const objs = (ov.shape && ov.shape.objects) || [];
     objs.forEach((o) => { if (o && o.path && !byName.has(o.path)) { console.error(`overview: shape object names a file not in the diff: ${o.path}`); bad++; } });
@@ -535,7 +540,7 @@ if (groupsPath) {
       const n = String(r[p] || '').replace(/`[^`]*`/g, 'x').split(/[.!?](?:\s|$)/).filter((x) => x.trim()).length;
       if (n > 2 || String(r[p] || '').length > 260) console.error(`${at}: ${p} is long (${n} sentences); keep it to one, two at most`);
     });
-    r.visuals.forEach((d, j) => { for (const p of DIAG.problems(d, `${at} visual ${j + 1}`)) { console.error(p); bad++; } });
+    r.visuals.forEach((d, j) => { for (const p of DIAG.problems(d, `${at} visual ${j + 1}`, dctx)) { console.error(p); bad++; } });
     r.checks.forEach((k) => { if (!checkIds.has(k)) { console.error(`${at} names an unknown check id "${k}" (give the check an "id")`); bad++; } });
   });
   principleProblems.forEach((p) => console.error(p));
