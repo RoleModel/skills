@@ -1171,7 +1171,12 @@
   const gIndex = (t) => sections.findIndex((g) => g.title === t);
   // The map: the connection diagram whose parts name their steps. It shows whole above the steps, and
   // again in each step, built up to that step: its parts draw in as the step scrolls into view.
-  const connectionMap = () => (cxSteps.length > 1 ? diagramsIn('connection').find(DIAG.isStaged) : null) || null;
+  const connectionMap = () => {
+    const m = (cxSteps.length > 1 ? diagramsIn('connection').find(DIAG.isStaged) : null) || null;
+    // The map's steps are the connection steps, so its breadcrumbs carry their titles.
+    if (m && !m.stages) m.stages = cxSteps.map((st) => st.title.replace(/`/g, ''));
+    return m;
+  };
   function connectionHtml() {
     if (!CX) return '';
     const step = (st, i) => {
@@ -1243,14 +1248,20 @@
       seen.unobserve(x.target);
       DIAG.focus(x.target, +x.target.dataset.n);
     }), { threshold: 0.35 });
+    // Each step shows its own parts of the map, blown up; clicking opens the walkthrough there.
     ovv.querySelectorAll('[data-cxmapn]').forEach((slot) => {
-      const n = +slot.dataset.cxmapn, fig = DIAG.render(Object.assign({}, map, { title: null, caption: null }), mdHtml);
+      const n = +slot.dataset.cxmapn, fig = DIAG.render(Object.assign({}, map, { title: null, caption: null }), mdHtml, { plain: true });
       fig.dataset.n = n;
+      fig.classList.add('cxzoom');
+      fig.title = 'Open the walkthrough';
+      fig.querySelectorAll('.dexpand').forEach((b) => b.remove());
       slot.appendChild(fig);
-      DIAG.crop(fig, n);
       DIAG.focus(fig, n, !!seen);
+      DIAG.zoom(fig, n);
       if (seen) seen.observe(fig);
+      fig.addEventListener('click', () => openWalk(map, n));
     });
+    mini.set(map);
     cxSteps.forEach((st, i) => {
       const slot = ovv.querySelector('[data-cxvis="' + i + '"]');
       if (slot) (st.visuals || []).forEach((d) => slot.appendChild(DIAG.render(d, mdHtml)));
@@ -1258,6 +1269,44 @@
     const ct = $('ovchkct');
     if (ct) ct.textContent = checksLabel() + ' checked';
   }
+  // The minimap: the whole map, small, floating beside the steps while they're on screen, lit at
+  // the step being read. Clicking it opens the walkthrough at that step.
+  const mini = (() => {
+    const el = document.createElement('aside');
+    el.className = 'cxmini hidden';
+    el.title = 'Open the walkthrough';
+    document.body.appendChild(el);
+    let map = null, at = -1;
+    const sync = () => {
+      const list = ovv.querySelector('.cxsteps'), fig = el.querySelector('figure');
+      const show = !!(map && list && fig && document.body.dataset.view === 'story' && lightbox.classList.contains('hidden'));
+      const r = show && list.getBoundingClientRect();
+      const inView = show && r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.4;
+      el.classList.toggle('hidden', !inView);
+      if (!inView) return;
+      el.classList.toggle('gutter', (window.innerWidth - Math.min(list.closest('.ovcol').offsetWidth, window.innerWidth)) / 2 > 280);
+      let n = 0;
+      list.querySelectorAll(':scope > .cxstep').forEach((li, i) => { if (li.getBoundingClientRect().top < window.innerHeight * 0.45) n = i + 1; });
+      if (n === at) return;
+      at = n;
+      DIAG.focus(fig, n);
+      el.querySelector('.cxminih').innerHTML = n ? '<b>' + n + '</b> of ' + cxSteps.length + ' · ' + inlineMd(cxSteps[n - 1].title) : 'The whole picture';
+    };
+    el.addEventListener('click', () => { if (map) openWalk(map, at > 0 ? at : 0); });
+    addEventListener('scroll', () => requestAnimationFrame(sync), { passive: true });
+    addEventListener('resize', sync);
+    addEventListener('hashchange', () => setTimeout(sync));
+    return {
+      set(m) {
+        map = m; at = -1;
+        el.innerHTML = '<div class="cxminih"></div>';
+        if (m) el.appendChild(DIAG.render(Object.assign({}, m, { title: null, caption: null }), mdHtml, { plain: true, big: true }));
+        sync();
+      },
+      sync,
+    };
+  })();
+
   // A check can show in the overview and on a recommendation; both share its state.
   function onCheck(b, root) {
     const kid = b.closest('.chk').dataset.k, cur = state.checks[kid] || {};
@@ -2227,6 +2276,21 @@
     lightbox.prepend(panel);
     fitBig(panel);
   }
+  // A diagram that builds opens as a walkthrough: breadcrumbs above, previous and next below.
+  let walking = null;
+  function openWalk(d, n) {
+    gallery = [];
+    const panel = document.createElement('div');
+    panel.className = 'lbpanel';
+    panel.innerHTML = '<button type="button" class="lbclose" title="Close (Esc)">&times;</button>';
+    walking = DIAG.walk(d, mdHtml, n);
+    panel.appendChild(walking);
+    lightbox.className = 'lbdiag lbwalk';
+    lightbox.innerHTML = '';
+    lightbox.appendChild(panel);
+    fitBig(panel);
+    mini.sync();
+  }
   const openGallery = (el, match) => {
     gallery = galleryOf(el);
     const at = gallery.findIndex(match);
@@ -2242,9 +2306,11 @@
       const host = ex.closest('.dside') || ex.closest('figure.diagram');
       if (!host || !host.diag) return;
       e.stopPropagation();
-      openGallery(ex, (x) => x.host === host);
+      if (DIAG.isStaged(host.diag) && DIAG.stagesOf(host.diag).length) openWalk(host.diag, +(host.dataset.at || 0));
+      else openGallery(ex, (x) => x.host === host);
     } else if (e.target.closest('#lightbox') && (!lightbox.classList.contains('lbdiag') || e.target === lightbox || e.target.closest('.lbclose'))) {
       lightbox.className = 'hidden';
+      mini.sync();
     }
   });
 
@@ -2364,7 +2430,10 @@
       return;
     }
     if (e.key === '?') { toggleKeys(); e.preventDefault(); return; }
-    if (e.key === 'Escape') { toggleKeys(false); lightbox.className = 'hidden'; return; }
+    if (e.key === 'Escape') { toggleKeys(false); lightbox.className = 'hidden'; mini.sync(); return; }
+    if (lightbox.classList.contains('lbwalk') && walking && ['ArrowLeft', 'ArrowRight', 'j', 'k'].includes(e.key)) {
+      walking.step(e.key === 'ArrowRight' || e.key === 'j' ? 1 : -1); e.preventDefault(); return;
+    }
     if (!lightbox.classList.contains('hidden') && gallery.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       showItem(gi + (e.key === 'ArrowRight' ? 1 : -1)); e.preventDefault(); return;
     }
