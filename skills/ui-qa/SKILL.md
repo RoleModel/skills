@@ -104,8 +104,10 @@ open, signed in, until the user presses Enter.
 - **Reading screenshots is the expensive part.** The real bugs in testing were overlap,
   clipping and overflow, which the in-page layout checks measure for free. Judge from the
   summary's text and the issue crops first; new screens come as contact sheets.
-- **Sonnet misses layout bugs without the measurements.** In testing it waved off a mobile
-  overlap Opus caught, until the layout checks flagged it. Keep the checks on.
+- **The agent runs on Opus at medium effort on purpose.** In testing, Sonnet used about 0.7× the
+  tokens but answered "looks right" on a PR whose mobile layout overlap it had itself flagged;
+  Opus called it "needs work". A trusted all-clear is the point, so don't downgrade the model to
+  save tokens. Higher effort bought nothing over medium.
 - **Fresh agents carry the session's whole tool list.** A general-purpose agent started at
   ~40k tokens before reading the brief; the `ui-qa` agent's short tool list starts near 10k.
 - **One shared base worktree.** Parallel runs on different bases queue on its lock.

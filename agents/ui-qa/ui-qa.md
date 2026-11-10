@@ -2,7 +2,7 @@
 name: ui-qa
 description: Runs the before/after UI comparison for the ui-qa skill. Use only when ui-qa launches it with its brief (checkout, base, intent, acceptance criteria, screens); it writes and runs the scenario, judges what differs, builds the report, and returns the verdict and the report's publish paths.
 tools: Bash, Read, Write, Edit, Grep, Glob
-model: sonnet
+model: opus
 effort: medium
 maxTurns: 40
 ---
