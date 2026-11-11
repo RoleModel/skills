@@ -44,7 +44,7 @@ Output to **reveal.js** (component-based slide deck), **Figma** (direct canvas w
 
 Every RoleModel audit is a Linear project in the **UX Audits** team, made from the **UX Audit** project template. The template adds the `UX Audit` project label, so the audit shows on the partner's page and in the pipeline in Almanac.
 
-- Requests come in through the team's **UX Audit** intake form. Start the project from the template, fill in the brief at the top of its description, and link the partner.
+- Requests come in through the team's **UX Audit** intake form. Start the project from the template and fill in the brief at the top of its description. Add the partner's Linear team to the project too: Almanac links a project to a partner through its teams, so without it the audit is missing from the partner page.
 - The template's three milestones are the phases: Discovery & review, Design, Client report. Its issues are the steps below. Close each one as you finish it.
 - File each finding as an issue from the **UX Audit Finding** template, in the audit's project. Set the priority from the severity: Critical is Urgent, High is High, Medium is Medium, Low is Low.
 - Phase 4's review is the issue state: a rejected finding is closed as Canceled, a kept one stays open. With the Linear MCP connector, read the kept findings from the project instead of `reviewed-findings.json`.
