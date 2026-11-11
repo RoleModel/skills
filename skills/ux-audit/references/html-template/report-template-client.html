@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{PROJECT_NAME}} — UX Assessment</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', -apple-system, sans-serif; background: #FAFAFA; padding: 48px; color: #1a1a1a; font-size: 15px; line-height: 1.6; }
+    .audit { max-width: 1200px; margin: 0 auto; }
+
+    /* Header */
+    .audit-header { margin-bottom: 40px; border-radius: 16px; overflow: hidden; position: relative; min-height: 160px; display: flex; align-items: flex-end; }
+    .audit-header-bg { position: absolute; inset: 0; background-image: url({{HERO_IMAGE_URL}}); background-size: cover; background-position: center top; }
+    .audit-header-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(26,35,50,0.97) 30%, rgba(26,35,50,0.82) 60%, rgba(26,35,50,0.45) 100%); }
+    .audit-header-content { position: relative; z-index: 1; padding: 36px 40px; }
+    .audit-header h1 { font-size: 36px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em; color: white; }
+    .audit-header .subtitle { font-size: 16px; color: rgba(255,255,255,0.65); margin-bottom: 4px; }
+    .audit-header p { font-size: 14px; color: rgba(255,255,255,0.45); }
+
+    /* ===== EXECUTIVE SUMMARY ===== */
+    .exec-summary { background: linear-gradient(135deg, #1a2332 0%, #2a3a52 100%); color: white; border-radius: 16px; padding: 40px; margin-bottom: 40px; }
+    .exec-summary h2 { font-size: 24px; font-weight: 700; margin-bottom: 20px; color: {{ACCENT_COLOR}}; letter-spacing: -0.01em; }
+    .exec-summary .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+    .exec-summary .stat-box { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; text-align: center; }
+    .exec-summary .stat-number { font-size: 36px; font-weight: 700; color: {{ACCENT_COLOR}}; }
+    .exec-summary .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .exec-summary .narrative { font-size: 15px; line-height: 1.8; color: rgba(255,255,255,0.85); margin-bottom: 24px; }
+    .exec-summary .narrative strong { color: {{ACCENT_COLOR}}; }
+    .exec-summary .callout { padding: 16px 20px; background: rgba(255,255,255,0.06); border-left: 4px solid {{ACCENT_COLOR}}; border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.6; }
+    .exec-summary .callout strong { color: {{ACCENT_COLOR}}; }
+
+    /* ===== THEN — Honoring the Original Work ===== */
+    .then-section { background: #E8F5E9; border-radius: 16px; padding: 32px; margin-bottom: 40px; }
+    .then-section h2 { font-size: 22px; font-weight: 700; color: #2e7d32; margin-bottom: 6px; }
+    .then-section .then-subtitle { font-size: 14px; color: #388E3C; margin-bottom: 16px; font-style: italic; }
+    .then-section ul { font-size: 14px; line-height: 1.8; color: #1b5e20; padding-left: 20px; }
+    .then-section li { margin-bottom: 6px; }
+    .then-section li strong { color: #2e7d32; }
+
+    /* ===== NOW — Findings by Theme ===== */
+    .now-section { margin-bottom: 48px; }
+    .now-section > h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+    .now-section > .now-subtitle { font-size: 15px; color: #555; margin-bottom: 32px; }
+
+    /* Theme sections (4 lenses) */
+    .theme { margin-bottom: 40px; }
+    .theme-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .theme-number { font-size: 13px; font-weight: 700; color: white; background: {{ACCENT_COLOR}}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .theme-title { font-size: 20px; font-weight: 700; }
+    .theme-intro { font-size: 14px; color: #555; margin-bottom: 16px; line-height: 1.6; }
+
+    /* Finding cards within themes */
+    .findings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .finding { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .finding:has(.finding-ba) { grid-column: span 2; }
+    .finding-observed { font-size: 14px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+    .finding-means { font-size: 12px; color: #555; line-height: 1.5; }
+    .finding-tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-top: 10px; display: inline-block; }
+    .finding-tag.accessibility { background: #FFF3E0; color: #E65100; }
+    .finding-tag.ux { background: #E3F2FD; color: #1565C0; }
+    .finding-tag.visual { background: #F3E5F5; color: #6A1B9A; }
+    .finding-tag.strategic { background: #E8F5E9; color: #2e7d32; }
+    .finding-tag.design-system { background: {{ACCENT_COLOR}}; color: #1a1a1a; }
+
+    /* UX Principles Assessment (within Now section) */
+    .ux-principles { margin-bottom: 40px; }
+    .ux-principles h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .ux-principles .ux-intro { font-size: 14px; color: #555; margin-bottom: 16px; }
+    .principles-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .principle-card { background: white; border-radius: 12px; padding: 18px; border-left: 4px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .principle-card.pass { border-left-color: #2e7d32; }
+    .principle-card.opportunity { border-left-color: {{ACCENT_COLOR}}; }
+    .principle-card.attention { border-left-color: #E65100; }
+    .principle-card .principle-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
+    .principle-card.pass .principle-status { color: #2e7d32; }
+    .principle-card.opportunity .principle-status { color: #c49500; }
+    .principle-card.attention .principle-status { color: #E65100; }
+    .principle-card .principle-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+    .principle-card .principle-detail { font-size: 12px; color: #555; line-height: 1.4; }
+
+    /* Visual sections (type scale, color palette) */
+    .visual-section { margin-bottom: 40px; }
+    .visual-section h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .visual-section .visual-intro { font-size: 14px; color: #555; margin-bottom: 16px; }
+
+    .type-scale-preview { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .type-row { display: flex; align-items: baseline; gap: 20px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    .type-row:last-child { border-bottom: none; }
+    .type-row .type-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; min-width: 100px; flex-shrink: 0; padding: 2px 8px; border-radius: 4px; }
+    .type-row .type-sample { color: #1a1a1a; line-height: 1.3; flex: 1; }
+    .type-row .type-meta { font-size: 11px; color: #aaa; min-width: 160px; text-align: right; flex-shrink: 0; }
+    .type-row.current .type-label { background: #FFF3E0; color: #E65100; }
+    .type-row.recommended .type-label { background: #E8F5E9; color: #2e7d32; }
+
+    .palette-group { margin-bottom: 36px; }
+    .palette-row-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; font-weight: 600; }
+    .palette-row { display: flex; gap: 6px; margin-bottom: 28px; }
+    .palette-swatch { flex: 1; height: 44px; border-radius: 8px; position: relative; border: 1px solid rgba(0,0,0,0.06); }
+    .palette-swatch .swatch-label { position: absolute; bottom: -18px; left: 0; font-size: 9px; color: #999; white-space: nowrap; }
+    .on-color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
+    .on-color-card { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .on-color-card .oc-bg { padding: 12px 16px; font-size: 18px; font-weight: 700; }
+    .on-color-card .oc-label { padding: 8px 10px; background: white; font-size: 9px; color: #888; line-height: 1.4; }
+
+    /* ===== NEXT — Opportunities & What's Next ===== */
+    .next-section { margin-bottom: 48px; }
+    .next-section > h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+    .next-section > .next-subtitle { font-size: 15px; color: #555; margin-bottom: 32px; }
+
+    /* Effort / Roadmap cards */
+    .effort-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 40px; }
+    .effort-card { background: white; border-radius: 12px; padding: 24px; border: 2px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); position: relative; }
+    .effort-card.recommended { border-color: {{ACCENT_COLOR}}; }
+    .effort-card.recommended::after { content: "RECOMMENDED"; position: absolute; top: -10px; right: 16px; background: {{ACCENT_COLOR}}; color: #1a1a1a; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 4px; letter-spacing: 1px; }
+    .effort-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .effort-card .effort-time { font-size: 24px; font-weight: 700; color: {{ACCENT_COLOR}}; margin-bottom: 12px; }
+    .effort-card .effort-scope { font-size: 12px; color: #555; line-height: 1.6; margin-bottom: 12px; }
+    .effort-card .effort-scope li { margin-bottom: 2px; }
+    .effort-card .effort-benefits { font-size: 11px; color: #2e7d32; }
+    .effort-card .effort-considerations { font-size: 11px; color: #e65100; margin-top: 4px; }
+
+    /* Component grid */
+    .component-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 40px; }
+    .comp-card { background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 12px; }
+    .comp-card .comp-arrow { color: {{ACCENT_COLOR}}; font-size: 18px; flex-shrink: 0; }
+    .comp-card .comp-from { font-size: 13px; font-weight: 600; color: #555; min-width: 160px; }
+    .comp-card .comp-to { font-size: 13px; font-weight: 600; color: #2e7d32; }
+    .comp-card .comp-tokens { font-size: 10px; color: #888; }
+
+    /* What's Next invitation */
+    .whats-next { background: linear-gradient(135deg, #1a2332 0%, #2a3a52 100%); color: white; border-radius: 16px; padding: 32px; }
+    .whats-next h3 { font-size: 20px; font-weight: 700; color: {{ACCENT_COLOR}}; margin-bottom: 12px; }
+    .whats-next p { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.85); margin-bottom: 12px; }
+    .whats-next ul { font-size: 14px; line-height: 1.8; color: rgba(255,255,255,0.75); padding-left: 20px; }
+    .whats-next li { margin-bottom: 4px; }
+
+    /* Before / After comparison blocks */
+    .finding-ba { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
+    .ba-col { padding: 12px 14px; font-size: 12px; line-height: 1.5; }
+    .ba-col.before { background: #fafafa; border-right: 1px solid #e0e0e0; }
+    .ba-col.after { background: #f0faf0; }
+    .ba-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
+    .ba-col.before .ba-label { color: #999; }
+    .ba-col.after .ba-label { color: #2e7d32; }
+    .ba-col p { color: #444; line-height: 1.5; }
+    .ba-col .ba-screen { background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; font-size: 11px; color: #666; font-style: italic; text-align: center; line-height: 1.5; }
+    .finding-tag.proposed { background: #E8F5E9; color: #2e7d32; border: 1px solid #A5D6A7; }
+
+    .divider { border: none; border-top: 2px solid #e0e0e0; margin: 40px 0; }
+  </style>
+</head>
+<body>
+  <div class="audit">
+    <div class="audit-header">
+      <div class="audit-header-bg"></div>
+      <div class="audit-header-overlay"></div>
+      <div class="audit-header-content">
+        <h1>{{PROJECT_NAME}} — UX Assessment</h1>
+        <div class="subtitle">Prepared for {{CLIENT_NAME}}</div>
+        <p>{{DATE}} | {{TECH_STACK}}</p>
+      </div>
+    </div>
+
+    <!-- ===== EXECUTIVE SUMMARY ===== -->
+    <div class="exec-summary">
+      <h2>Executive Summary</h2>
+      <div class="summary-grid">
+        <!-- {{STAT_BOXES}} -->
+        <!--
+          3 high-level stats. Keep these meaningful to a non-technical reader.
+          Example:
+          <div class="stat-box">
+            <div class="stat-number">7 / 12</div>
+            <div class="stat-label">UX Principles Met</div>
+          </div>
+        -->
+      </div>
+      <div class="narrative">
+        <!-- {{NARRATIVE}} -->
+        <!--
+          One strong paragraph. Plain language, no jargon. Shareable upward.
+          What's the core opportunity, 2-3 things we'd do, shape of impact.
+        -->
+      </div>
+      <div class="callout">
+        <!-- {{CALLOUT}} -->
+        <!--
+          The single most important takeaway. Bold the key phrase.
+        -->
+      </div>
+    </div>
+
+    <!-- ===== THEN — Honoring the Original Work ===== -->
+    <div class="then-section">
+      <h2>Then</h2>
+      <div class="then-subtitle">What this product accomplished and the context it was built in.</div>
+      <ul>
+        <!-- {{THEN_ITEMS}} -->
+        <!--
+          IMPORTANT: Honor the original work genuinely. What were the constraints?
+          What did it accomplish? This is not faint praise — it's real recognition.
+
+          Example:
+          <li><strong>Zero-friction entry</strong> — Users can start designing without creating
+            an account. This removes the biggest barrier to engagement.</li>
+          <li><strong>Reactive calculations</strong> — The pipe size calculator updates in
+            real time as values are entered, giving immediate feedback.</li>
+        -->
+      </ul>
+    </div>
+
+    <!-- ===== NOW — What's Changed ===== -->
+    <div class="now-section">
+      <h2>Now</h2>
+      <p class="now-subtitle">User expectations, technology, and best practices have evolved. Here's where the product stands today, organized by what matters most.</p>
+
+      <!-- THEME 1: Experience Gaps -->
+      <div class="theme">
+        <div class="theme-header">
+          <div class="theme-number">1</div>
+          <div class="theme-title">Experience Gaps</div>
+        </div>
+        <p class="theme-intro">
+          <!-- Brief 1-2 sentence intro for this theme -->
+        </p>
+        <div class="findings-grid">
+          <!-- {{EXPERIENCE_GAP_FINDINGS}} -->
+          <!--
+            Each finding pairs "what we observed" with "what this means for users."
+
+            Example:
+            <div class="finding">
+              <div class="finding-observed">The "Start Over" button uses the browser's native
+                confirmation dialog, which is easy to dismiss without reading.</div>
+              <div class="finding-means">Users working quickly in the editor could accidentally
+                reset their entire drawing with a single misclick.</div>
+              <div class="finding-tag ux">Interaction Quality</div>
+            </div>
+          -->
+        </div>
+      </div>
+
+      <!-- THEME 2: Visual & Brand Coherence -->
+      <div class="theme">
+        <div class="theme-header">
+          <div class="theme-number">2</div>
+          <div class="theme-title">Visual &amp; Brand Coherence</div>
+        </div>
+        <p class="theme-intro">
+          <!-- Brief intro -->
+        </p>
+
+        <!-- Type Scale visual -->
+        <div class="visual-section">
+          <h3>Typography</h3>
+          <p class="visual-intro">
+            <!-- Intro about current type usage -->
+          </p>
+          <div class="type-scale-preview">
+            <!-- {{TYPE_SCALE_ROWS}} -->
+          </div>
+        </div>
+
+        <!-- Color Palette visual -->
+        <div class="visual-section">
+          <h3>Color System</h3>
+          <p class="visual-intro">
+            <!-- Intro about current color usage -->
+          </p>
+          <!-- {{COLOR_PALETTE}} -->
+        </div>
+      </div>
+
+      <!-- THEME 3: Modernization Moments -->
+      <div class="theme">
+        <div class="theme-header">
+          <div class="theme-number">3</div>
+          <div class="theme-title">Modernization Moments</div>
+        </div>
+        <p class="theme-intro">
+          <!-- Brief intro about accessibility, responsive, component system -->
+        </p>
+        <div class="findings-grid">
+          <!-- {{MODERNIZATION_FINDINGS}} -->
+        </div>
+      </div>
+
+      <!-- THEME 4: Strategic Opportunities -->
+      <div class="theme">
+        <div class="theme-header">
+          <div class="theme-number">4</div>
+          <div class="theme-title">Strategic Opportunities</div>
+        </div>
+        <p class="theme-intro">
+          <!-- Brief intro about what the product could become -->
+        </p>
+        <div class="findings-grid">
+          <!-- {{STRATEGIC_FINDINGS}} -->
+        </div>
+      </div>
+
+      <!-- UX Principles Assessment (optional, within Now) -->
+      <div class="ux-principles">
+        <h3>UX Principles Assessment</h3>
+        <p class="ux-intro">
+          We evaluated the application against core UX principles. Each is assessed
+          based on what we observed in the actual application.
+        </p>
+        <div class="principles-grid">
+          <!-- {{UX_PRINCIPLE_CARDS}} -->
+          <!--
+            IMPORTANT: Do NOT use academic law names (Jakob's Law, Postel's Law, etc.).
+            Use plain-language descriptions. The .principle-name should describe the
+            concept in words anyone can understand.
+
+            IMPORTANT: You must actually USE the application or thoroughly read its views,
+            controllers, and components. Every detail must be real, not assumed.
+
+            Example:
+            <div class="principle-card pass">
+              <div class="principle-status">Aligned</div>
+              <div class="principle-name">Familiar patterns reduce learning time</div>
+              <div class="principle-detail">Standard web patterns used throughout — top nav,
+                sidebar panels, form inputs. Users recognize this layout immediately.</div>
+            </div>
+
+            Include 8-12 principles. Mix: ~3-4 pass, ~4-5 opportunity, ~2-3 attention.
+          -->
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- ===== NEXT — Opportunities & What's Next ===== -->
+    <div class="next-section">
+      <h2>Next</h2>
+      <p class="next-subtitle">This is where the energy goes. Here's what's possible and how to get there.</p>
+
+      <!-- Roadmap -->
+      <div class="effort-cards">
+        <!-- {{EFFORT_CARDS}} -->
+      </div>
+
+      <!-- Component Opportunities -->
+      <h3 style="font-size:18px; font-weight:700; margin-bottom:16px;">Component Opportunities</h3>
+      <div class="component-grid">
+        <!-- {{COMPONENT_CARDS}} -->
+      </div>
+
+      <!-- What's Next — the invitation -->
+      <div class="whats-next">
+        <h3>What&rsquo;s Next</h3>
+        <!-- {{WHATS_NEXT}} -->
+        <!--
+          An explicit invitation. What could phase one look like?
+          What questions would we want to explore together?
+          Leave it open — starting a conversation, not closing a sale.
+
+          Example:
+          <p>This assessment gives us a shared picture of where [product] stands and where
+            it can go. The improvements outlined here are practical, phased, and designed
+            to deliver visible progress at every step.</p>
+          <p>A few questions worth exploring together:</p>
+          <ul>
+            <li>Which user pain points feel most urgent to address first?</li>
+            <li>Is dark mode or theming on the near-term roadmap?</li>
+            <li>Would a focused prototype of the redesigned [key flow] be helpful?</li>
+          </ul>
+        -->
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{PROJECT_NAME}} — {{REPORT_TITLE}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,300;1,9..40,400;1,9..40,700&display=swap" rel="stylesheet">
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /*
+     * BRAND COLORS — customize these for your project.
+     * --dark-bg: darkest background (also drives cover overlay gradient)
+     * --navy:    close/CTA section background
+     * --accent:  primary accent (orange/gold by default) — used for large numbers
+     * --green:   positive/success accent — used for "Then." headline
+     * --blue:    link/eyebrow color on light backgrounds
+     */
+    :root {
+      --dark-bg:     #04242B;
+      --navy:        #193C64;
+      --teal:        #27434D;
+      --blue:        #3A70B3;
+      --green:       #86C774;
+      --orange:      #FFCD74;
+      --yellow:      #FCF496;
+      --purple-dark: #3C194A;
+      --purple-light:#A998C9;
+      --dark-green:  #538C5E;
+      --white:       #FEFEFE;
+      --ink:         #181A18;
+      --ink-mid:     #545454;
+      --surface:     #F5F5F5;
+      --border:      #E0E0E0;
+    }
+    html { font-size: 16px; }
+    body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--surface); color: var(--ink); }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 64px; }
+
+    /* ─── EYEBROW ─── */
+    .eyebrow {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    /* ══════════════════════════
+       COVER
+    ══════════════════════════ */
+    .cover {
+      aspect-ratio: 8.5 / 11;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      /*
+       * CUSTOMIZE: Replace the image URL with your hero screenshot or product image.
+       * The gradient overlay uses --dark-bg as rgb. Update rgba values to match.
+       * Current: rgb(4,36,43) = #04242B
+       */
+      background:
+        linear-gradient(110deg, rgba(4,36,43,0.96) 0%, rgba(4,36,43,0.88) 45%, rgba(4,36,43,0.35) 100%),
+        url({{HERO_IMAGE_URL}}) center/cover;
+    }
+    .cover-content {
+      padding: 0 80px 80px;
+    }
+    .cover-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--orange); margin-bottom: 24px; display: block;
+    }
+    .cover h1 {
+      font-size: clamp(56px, 7vw, 100px);
+      font-weight: 800; letter-spacing: -0.04em; line-height: 0.92;
+      color: var(--white); margin-bottom: 32px;
+    }
+    .cover h1 em { font-style: italic; font-weight: 300; color: rgba(255,255,255,0.6); display: block; }
+    .cover-stack {
+      display: flex; gap: 40px; align-items: flex-end;
+    }
+    .cover-stat { text-align: left; }
+    .cover-stat-num {
+      font-size: 52px; font-weight: 800; letter-spacing: -0.04em;
+      color: var(--orange); line-height: 1;
+    }
+    .cover-stat-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.6); margin-top: 4px;
+    }
+    .cover-divider { width: 1px; height: 56px; background: rgba(255,255,255,0.15); }
+    .cover-meta {
+      font-size: 13px; color: rgba(255,255,255,0.6); letter-spacing: 0.06em;
+      line-height: 1.8;
+    }
+
+    /* ══════════════════════════
+       THEN
+    ══════════════════════════ */
+    .then-section { background: var(--dark-bg); padding: 96px 0; aspect-ratio: 8.5 / 11; overflow: hidden; }
+    .then-section .eyebrow { color: rgba(255,255,255,0.6); }
+    .then-display {
+      font-size: clamp(52px, 6.5vw, 88px);
+      font-weight: 800; letter-spacing: -0.05em; line-height: 0.9;
+      color: var(--green);
+      margin-bottom: 56px;
+    }
+    .then-strengths {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .strength {
+      padding: 36px 32px 36px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .strength:nth-child(3n) { border-right: none; padding-right: 0; }
+    .strength:nth-child(n+4) { }
+    .strength:nth-child(4), .strength:nth-child(5), .strength:nth-child(6) { border-bottom: none; }
+    .strength:nth-child(2), .strength:nth-child(3),
+    .strength:nth-child(5), .strength:nth-child(6) { padding-left: 32px; }
+    .strength-name {
+      font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--white); margin-bottom: 8px;
+    }
+    .strength-body { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.6); }
+
+    /* ══════════════════════════
+       PRINCIPLE SECTIONS
+    ══════════════════════════ */
+    .principle-section {
+      padding: 96px 0;
+      aspect-ratio: 8.5 / 11;
+      overflow: hidden;
+    }
+    .principle-section.dark {
+      background: var(--dark-bg);
+      color: var(--white);
+    }
+    .principle-section.light { background: var(--white); }
+    .principle-section.mid { background: var(--surface); }
+
+    .principle-section.dark .eyebrow { color: rgba(255,255,255,0.6); }
+    .principle-section.light .eyebrow,
+    .principle-section.mid .eyebrow { color: var(--blue); }
+
+    .principle-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+    .principle-text {
+      max-width: 680px;
+    }
+
+    .principle-num {
+      font-size: clamp(80px, 10vw, 130px);
+      font-weight: 800; letter-spacing: -0.06em; line-height: 1;
+      color: var(--orange); margin-bottom: 8px;
+    }
+    .principle-section.dark .principle-num { color: var(--orange); }
+    .principle-section.light .principle-num,
+    .principle-section.mid .principle-num { color: var(--navy); opacity: 0.12; }
+
+    .principle-label {
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .principle-section.dark .principle-label { color: var(--white); }
+    .principle-section.light .principle-label,
+    .principle-section.mid .principle-label { color: var(--ink); }
+
+    .principle-observation {
+      font-size: 16px; line-height: 1.75;
+      margin-bottom: 12px;
+    }
+    .principle-section.dark .principle-observation { color: rgba(255,255,255,0.6); }
+    .principle-section.light .principle-observation,
+    .principle-section.mid .principle-observation { color: var(--ink-mid); }
+
+    .principle-wcag {
+      display: inline-block;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 20px; margin-top: 8px;
+    }
+    .principle-section.dark .principle-wcag {
+      background: rgba(255,205,116,0.15); color: var(--orange);
+    }
+    .principle-section.light .principle-wcag,
+    .principle-section.mid .principle-wcag {
+      background: #FEF0E0; color: #B35800;
+    }
+    .tag-opportunity {
+      display: inline-block;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 20px; margin-top: 8px;
+    }
+    .principle-section.dark .tag-opportunity {
+      background: rgba(134,199,116,0.15); color: var(--green);
+    }
+    .principle-section.light .tag-opportunity,
+    .principle-section.mid .tag-opportunity {
+      background: #EBF4EE; color: var(--dark-green);
+    }
+    .tag-addressed {
+      display: inline-block;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 20px; margin-top: 8px;
+      background: rgba(134,199,116,0.18); color: var(--green);
+    }
+
+    /* Screenshot placeholders */
+    .screenshots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+    }
+    .screenshot-slot {
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .screenshot-label {
+      padding: 10px 16px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .screenshot-slot.before .screenshot-label {
+      background: rgba(0,0,0,0.06);
+      color: var(--ink-mid);
+    }
+    .screenshot-slot.after .screenshot-label {
+      background: rgba(134,199,116,0.2);
+      color: var(--dark-green);
+    }
+    .principle-section.dark .screenshot-slot.before .screenshot-label {
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6);
+    }
+    .principle-section.dark .screenshot-slot.after .screenshot-label {
+      background: rgba(134,199,116,0.15); color: var(--green);
+    }
+    .screenshot-area {
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .screenshot-slot.before .screenshot-area {
+      background: rgba(0,0,0,0.04);
+      border: 1.5px dashed rgba(0,0,0,0.12);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+    }
+    .screenshot-slot.after .screenshot-area {
+      background: rgba(134,199,116,0.05);
+      border: 1.5px dashed rgba(134,199,116,0.35);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+    }
+    .principle-section.dark .screenshot-slot.before .screenshot-area {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.08);
+    }
+    .principle-section.dark .screenshot-slot.after .screenshot-area {
+      background: rgba(134,199,116,0.04);
+      border-color: rgba(134,199,116,0.2);
+    }
+    .screenshot-icon {
+      font-size: 28px; opacity: 0.2;
+    }
+    .screenshot-placeholder-text {
+      font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+      opacity: 0.3;
+    }
+
+    /* single screenshot (full width) */
+    .screenshots.single { grid-template-columns: 1fr; }
+    .screenshots.single .screenshot-area { aspect-ratio: 16/6; }
+
+    /* ══════════════════════════
+       EXECUTIVE SUMMARY
+    ══════════════════════════ */
+    .exec-section {
+      background: var(--white);
+      padding: 96px 0;
+      aspect-ratio: 8.5 / 11;
+      overflow: hidden;
+    }
+    .exec-section .eyebrow { color: var(--blue); }
+    .exec-pullquote {
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      color: var(--ink);
+      max-width: 820px;
+      margin-bottom: 56px;
+      padding-bottom: 56px;
+      border-bottom: 1px solid var(--border);
+    }
+    .exec-pullquote em {
+      font-style: italic;
+      font-weight: 300;
+      color: var(--navy);
+    }
+    .exec-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: start;
+    }
+    .exec-narrative {
+      font-size: 17px;
+      line-height: 1.8;
+      color: var(--ink-mid);
+    }
+    .exec-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .exec-stat-row {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .exec-stat-row:last-child { border-bottom: none; }
+    .exec-stat-val {
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--navy);
+      line-height: 1;
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+    .exec-stat-val.green { color: var(--dark-green); }
+    .exec-stat-desc {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--ink-mid);
+    }
+
+    /* ══════════════════════════
+       COLOR SYSTEM
+    ══════════════════════════ */
+    .color-section { background: var(--dark-bg); padding: 96px 0; color: var(--white); aspect-ratio: 8.5 / 11; overflow: hidden; }
+    .color-section .eyebrow { color: rgba(255,255,255,0.6); }
+    .color-display {
+      font-size: clamp(44px, 5.5vw, 72px);
+      font-weight: 700; letter-spacing: -0.04em; line-height: 1;
+      color: var(--orange); margin-bottom: 16px;
+    }
+    .color-subtitle {
+      font-size: 17px; line-height: 1.7;
+      color: rgba(255,255,255,0.6); max-width: 580px; margin-bottom: 56px;
+    }
+    .palette-cap {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.6); margin-bottom: 10px;
+    }
+    .palette-row {
+      display: flex; border-radius: 12px; overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .sw {
+      flex: 1; height: 100px;
+      display: flex; align-items: flex-end; padding: 10px 12px;
+    }
+    .sw.lg { flex: 2; }
+    .sw-name {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+      color: rgba(255,255,255,0.8); text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .sw-name.on-light { color: rgba(0,0,0,0.6); text-shadow: none; }
+
+    /* ══════════════════════════
+       CLOSE
+    ══════════════════════════ */
+    .close-section {
+      background: var(--navy);
+      aspect-ratio: 8.5 / 11;
+      overflow: hidden;
+      display: grid;
+      align-content: center;
+    }
+    .close-eyebrow { color: rgba(255,255,255,0.6); }
+    .close-headline {
+      font-size: clamp(28px, 3.2vw, 44px);
+      font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
+      color: var(--white); max-width: 760px;
+      margin-bottom: 56px; padding-bottom: 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .close-headline em {
+      font-style: italic; font-weight: 300;
+      color: rgba(255,255,255,0.6);
+    }
+    .close-recs {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .close-rec {
+      display: flex;
+      align-items: baseline;
+      gap: 32px;
+      padding: 18px 0;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .close-rec-num {
+      font-size: 64px; font-weight: 800; letter-spacing: -0.04em;
+      color: var(--orange); line-height: 1;
+      flex-shrink: 0; min-width: 110px;
+    }
+    .close-rec-title {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+      color: var(--white); line-height: 1.25;
+    }
+    .rm-credit {
+      font-size: 12px; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════ COVER ══════ -->
+  <section class="cover">
+    <div class="cover-content">
+      <span class="cover-eyebrow">{{COMPANY_NAME}} &nbsp;·&nbsp; {{REPORT_DATE}}</span>
+      <h1>{{PROJECT_NAME}}<em>{{REPORT_TITLE}}</em></h1>
+      <div class="cover-stack">
+        <div class="cover-stat">
+          <div class="cover-stat-num">{{COVER_STAT_NUM}}</div>
+          <div class="cover-stat-label">{{COVER_STAT_LABEL}}</div>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-meta">
+          {{COVER_META_LINE}}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ EXECUTIVE SUMMARY ══════ -->
+  <section class="exec-section">
+    <div class="wrap">
+      <span class="eyebrow">Executive Summary</span>
+      <div class="exec-pullquote">
+        {{EXEC_PULLQUOTE}}
+        <em>{{EXEC_PULLQUOTE_EM}}</em>
+      </div>
+      <div class="exec-cols">
+        <p class="exec-narrative">
+          {{EXEC_NARRATIVE_P1}}<br><br>
+          {{EXEC_NARRATIVE_P2}}
+        </p>
+        <div class="exec-stats">
+          <div class="exec-stat-row">
+            <div class="exec-stat-val green">{{STAT_1_VAL}}</div>
+            <div class="exec-stat-desc">{{STAT_1_DESC}}</div>
+          </div>
+          <div class="exec-stat-row">
+            <div class="exec-stat-val">{{STAT_2_VAL}}</div>
+            <div class="exec-stat-desc">{{STAT_2_DESC}}</div>
+          </div>
+          <div class="exec-stat-row">
+            <div class="exec-stat-val green">{{STAT_3_VAL}}</div>
+            <div class="exec-stat-desc">{{STAT_3_DESC}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ THEN ══════ -->
+  <section class="then-section">
+    <div class="wrap">
+      <span class="eyebrow">What was built</span>
+      <div class="then-display">Then.</div>
+      <div class="then-strengths">
+        <div class="strength">
+          <div class="strength-name">{{STRENGTH_1_NAME}}</div>
+          <div class="strength-body">{{STRENGTH_1_BODY}}</div>
+        </div>
+        <div class="strength">
+          <div class="strength-name">{{STRENGTH_2_NAME}}</div>
+          <div class="strength-body">{{STRENGTH_2_BODY}}</div>
+        </div>
+        <div class="strength">
+          <div class="strength-name">{{STRENGTH_3_NAME}}</div>
+          <div class="strength-body">{{STRENGTH_3_BODY}}</div>
+        </div>
+        <div class="strength">
+          <div class="strength-name">{{STRENGTH_4_NAME}}</div>
+          <div class="strength-body">{{STRENGTH_4_BODY}}</div>
+        </div>
+        <div class="strength">
+          <div class="strength-name">{{STRENGTH_5_NAME}}</div>
+          <div class="strength-body">{{STRENGTH_5_BODY}}</div>
+        </div>
+        <div class="strength">
+          <div class="strength-name">{{STRENGTH_6_NAME}}</div>
+          <div class="strength-body">{{STRENGTH_6_BODY}}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ NOW INTRO ══════ -->
+  <section style="background: var(--surface); padding: 96px 0 0; aspect-ratio: 8.5/11; overflow: hidden;">
+    <div class="wrap">
+      <span class="eyebrow" style="color: var(--blue);">Where we are today</span>
+      <div style="font-size: clamp(52px,6.5vw,88px); font-weight:800; letter-spacing:-0.05em; line-height:0.9; margin-bottom:28px;">Now.</div>
+      <p style="font-size:19px; line-height:1.75; color:var(--ink-mid); max-width:680px; padding-bottom:64px; border-bottom:1px solid var(--border);">{{NOW_INTRO_TEXT}}</p>
+    </div>
+  </section>
+
+  <!-- ══════ 01 ══════ -->
+  <!-- Section background: mid (light gray) | dark | light — pick one class -->
+  <section class="principle-section mid">
+    <div class="wrap">
+      <span class="eyebrow">01 &nbsp;·&nbsp; {{IMP_1_EYEBROW}}</span>
+      <div class="principle-layout">
+        <div class="principle-text">
+          <div class="principle-num">01</div>
+          <div class="principle-label">{{IMP_1_LABEL}}</div>
+          <p class="principle-observation">{{IMP_1_OBSERVATION}}</p>
+          <!-- Use tag-addressed (✓ Designed), tag-opportunity (Next Phase), or principle-wcag -->
+          <span class="tag-addressed">&#10003; Designed</span>
+        </div>
+        <div class="screenshots single">
+          <div class="screenshot-slot after">
+            <div class="screenshot-label">{{IMP_1_SCREENSHOT_LABEL}}</div>
+            <div class="screenshot-area">
+              <div class="screenshot-icon">⬜</div>
+              <div class="screenshot-placeholder-text">Proposed Design Screenshot</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 02 ══════ -->
+  <section class="principle-section dark">
+    <div class="wrap">
+      <span class="eyebrow">02 &nbsp;·&nbsp; {{IMP_2_EYEBROW}}</span>
+      <div class="principle-layout">
+        <div class="principle-text">
+          <!-- On dark sections use green for the number for variety: style="color:var(--green); opacity:1;" -->
+          <div class="principle-num" style="color:var(--green); opacity:1;">02</div>
+          <div class="principle-label">{{IMP_2_LABEL}}</div>
+          <p class="principle-observation">{{IMP_2_OBSERVATION}}</p>
+          <span class="tag-addressed">&#10003; Designed</span>
+        </div>
+        <div class="screenshots single">
+          <div class="screenshot-slot after">
+            <div class="screenshot-label">{{IMP_2_SCREENSHOT_LABEL}}</div>
+            <div class="screenshot-area">
+              <div class="screenshot-icon">⬜</div>
+              <div class="screenshot-placeholder-text">Proposed Design Screenshot</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 03 ══════ -->
+  <section class="principle-section light">
+    <div class="wrap">
+      <span class="eyebrow">03 &nbsp;·&nbsp; {{IMP_3_EYEBROW}}</span>
+      <div class="principle-layout">
+        <div class="principle-text">
+          <div class="principle-num">03</div>
+          <div class="principle-label">{{IMP_3_LABEL}}</div>
+          <p class="principle-observation">{{IMP_3_OBSERVATION}}</p>
+          <span class="tag-addressed">&#10003; Designed</span>
+        </div>
+        <div class="screenshots single">
+          <div class="screenshot-slot after">
+            <div class="screenshot-label">{{IMP_3_SCREENSHOT_LABEL}}</div>
+            <div class="screenshot-area">
+              <div class="screenshot-icon">⬜</div>
+              <div class="screenshot-placeholder-text">Proposed Design Screenshot</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ 04 ══════ -->
+  <section class="principle-section mid">
+    <div class="wrap">
+      <span class="eyebrow">04 &nbsp;·&nbsp; {{IMP_4_EYEBROW}}</span>
+      <div class="principle-layout">
+        <div class="principle-text">
+          <div class="principle-num">04</div>
+          <div class="principle-label">{{IMP_4_LABEL}}</div>
+          <p class="principle-observation">{{IMP_4_OBSERVATION}}</p>
+          <!-- Change to tag-opportunity if not yet designed -->
+          <span class="tag-opportunity">Next Phase</span>
+        </div>
+        <div class="screenshots single">
+          <div class="screenshot-slot after">
+            <div class="screenshot-label">{{IMP_4_SCREENSHOT_LABEL}}</div>
+            <div class="screenshot-area">
+              <div class="screenshot-icon">⬜</div>
+              <div class="screenshot-placeholder-text">Proposed Design Screenshot</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ COLOR SYSTEM ══════ -->
+  <section class="color-section">
+    <div class="wrap">
+      <span class="eyebrow">Design System</span>
+      <div class="color-display">Color System</div>
+      <p class="color-subtitle">{{COLOR_SUBTITLE}}</p>
+
+      <!--
+        CUSTOMIZE: Replace HSL values below with the project's brand palette.
+        Primary row: use brand primary hue + saturation, varying lightness.
+        Neutral row: use a low-saturation version of the brand hue.
+        Alerts row: keep standard notice/danger/warning/info unless project overrides.
+      -->
+      <div class="palette-cap">{{PRIMARY_PALETTE_LABEL}}</div>
+      <div class="palette-row">
+        <div class="sw" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,98%);"><span class="sw-name on-light">+8</span></div>
+        <div class="sw" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,90%);"><span class="sw-name on-light">+5</span></div>
+        <div class="sw" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,64%);"><span class="sw-name on-light">+2</span></div>
+        <div class="sw lg" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,49%); outline:3px solid rgba(255,255,255,0.4); outline-offset:-3px;"><span class="sw-name on-light">base</span></div>
+        <div class="sw" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,38%);"><span class="sw-name">−3</span></div>
+        <div class="sw" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,26%);"><span class="sw-name">−7</span></div>
+        <div class="sw" style="background:hsl({{PRIMARY_H}},{{PRIMARY_S}}%,8%);"><span class="sw-name">−9</span></div>
+      </div>
+
+      <div class="palette-cap" style="margin-top:32px;">{{NEUTRAL_PALETTE_LABEL}}</div>
+      <div class="palette-row">
+        <div class="sw" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,100%);"><span class="sw-name on-light">+8</span></div>
+        <div class="sw" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,92%);"><span class="sw-name on-light">+5</span></div>
+        <div class="sw" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,75%);"><span class="sw-name on-light">+2</span></div>
+        <div class="sw lg" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,42%);"><span class="sw-name">base</span></div>
+        <div class="sw" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,22%);"><span class="sw-name">−5</span></div>
+        <div class="sw" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,14%);"><span class="sw-name">−7</span></div>
+        <div class="sw" style="background:hsl({{NEUTRAL_H}},{{NEUTRAL_S}}%,7%);"><span class="sw-name">−9</span></div>
+      </div>
+
+      <div class="palette-cap" style="margin-top:32px;">Alerts — notice · danger · warning · info</div>
+      <div class="palette-row">
+        <div class="sw lg" style="background:hsl(134,51%,61%);"><span class="sw-name">notice</span></div>
+        <div class="sw lg" style="background:hsl(0,76%,57%);"><span class="sw-name">danger</span></div>
+        <div class="sw lg" style="background:hsl(48,100%,42%);"><span class="sw-name on-light">warning</span></div>
+        <div class="sw lg" style="background:hsl(217,71%,52%);"><span class="sw-name">info</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ CLOSE ══════ -->
+  <section class="close-section">
+    <div class="wrap">
+      <span class="eyebrow close-eyebrow">Our Recommendation</span>
+      <div class="close-headline">
+        {{CLOSE_HEADLINE}}
+        <em>{{CLOSE_HEADLINE_EM}}</em>
+      </div>
+      <div class="close-recs">
+        <div class="close-rec">
+          <div class="close-rec-num">01</div>
+          <div class="close-rec-title">{{REC_1_TITLE}}</div>
+        </div>
+        <div class="close-rec">
+          <div class="close-rec-num">02</div>
+          <div class="close-rec-title">{{REC_2_TITLE}}</div>
+        </div>
+        <div class="close-rec">
+          <div class="close-rec-num">03</div>
+          <div class="close-rec-title">{{REC_3_TITLE}}</div>
+        </div>
+        <div class="close-rec">
+          <div class="close-rec-num">04</div>
+          <div class="close-rec-title">{{REC_4_TITLE}}</div>
+        </div>
+      </div>
+      <div class="rm-credit">{{COMPANY_NAME}} &nbsp;·&nbsp; {{COMPANY_URL}} &nbsp;·&nbsp; {{REPORT_DATE}}</div>
+    </div>
+  </section>
+
+</body>
+</html>

@@ -1,0 +1,231 @@
+/**
+ * reveal.js deck chrome for audit-kit — replaces theme/white.css.
+ *
+ * Scope heading `p` rules to direct slide children only. Slotted content inside
+ * <audit-slide> is still matched by broad `.reveal h2` rules from other sheets;
+ * audit-kit uses !important on ::slotted() there so typography wins in cascade.
+ */
+
+:root {
+  --color-near-white: #fafafa;
+  --color-page-background: #ffffff;
+  --color-page-background-alt: #fcfbf7;
+  --color-callout-bg: #f5f7fa;
+  --color-rule-gray: #e2e5ea;
+  --color-text: #181a18;
+  --color-alt-text: #545454;
+  --color-primary: #3a70b3;
+  --color-primary-dark: #193c64;
+  --color-dark-surface: #04242b;
+  --color-dark-surface-2: #27434d;
+  --color-accent-orange: #ffcd74;
+  --color-accent-bright-blue: #87d4e9;
+  --color-accent-yellow: #fcf496;
+  --color-accent-purple: #a998c9;
+  --color-accent-green: #86c774;
+  --color-dark-purple: #3c194a;
+  --color-dark-green: #538c5e;
+  --color-light-green: #b3d99a;
+  --color-neutral-100: #fafafa;
+  --color-neutral-200: #e0e0e0;
+  --color-neutral-300: #c7c7c7;
+  --color-neutral-400: #aeaeae;
+  --color-neutral-500: #969696;
+  --color-neutral-600: #7f7f7f;
+  --color-neutral-700: #686868;
+  --color-neutral-800: #3c3c3c;
+  --color-neutral-900: #272727;
+  --spacing-space-2xs: 4px;
+  --spacing-space-xs: 8px;
+  --spacing-space-sm: 12px;
+  --spacing-space-md: 16px;
+  --spacing-space-lg: 24px;
+  --spacing-space-xl: 32px;
+  --spacing-space-2xl: 40px;
+  --spacing-space-3xl: 48px;
+  --spacing-space-4xl: 64px;
+  --spacing-space-5xl: 80px;
+  --rounded-control: 4px;
+  --rounded-container: 8px;
+  --typography-hero: 700 100px 'DM Sans';
+  --typography-display: 700 45px 'DM Sans';
+  --typography-h1: 700 37px 'DM Sans';
+  --typography-h2: 700 28px 'DM Sans';
+  --typography-body-lg: 400 16px 'DM Sans';
+  --typography-body-md: 400 14px 'DM Sans';
+  --typography-body-sm: 400 12px 'DM Sans';
+  --typography-label-caps: 400 10px 'Geist Mono';
+  --typography-kicker: 500 11px 'Geist Mono';
+  --typography-code: 400 12px 'Geist Mono';
+  /* Semantic aliases for components (all values trace to --color-* tokens) */
+  --text: var(--color-text);
+  --text-muted: var(--color-alt-text);
+  --text-light: color-mix(in srgb, var(--color-page-background) 85%, transparent);
+  --accent: var(--color-accent-yellow);
+  --dark: var(--color-dark-surface);
+  --section-number: var(--color-neutral-300);
+  --r-background-color: #ffffff;
+  --r-main-font: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --r-main-font-size: 40px;
+  --r-main-color: #181a18;
+  --r-block-margin: 16px;
+  --r-heading-margin: 0 0 16px 0;
+  --r-heading-font: var(--r-main-font);
+  --r-heading-color: #181a18;
+  --r-heading-line-height: 1.2;
+  --r-heading-letter-spacing: normal;
+  --r-heading-text-transform: none;
+  --r-heading-text-shadow: none;
+  --r-heading-font-weight: 600;
+  --r-heading1-text-shadow: none;
+  --r-heading1-size: 2.5em;
+  --r-heading2-size: 1.6em;
+  --r-heading3-size: 1.3em;
+  --r-heading4-size: 1em;
+  --r-code-font: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r-link-color: #3a70b3;
+  --r-link-color-dark: #193c64;
+  --r-link-color-hover: #5a8fc9;
+  --r-selection-background-color: rgba(58, 112, 179, 0.35);
+  --r-selection-color: #181a18;
+  --r-overlay-element-bg-color: 0, 0, 0;
+  --r-overlay-element-fg-color: 240, 240, 240;
+}
+
+.reveal-viewport {
+  background: var(--r-background-color);
+}
+
+.reveal {
+  font-family: var(--r-main-font);
+  font-size: var(--r-main-font-size);
+  font-weight: normal;
+  color: var(--r-main-color);
+}
+
+.reveal ::selection {
+  color: var(--r-selection-color);
+  background: var(--r-selection-background-color);
+  text-shadow: none;
+}
+
+.reveal ::-moz-selection {
+  color: var(--r-selection-color);
+  background: var(--r-selection-background-color);
+  text-shadow: none;
+}
+
+.reveal .slides section,
+.reveal .slides section > section {
+  line-height: 1.35;
+  font-weight: inherit;
+}
+
+/* Headings: direct children of slide sections only (not inside audit-*) */
+.reveal .slides > section > :is(h1, h2, h3, h4, h5, h6),
+.reveal .slides section > section > :is(h1, h2, h3, h4, h5, h6) {
+  margin: var(--r-heading-margin);
+  color: var(--r-heading-color);
+  font-family: var(--r-heading-font);
+  font-weight: var(--r-heading-font-weight);
+  line-height: var(--r-heading-line-height);
+  letter-spacing: var(--r-heading-letter-spacing);
+  text-transform: var(--r-heading-text-transform);
+  text-shadow: var(--r-heading-text-shadow);
+  word-wrap: break-word;
+}
+
+.reveal .slides > section > h1,
+.reveal .slides section > section > h1 {
+  font-size: var(--r-heading1-size);
+  text-shadow: var(--r-heading1-text-shadow);
+}
+
+.reveal .slides > section > h2,
+.reveal .slides section > section > h2 {
+  font-size: var(--r-heading2-size);
+}
+
+.reveal .slides > section > h3,
+.reveal .slides section > section > h3 {
+  font-size: var(--r-heading3-size);
+}
+
+.reveal .slides > section > h4,
+.reveal .slides section > section > h4 {
+  font-size: var(--r-heading4-size);
+}
+
+.reveal .slides > section > :is(h1, h2, h3, h4, h5, h6):last-child,
+.reveal .slides section > section > :is(h1, h2, h3, h4, h5, h6):last-child {
+  margin-bottom: 0;
+}
+
+.reveal .slides > section > p,
+.reveal .slides section > section > p {
+  margin: var(--r-block-margin) 0;
+  line-height: 1.35;
+}
+
+.reveal img,
+.reveal video,
+.reveal iframe {
+  max-width: 95%;
+  max-height: 95%;
+}
+
+.reveal strong,
+.reveal b {
+  font-weight: bold;
+}
+
+.reveal em {
+  font-style: italic;
+}
+
+.reveal a {
+  color: var(--r-link-color);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.reveal a:hover {
+  color: var(--r-link-color-hover);
+  text-shadow: none;
+  border: none;
+}
+
+.reveal .controls {
+  color: var(--r-link-color);
+}
+
+.reveal .progress {
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--r-link-color);
+}
+
+/* Deck layout */
+.reveal .slides {
+  width: 1200px !important;
+}
+
+.reveal .slides > section {
+  padding: 0;
+  height: 100%;
+  text-align: left;
+}
+
+/* Custom elements default to inline; stretch audit-slide to slide height for full-bleed layouts */
+.reveal .slides > section > audit-slide {
+  display: block;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* audit-kit / data-audit-surface own foreground on colored slides */
+
+@media print {
+  .backgrounds {
+    background-color: var(--r-background-color);
+  }
+}
