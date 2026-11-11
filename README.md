@@ -29,7 +29,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[bem-structure](skills/bem-structure)** | CSS guidance using BEM (Block Element Modifier) methodology. Naming conventions, nesting rules, and modifier patterns. |
 | **[optics-context](skills/optics-context)** | RoleModel's Optics design system: components, `--op-` design tokens, and theming. Reads tokens and components from the installed `@rolemodel/optics` package; `references/theming.md` covers brand colors, color scales, fonts, and dark mode. |
 | **[ux-review](skills/ux-review)** | Review UI code against Nielsen's 10 heuristics and the Laws of UX, reported as a severity-ranked issue log with file-and-line evidence and Optics-based fixes. |
-| **[ux-audit](skills/ux-audit)** | Run a full UX/UI audit of a web app, from codebase scan to client report (reveal.js, HTML, or Figma), tracked as a Linear project made from the UX Audit template. |
+| **[ux-audit](skills/ux-audit)** | Run a full UX/UI audit of a web app, from codebase scan to client report (reveal.js, HTML, or Figma), tracked as a Linear project made from the UX Audit template, with PostHog usage data when the app has it. |
 
 ### Rails
 
