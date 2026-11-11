@@ -42,7 +42,24 @@ Output to **reveal.js** (component-based slide deck), **Figma** (direct canvas w
 
 ## Linear
 
-Every RoleModel audit is **one Linear issue**, made from the **UX Audit** form in the **UX Audits** team. The filled-in form is the brief: the project, why now, known context, repository, app URL, customer, definition of done, and deliverables. Read the brief from the issue before Phase 1, and skip questions it already answers.
+Every RoleModel audit is **one Linear issue**, made from the **UX Audit** form in the **UX Audits** team. The filled-in form is the whole setup: read it before Phase 1 and never ask a question it answers. It replaces `.ux-audit.json`:
+
+| Form field | Config |
+|------------|--------|
+| Project, Customer | `brand.name` |
+| Github Repo, App URL | the repository to scan, `appUrl` |
+| Audience | `audience` (`client` or `internal`) |
+| Required Deliverables | `format`: Reveal.js Slides is `reveal`, HTML Document is `html`, Figma Designs is `figma`; Paged Document follows [references/paged-document-handoff.md](references/paged-document-handoff.md) |
+| Sections to audit | the Phase 3 sections to run; none ticked means all ten |
+| Design system | `designSystem`; blank means Optics |
+| Brand | `brand` primary color and font; blank means read them from the code |
+| Portfolio or case study URL | `brand.portfolioUrl` or `brand.caseStudyUrl` |
+| Figma file | `figma.fileKey`; blank means a new file from the template |
+| PostHog project | the project for [PostHog](#posthog); blank means skip it |
+| How to sign in | where to get a test login; ask the person for it, never read a password from Linear |
+| Why now?, Known Context, Definition of done | the focus and the finish line |
+
+Ask only for a field that is blank and has no default.
 
 - Keep the audit in that one issue. Post the scan summary, the PostHog data, and the reviewed findings as comments on it, and link the report there.
 - Break out a sub-issue only when a piece needs its own owner or estimate, such as a finding the client wants fixed. Use the **UX Audit Finding** template, and set its priority from the severity: Critical is Urgent, High is High, Medium is Medium, Low is Low. Never make a sub-issue per phase, step, or heuristic section.
@@ -176,7 +193,7 @@ Arguments after the phase name are passed as context. For example:
 
 ## Configuration
 
-Look for `.ux-audit.json` in the project root. If it does not exist, ask the user these questions and create it:
+When the audit comes from a Linear UX Audit issue, the form is the configuration (see [Linear](#linear)); write no `.ux-audit.json`. Otherwise, look for `.ux-audit.json` in the project root. If it does not exist, ask the user these questions and create it:
 
 1. **Audience** — `"internal"` (developer team) or `"client"` (external stakeholder). Default: `"client"`.
 2. **Output format** — `"reveal"` (slide deck), `"figma"` (canvas write), or `"html"` (scrollable). Default: `"reveal"` for client, `"html"` for internal.
