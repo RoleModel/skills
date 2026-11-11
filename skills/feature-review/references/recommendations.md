@@ -143,10 +143,11 @@ spec for a user from another org". The reviewer chooses **Add** or **Ignore**.
   **Blocking** is a bug, security or data loss, a removal of needed code, or a
   real gap against the ticket; **should** is worth fixing in this PR but open
   to discussion; **nit** is a small preference, fine to skip. A `question`
-  takes no severity: the kind is its label. The page shows it as a badge, lists
+  takes no severity: the kind is its label. The page shows it beside the kind over the title, lists
   blocking recommendations first, and counts each severity above the verdict
   buttons. The build adds the label to the front of each comment
-  (`**Blocking:** …`), so leave it out of the comment text. The build warns
+  (`**Blocking:** …`), so leave it out of the comment text; a leading
+  `nit:` or `should:` in the text is dropped so the label shows once. The build warns
   when a recommendation has none.
 - **`title`** is the action in under about ten words. The comments carry the
   detail.

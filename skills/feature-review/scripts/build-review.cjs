@@ -299,7 +299,8 @@ if (groupsPath) {
   // The severity rides on each comment as a label too, so the author sees what blocks merging.
   const SEV_LABEL = { blocking: 'Blocking', should: 'Should', nit: 'Nit' };
   const labelled = (sev, c) => (SEV_LABEL[sev] && c.body && !/^\*\*(Blocking|Should|Nit):\*\*/.test(c.body)
-    ? Object.assign({}, c, { body: '**' + SEV_LABEL[sev] + ':** ' + c.body }) : c);
+    // An agent often starts the body with its own "nit:"; drop it so the label shows once.
+    ? Object.assign({}, c, { body: '**' + SEV_LABEL[sev] + ':** ' + c.body.replace(/^\s*(\*\*)?(blocking|should|nit)\s*:\s*(\*\*)?\s*/i, '') }) : c);
   const recommendations = (g.recommendations || []).map((r, i) => ({
     id: String(r.id || 'r' + (i + 1)), title: r.title, why: r.why || '', kind: r.kind || '', group: r.group || null,
     severity: r.kind === 'question' ? '' : r.severity || '',
