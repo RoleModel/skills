@@ -1,12 +1,32 @@
-# Writing the overview (step 1)
+# Writing the overview (the Story, Checks and Shape steps)
 
-The page reviews in three steps: **Overview**, **Code**, **Submit**. The
-overview comes first and is about the *feature* and the *shape* of the change,
-not lines of code. It reads top to bottom: what the PR's author said, the
-feature and its checks, the **feature overview** (how it all fits together,
-with visuals), then the shape. A reviewer who reads only the overview should know what the
-change does for the user, whether it does it well, and how it rearranges the
-code. The diff is the fallback: the place to confirm what the overview says.
+The page reviews in steps: **Story**, **Checks**, **Shape**, **Recommendations**
+and **Submit**, with the code one button away. The overview feeds the first
+three. A reviewer who reads them should know what the change does for the
+user, whether it does it right, and how it rearranges the code. The diff is the
+fallback: the place to confirm what the overview says.
+
+## Story and Checks: concepts, not code
+
+The first two steps are about the *outcome*: does the change produce the right
+result, and does it behave correctly? The reviewer is building a picture of the
+concepts at play (who does what, what they see, what happens next), not of the
+implementation. So everything that shows in them is written in product
+language:
+
+- **No code.** No class, method, file, table, column, route, param, job or
+  gem names, no backticks, no file paths. Say "the order's shipping method",
+  not `Order#shipping_mode`; "the Projects page", not `ProjectsController#index`;
+  "saving the order", not "the PATCH to `update`".
+- **Outcomes and behaviour.** What a person can now do, what they see, what
+  changes for them, what happens at the edges (a second tab, no permission, an
+  empty list, an existing record).
+- **The technical story goes later.** Objects, layers and structure belong in
+  the **Shape** step (`shape`, structure diagrams); how a piece is built, and
+  what to change, belongs in the groups and recommendations.
+
+This covers `author`, `feature` (with its checks and `"section": "feature"`
+diagrams) and `connection`. Where those keys below mention code, leave it out.
 
 It goes in the same `tmp/review/<slug>.groups.json` as the reading guide, under
 `overview`. Every key is optional. Leave out what you have nothing true to say
@@ -71,16 +91,28 @@ about: an empty section is better than filler.
   ticket or PR body, then check it against the diff: if the code does more,
   less, or something else than the ticket says, say so here. That mismatch is
   the most valuable thing the overview can surface.
-- **`behavior`**: the walkthrough, before and after, from the user's side.
+- **`behavior`**: the walkthrough, before and after, from the user's side, in
+  product language.
   Markdown. Use it when the change alters a flow; skip it for a pure refactor.
-- **`checks`**: the behaviour worth confirming, as things a reviewer can verify
+- **`checks`**: the behaviour worth confirming, each with a `kind`:
+  - `"does"` (the default): behaviour the change actually implements, read from
+    the code but written as what a person sees ("Opening the old All Projects
+    page now shows a not-found page"). The page tags it **Does**; the
+    reviewer confirms it works and is wanted.
+  - `"should"`: behaviour the change ought to have but doesn't, a gap you found
+    ("A placed order should not be reopened from a second tab, but nothing
+    stops it"). The page tags it **Should**. Usually pair it with a
+    recommendation that names the fix.
+  Never write a `does` check for something you haven't seen in the code. Things a reviewer can verify
   in the app or by reasoning, not code-style remarks. Edge cases the change
   touches (empty, the largest case, undo, permissions, a second user, an
   existing record created before this change), interactions with neighbouring
   features, and anything the ticket asked for that you couldn't find in the
   diff. 3 to 7 is the usual range; zero is fine for a trivial change. Each has
-  `text` (Markdown), optional `how` (steps to check), and optional `path` (a file
-  in the diff, linked). The reviewer marks each **Looks right** or **Concern**;
+  `text` (Markdown, product language, no code) and optional `how` (steps to
+  check in the app, as a person would: "Open the order in two tabs, place it in
+  one, edit it in the other"). Leave out `path`: the file behind a check is a
+  code detail, and the recommendations link to it. The reviewer marks each **Looks right** or **Concern**;
   concerns and their notes are added to the review summary when it is posted.
 
   Write checks you actually have reason to raise. Follow the user's
@@ -105,7 +137,7 @@ shows them in a strip, and keeps the full description folded away under them.
 You write the digest above them under `author`:
 
 - **`summary`**: what the author says the change does and why, condensed to a
-  sentence or two. Keep their reasoning and any context the diff can't show:
+  sentence or two, in product language even when the author wrote in code. Keep their reasoning and any context the diff can't show:
   the feedback that prompted it, what they tested, what they left for later.
 - **`points`**: up to four short bullets for the rest worth keeping (testing
   notes, known gaps, follow-ups, deploy steps).
@@ -123,30 +155,29 @@ cache. If the description is empty, there is nothing to digest: leave `author` o
 (It goes under the `connection` key, its name before it was renamed.)
 
 The section that pulls it all together: how the feature works end to end, for
-the person using it and in the code, in one place. A reviewer who reads it
+the person using it, in one place. A reviewer who reads it
 should be able to say how the pieces connect, and the checks should read as
 part of that story rather than a separate list. Make it **as visual as you
-can**: a screenshot or short recording for each step a person can see, and a
-sequence or structure diagram for the steps they can't.
+can**: a screenshot or short recording for each step a person can see. For a
+step that happens out of sight (a sync, an email, a background job), draw it
+as what the person would notice, in plain words, not as objects calling each
+other; object diagrams belong in the shape.
 
 - **`summary`**: the whole flow in one or two sentences, from the user's
   action to the result.
-- **`technical`**: how it works underneath, at overview height: the entry
-  point, the objects that do the work, where the data lives, in a short
-  paragraph. Not a file list.
+- **`technical`**: leave it out. How it works underneath belongs in the shape
+  and the recommendations.
 - **`steps`**: the flow in order, usually 2 to 6. Each step has:
   - `title`: the step, in the user's words where there is a user;
   - `user`: what the person sees or does (Markdown);
-  - `tech` (optional): what runs, folded under "Under the hood" and closed by
-    default. One plain sentence naming the object or two that do the work, not
-    a walk through the code. Leave it out when the step's groups and files
-    already say enough;
+  - `tech`: no longer shown. The step's group links lead to the
+    recommendations and the code, which carry the technical detail; leave it out;
   - `visuals`: diagrams or media for this step (any diagram kind, including
     `image` and `video`). Screenshots from the PR description are often the
     right picture here. A step with no visuals takes the full width;
   - `groups`: reading-guide group titles that implement it. They link to the
     group's Recommendations card;
-  - `files`: files in the diff, linked to their diff;
+  - `files`: leave out; the group links lead to the code;
   - `checks`: ids of feature checks (give those checks an `id`). They show in
     the step instead of under the feature.
 - Diagrams with `"section": "connection"` show above the steps: the place for
@@ -199,11 +230,37 @@ numbers show a file doubling, `codebase` should say why that's fine or not.
 
 ## Diagrams
 
-Draw a diagram where it explains something faster than prose: a flow through
-several objects, a responsibility moving from one place to another, geometry,
-a state machine, a before/after. Prefer one or two good diagrams to many. Every
-diagram has `kind`, optional `title` and `caption` (Markdown), and where it
-shows:
+**Draw the picture that's missing.** Wherever a reader would have to build an
+image in their head from your words, draw it for them instead. There is no
+quota and no required form: a diagram is any picture that makes a section
+quicker to understand, and the right one is whatever suits that section.
+
+- **Mock what you can't capture.** No screenshot of the new dialog, the PDF
+  page, the email, the error state? Sketch it: a rough screen with the changed
+  part outlined beats a paragraph describing it. Same for a before/after of a
+  screen when only one side can be captured.
+- **Draw the data, not just the code.** A record before and after the
+  migration, the rows a query now returns, the JSON a request sends, a
+  permissions matrix: a small table or a pair of boxes says it at a glance.
+- **Draw time.** What happens on save, which job runs when, the order of
+  retries: a timeline or a sequence.
+- **Draw space.** Geometry, layout, positions, sizes: an SVG with the real
+  shapes, old dashed and new solid.
+- **Draw amounts.** A query count that drops, a file that doubles, a limit
+  that moves: a few bars.
+- **Draw the argument.** For a recommendation, the risk or the proposal as a
+  picture: the two paths that now disagree, the box that has two jobs, the
+  case nobody handles marked with a pin and a note.
+
+Boxes, lines, arrows, labels and notes in any arrangement are fine. Mix forms in
+one picture when that's clearer (a sketch of a screen with a note pointing at
+the button, next to the request it sends). The `structure` and `sequence`
+kinds are shortcuts for two common shapes, not the menu; reach for `html` or
+`svg` whenever they don't fit. Keep each picture to one idea, with a title
+that says what to notice, and let the caption carry anything it can't show.
+
+Every diagram has `kind`, optional `title` and `caption` (Markdown), and where
+it shows:
 
 - `section`: `"feature"`, `"connection"` or `"shape"`, in the overview, or `"recs"`, at the
   top of the code step's Recommendations view. Default `"feature"`.
@@ -268,8 +325,9 @@ label.
 
 ### `html` and `svg`: anything else
 
-Hand-written markup in `html` or `svg`, for geometry, layouts, state machines,
-tables, or UI sketches. It renders in a shadow root, so it can't break the
+Hand-written markup in `html` or `svg`: UI mockups, records and tables,
+timelines, geometry, state machines, annotated sketches, little charts, or
+anything else. It renders in a shadow root, so it can't break the
 page, and it is static: `<script>` and `on*` attributes are removed. The page's
 colour variables inherit, so use them and it works in light and dark mode:
 `var(--text)`, `var(--muted)`, `var(--border)`, `var(--panel)`, `var(--bg)`,
@@ -280,6 +338,18 @@ Ready-made classes:
 - Layout: `.row` (flex row), `.col`, `.grid` (set `--cols`), `.box` (with
   `.new`, `.changed`, `.removed`), `.arrow` (→), `.down` (↓), `.tag`, `.title`,
   `.muted`, `.small`, `.add`, `.del`, `.accent`, plain `table`.
+- Sketching:
+  - `.screen` with a `.bar` (window title) and a `.body`: a rough app window.
+    Inside it, `.ui-btn` (`.primary`), `.ui-input`, `.ui-line` (a grey text
+    placeholder; set `--w`), `.ui-img` (an image placeholder).
+  - `.hl` outlines what to look at (`.hl.new`, `.hl.removed` recolour it);
+    `.ghost` fades something that isn't there yet or is going away; `.cross`
+    strikes out a removed value.
+  - `.note`: a sticky note; `.pin`: a numbered dot to tie a spot to a note.
+  - `.timeline`: its children become points on a line (`.new`, `.removed`,
+    `.ghost` colour the dot).
+  - `.meter`: a three-column grid of label, `<i style="--v:40%">` bar, value,
+    for amounts before and after.
 - SVG: strokes `.s-new`, `.s-old` (red dashed), `.s-changed`, `.s-muted`,
   `.s-accent`; fills `.f-new`, `.f-old`, `.f-panel`, `.f-accent`. Text is
   already themed. Give the `<svg>` a `viewBox` and it scales to fit.
@@ -291,6 +361,20 @@ Ready-made classes:
 
 For drawing domain geometry (a floor plan, a shape, a row of points), an SVG
 like this beats any box diagram: show the actual before and after positions.
+
+A mocked screen, for a dialog the review couldn't capture:
+
+```json
+{ "kind": "html", "title": "Archiving now asks first", "caption": "Sketch; the app wasn't running.",
+  "html": "<div class='row' style='align-items:flex-start'><div class='screen' style='width:260px'><div class='bar'>Archive project?</div><div class='body'><div class='ui-line' style='--w:90%'></div><div class='ui-line' style='--w:70%'></div><div class='row hl new' style='justify-content:flex-end'><span class='ui-btn'>Cancel</span><span class='ui-btn primary'>Archive</span></div></div></div><span class='note'><span class='pin'>1</span> New: Cancel is the default, so Enter no longer archives.</span></div>" }
+```
+
+A record before and after, and a timeline:
+
+```json
+{ "kind": "html", "title": "What a re-sync does to an order",
+  "html": "<div class='grid'><table><tr><th>status</th><td>shipped</td></tr><tr><th>synced_at</th><td class='cross'>2 days ago</td></tr></table><table><tr><th>status</th><td>shipped</td></tr><tr><th>synced_at</th><td class='add'>now</td></tr></table></div><div class='timeline' style='margin-top:12px'><div>Webhook arrives</div><div class='new'>Lock the order</div><div>Update</div><div class='ghost'>Email (skipped)</div></div>" }
+```
 
 ## Checking it
 

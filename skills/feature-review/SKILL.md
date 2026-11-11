@@ -10,25 +10,27 @@ allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '3.10'
+  version: '3.11'
 license: MIT
 ---
 
 # Feature Review
 
-Turns a diff into an offline HTML page that reviews a change in three steps,
-with comments that can be posted to the PR as one review:
+Turns a diff into an offline HTML page that reviews a change in steps, with
+comments that can be posted to the PR as one review:
 
-1. **Overview**: what the PR's author said (a digest, their screenshots, and
-   the full description folded away), the feature (what it does for the user,
-   and checks to confirm it does it well), the **feature overview** (the
-   flow end to end, each step pairing screenshots or recordings with what runs
-   underneath, the groups that do it, and its checks), and the shape of the change (layers, objects, departures
-   from the architecture, and how the codebase's shape moved), with diagrams.
+1. **Understand**, in three steps. **Story**: what the PR's author said (a
+   digest, their screenshots, the full description folded away), the feature,
+   and how it comes together step by step with screenshots. **Checks**: the
+   behaviour to confirm, each tagged Does or Should. These two are about the
+   outcome and the concepts, in product language with no code in them (see
+   `references/overview.md`). **Shape**: the technical picture: layers,
+   objects, departures from the architecture, where the lines landed, with
+   diagrams.
 2. **Code**, in two modes switched in the header (or `r`):
    - **Recommendations** (the default): each reading-guide group as a short
      gist with its visuals (diagrams, screenshots, screen recordings) and the
-     recommendations to answer yes or no. Each one bundles the line comments
+     recommendations to add or ignore. Each one bundles the line comments
      it stands for, so a large change can be reviewed at this height.
    - **Code**: the diff, file by file, in reading-guide order, with diagrams
      next to the complex groups.
@@ -98,7 +100,9 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
      (`summary`, `points`), and the **recommendations** that carry your
      comments: read `references/recommendations.md` for the format and how to
      fold comments into recommendations;
-   - then **visuals**: diagrams for the complex groups, and screenshots or
+   - then **visuals**: a picture wherever one would explain faster than
+     words (a group's gist, a recommendation, a feature step), mocked up in
+     `html`/`svg` when there is nothing to capture, and screenshots or
      short screen recordings of any UI change, captured with Playwright or the
      Chrome extension (recipes in `references/recommendations.md`). Skip
      captures when the app can't run, and say so in the report.
@@ -157,6 +161,11 @@ The page opens on the overview when there is one (and afterwards on whichever
 step the reviewer was last on). It has four parts, written by you under
 `overview` in the groups file:
 
+The Story and Checks steps (`author`, `feature`, `connection`) are about the
+outcome and the concepts: write them in product language, with no class,
+method, file or route names. The technical detail goes in the shape, the groups
+and the recommendations.
+
 - **From the PR description** (`author`): your digest of what the author said
   and why, and where the code differs from it. The page adds the description's
   screenshots and the full text, folded away.
@@ -164,10 +173,9 @@ step the reviewer was last on). It has four parts, written by you under
   **feature checks**: behaviour for the reviewer to confirm, each marked Looks
   right or Concern. Concerns and their notes are added to the review summary.
 - **Feature overview** (`connection`): how it all comes together. A short
-  end-to-end summary, how it works technically, then the flow step by step:
-  each step pairs what the user sees (screenshots, recordings) with a short,
-  optional "Under the hood" note (folded by default), links the groups and
-  files that do it, and holds the checks that test it. Make it as visual as you can.
+  end-to-end summary, then the flow step by step: each step is what the user
+  sees or does (with screenshots or recordings) and links the groups that do
+  it; its checks show with it on the Checks step. Make it as visual as you can.
 - **The shape**: the shape of this change (layers, objects, new dependencies,
   departures from the architecture instructions) and how it moves the shape
   of the codebase as a whole, always with a `structure` diagram that marks
@@ -175,9 +183,10 @@ step the reviewer was last on). It has four parts, written by you under
   blocks, from git: lines changed per area, and every touched file's length
   before and after.
 
-Diagrams (`structure`, `sequence`, `compare`, or hand-written `html`/`svg`) go
-in either part, and can also be pinned to a reading-guide group so they show
-next to the complex code they explain. Full format, guidance and examples:
+Diagrams go in either part, on a group's gist, and on recommendations. Draw
+the picture that's missing, in whatever form fits: `structure` and `sequence`
+are shortcuts, and hand-written `html`/`svg` (with a small sketching kit for
+mock screens, notes, timelines and bars) covers everything else. Full format, guidance and examples:
 `references/overview.md`. Without an overview the page opens on the code, and
 the Overview step shows only the computed shape.
 
@@ -203,10 +212,14 @@ The code step opens on the Recommendations view, built from the guide: one
 card per group with its `summary`, up to four `points`, its pinned diagrams and
 media, and its files as chips (folded by default) that open the diff. Your
 review comments live here as **recommendations**: one action each, which the
-reviewer answers Yes (its comments go into the review, or a general one into
-the summary) or No. Each also has a few short sections (`context`,
+reviewer adds (its comments go into the review, or a general one into
+the summary) or ignores. Each also has a few short sections (`context`,
 `problem`, `proposal`, `tradeoffs`), one sentence each and two at most, in
-plain words rather than code; its `kind` decides which. A recommendation can
+plain words rather than code; its `kind` decides which. Each also takes a
+`severity` (`blocking`, `should` or `nit`; none for a question), which the
+build adds to its comments as a label. Your comments are a starting point:
+add recommendations for anything else the reviewer should decide, with or
+without comments behind them. A recommendation can
 carry `visuals` (any diagram kind), `checks` (ids of feature checks it bears
 on, which then show on it with their Looks right / Concern buttons; a concern
 says yes to it), and a `principle` (the section of a shared guide it rests on,
