@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI/UX Partner Re-Engagement Audit — Day 1 Checklist</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: #FEFEFE;
+      color: #181A18;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 96px 145px 120px;
+    }
+
+    /* ── HEADER ── */
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #3A70B3;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .doc-title {
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      color: #181A18;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #E0E0E0;
+      margin-bottom: 32px;
+    }
+
+    /* ── METADATA ── */
+    .meta-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 40px;
+      font-size: 12px;
+      color: #515151;
+    }
+
+    .meta-fields p strong {
+      font-weight: 700;
+    }
+
+    /* ── HOW TO USE CALLOUT ── */
+    .callout {
+      background: #F5FBFF;
+      border: 1px solid #0873C4;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .callout-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #181A18;
+    }
+
+    .callout p {
+      font-size: 12px;
+      color: #515151;
+      line-height: 1.6;
+    }
+
+    .severity-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .severity-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #515151;
+    }
+
+    .severity-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-green  { background: #4CAF50; }
+    .dot-yellow { background: #FFC107; }
+    .dot-red    { background: #F44336; }
+
+    .callout-note {
+      font-size: 12px;
+      color: #515151;
+      line-height: 1.6;
+    }
+
+    /* ── SECTION ── */
+    .section {
+      margin-bottom: 56px;
+    }
+
+    .section-header {
+      border-bottom: 1px solid #E0E0E0;
+      padding-bottom: 20px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #181A18;
+    }
+
+    .section-intro {
+      font-size: 17px;
+      line-height: 1.8;
+      color: #545454;
+      margin-bottom: 20px;
+    }
+
+    /* ── CHECKLIST ITEMS ── */
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 24px;
+    }
+
+    .check-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 10px 0;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .check-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 3px;
+      border: 1px solid #757575;
+      border-radius: 4px;
+      appearance: none;
+      -webkit-appearance: none;
+      background: #FFFFFF;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .check-row input[type="checkbox"]:checked {
+      background: #3A70B3;
+      border-color: #3A70B3;
+    }
+
+    .check-row input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border: 2px solid white;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .check-label {
+      font-size: 16px;
+      color: #1E1E1E;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .check-description {
+      display: flex;
+      gap: 12px;
+      padding-top: 4px;
+    }
+
+    .check-description .spacer {
+      width: 16px;
+      flex-shrink: 0;
+    }
+
+    .check-description p {
+      font-size: 14px;
+      color: #757575;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    /* ── OBSERVATIONS ── */
+    .observations-label {
+      font-size: 17px;
+      font-weight: 700;
+      color: #545454;
+      margin-top: 8px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .observations-area {
+      border: 1px solid #E0E0E0;
+      border-radius: 6px;
+      min-height: 72px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #999;
+      font-style: italic;
+    }
+
+    /* ── TASKS BLOCK ── */
+    .tasks-block {
+      margin: 16px 0;
+      padding: 16px 20px;
+      background: #F9F9F9;
+      border-radius: 6px;
+      font-size: 15px;
+      color: #181A18;
+      line-height: 2;
+    }
+
+    .tasks-block p { font-weight: 700; margin-bottom: 4px; }
+
+    /* ── FINDINGS TABLE ── */
+    .findings-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 16px;
+    }
+
+    .findings-table th {
+      background: #F5F5F5;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 14px;
+      border: 1px solid #E0E0E0;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #545454;
+    }
+
+    .findings-table td {
+      padding: 12px 14px;
+      border: 1px solid #E0E0E0;
+      color: #181A18;
+      height: 44px;
+    }
+
+    .findings-table tr:nth-child(even) td {
+      background: #FAFAFA;
+    }
+
+    /* ── FOOTER ── */
+    .doc-footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid #E0E0E0;
+      font-size: 12px;
+      color: #999;
+      line-height: 1.8;
+    }
+
+    /* ── DIVIDER ── */
+    hr {
+      border: none;
+      border-top: 1px solid #E0E0E0;
+      margin: 0 0 48px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <span class="eyebrow">Day 1 Audit Checklist</span>
+  <h1 class="doc-title">UI/UX Partner Re-Engagement Audit</h1>
+
+  <div class="meta-fields">
+    <p><strong>Product being audited:</strong></p>
+    <p><strong>Auditor(s):</strong></p>
+    <p><strong>Date:</strong></p>
+    <p><strong>Figma file location:</strong></p>
+    <p><strong>Live URL(s):</strong></p>
+  </div>
+
+  <!-- HOW TO USE -->
+  <div class="callout">
+    <div class="callout-title">How to use this checklist:</div>
+    <p>Work through each section during your Day 1 heuristic walkthrough.<br>For each item, note your observation and rate severity:</p>
+    <div class="severity-row">
+      <div class="severity-item"><div class="severity-dot dot-green"></div> Holding up well</div>
+      <div class="severity-item"><div class="severity-dot dot-yellow"></div> Opportunity</div>
+      <div class="severity-item"><div class="severity-dot dot-red"></div> Significant gap</div>
+    </div>
+    <p class="callout-note">Not every item will apply to every product — use judgment. The goal is a rich findings list, not a complete score.</p>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 1: First Impressions &amp; Visual Coherence</h2>
+    </div>
+    <p class="section-intro">What a user feels in the first 30 seconds — and whether the product looks and feels like one thing.</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the product make a strong first impression? Is the purpose immediately clear? Does it feel trustworthy and intentional?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Aesthetic-Usability Effect: Users perceive aesthetically pleasing design as more usable. A polished first impression raises the user's confidence before they've done anything.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the visual language consistent throughout? Check button styles, typography, color usage, spacing, and iconography across multiple screens.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Law of Similarity / Law of Uniform Connectedness: Inconsistent visual treatment signals inconsistent relationships and creates cognitive friction.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the brand come through clearly? Would a user recognize this as the partner's product without seeing the logo?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is there visual hierarchy on key screens? Can you tell at a glance what's most important on each page?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>The Von Restorff Effect suggests that key actions and information should stand out from surrounding content. If everything competes for attention, nothing wins.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the color system doing meaningful work? Are colors used consistently for status, actions, and feedback, or are they arbitrary?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the typography scale feel intentional? Are heading levels distinct? Is body text readable at default sizes?</label>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 2: Navigation &amp; Wayfinding</h2>
+    </div>
+    <p class="section-intro">Can users find what they need, understand where they are, and get back if they get lost?</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the navigation structure predictable? Does it follow conventions users already know from other products?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Jakob's Law: Users spend most of their time on other sites and expect your product to work like the ones they already know. Deviation has a cost.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Do users always know where they are? Are there clear indicators of current location — active states, breadcrumbs, page titles?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle: Users shouldn't have to remember where they are or how they got there.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are navigation labels clear and in plain language? Avoid jargon, internal terminology, or labels that require knowledge users may not have.</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the depth of navigation appropriate? Are users ever more than three clicks from what they need?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the navigation work on mobile? Is there a mobile navigation pattern that behaves predictably?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are there dead ends? Can users always find a path forward or back?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle: Users need a clearly marked "emergency exit" from unwanted states.</p>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 3: Cognitive Load &amp; Complexity</h2>
+    </div>
+    <p class="section-intro">How hard is the product making users think? Are we asking for more mental effort than necessary?</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are screens trying to do too much? Flag pages where the number of elements, options, or decisions feels overwhelming.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Hick's Law: The time it takes to make a decision increases with the number and complexity of choices. Miller's Law: The average person can hold 7 (±2) items in working memory. Dense screens often exceed this without realizing it.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is information chunked effectively? Are related items grouped together in a way that's easy to scan?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Law of Common Region and Law of Proximity: Grouping related elements reduces cognitive effort and helps users build accurate mental models.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are forms as simple as they can be? Are we asking for information we don't need? Is the order logical?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Occam's Razor: The simplest solution that accomplishes the goal is usually the right one. Every extra field is a cost to the user.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the UI surface meaningful defaults? Are smart defaults used to reduce the number of decisions users have to make?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the language plain and direct? Flag any labels, instructions, or error messages that require interpretation.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle: The product should speak the user's language, not the system's.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are there progress indicators for multi-step processes? Do users know how far along they are and how much is left?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Goal-Gradient Effect: People move faster toward a goal as they perceive themselves getting closer. Zeigarnik Effect: People remember and feel pulled toward incomplete tasks. Showing progress leverages this natural tension productively.</p>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 4 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 4: Key Flows &amp; Task Completion</h2>
+    </div>
+    <p class="section-intro">Walk through the most critical user journeys. Can users accomplish what they came to do? Identify the top 2–3 core user tasks before starting this section and test each one.</p>
+
+    <div class="tasks-block">
+      <p>Core tasks being evaluated:</p>
+      1.<br>
+      2.<br>
+      3.
+    </div>
+
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the entry point obvious? Do users know where to start?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are calls to action clear and appropriately sized? Are primary actions visually prominent and easy to tap or click?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Fitts's Law: The time to acquire a target is a function of its distance and size. Small or distant targets increase error rates and friction.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the flow match the user's mental model of the task? Or does the product impose its own internal logic on the user?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Mental Model principle: When a product's structure doesn't match how users think about the task, they make more errors and feel less confident.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are there unnecessary interruptions or confirmation steps? Is the user ever stopped unnecessarily?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are error states handled gracefully? If something goes wrong, is the message clear, human, and actionable?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle: Error messages should be in plain language, identify the problem, and suggest a solution.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the product handle edge cases without breaking? Empty states, long content, slow connections — does it hold up?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Postel's Law: Products should gracefully handle unexpected input rather than failing.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">What is the peak moment of this flow? Is it a positive experience? What about the ending?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Peak-End Rule: Users judge an experience by how they felt at its most intense moment and at its end — not by the sum of the whole. Investing in these moments pays outsized returns.</p>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 5 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 5: Feedback &amp; System Communication</h2>
+    </div>
+    <p class="section-intro">Does the product keep users informed and in control?</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the product acknowledge user actions? Buttons, form submissions, and interactions should provide clear feedback that something happened.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle (Visibility of System Status): Keep users informed about what's going on through appropriate feedback within a reasonable time. Doherty Threshold: System responses faster than 400ms feel immediate. Slow feedback breaks the user's sense of control.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are loading states handled? Is there visual feedback during any process that takes more than a moment?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are success and error states distinct and clear? Can a user immediately tell whether something worked?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the undo/back behavior predictable? Can users reverse actions they didn't intend?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle: User control and freedom.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are notifications and alerts used appropriately? Or is the user being interrupted too often?</label>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 6 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 6: Consistency &amp; Standards</h2>
+    </div>
+    <p class="section-intro">Does the product behave predictably, and does it follow platform conventions?</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Do similar elements behave the same way throughout? Buttons, links, modals, toggles — consistent behavior builds trust.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Nielsen's principle: Users should not have to wonder whether different words, situations, or actions mean the same thing.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the product follow platform conventions (web, iOS, Android)? Deviation from standards should be intentional, not accidental.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Jakob's Law: Familiar patterns reduce learning curves.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the component set stable? Or are there one-off UI elements built for a specific screen and never normalized?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are interactive elements distinguishable from static ones? Can users tell what they can click, tap, or interact with?</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Law of Uniform Connectedness: Consistent visual treatment of interactive elements prevents confusion.</p>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 7 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 7: Accessibility</h2>
+    </div>
+    <p class="section-intro">Who is being left out — and what's the effort to fix it?</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does color usage meet WCAG contrast requirements? Check text against backgrounds at AA minimum (4.5:1 for body text, 3:1 for large text).</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the product usable without color alone? Are error states, status indicators, and data visualizations accessible to colorblind users?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are interactive elements keyboard accessible? Can a user navigate the product without a mouse?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are images, icons, and non-text elements labeled? Do screen readers have the context they need?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are tap/click targets large enough? Minimum 44×44px is the standard for touch targets.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Fitts's Law: Target size directly affects accuracy and ease of interaction.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is the reading order logical for screen readers? Does the DOM order match the visual order?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is motion used responsibly? Are there prefers-reduced-motion considerations for users sensitive to animation?</label>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 8 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 8: Mobile &amp; Responsive Behavior</h2>
+    </div>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the layout adapt gracefully across breakpoints? Check at mobile, tablet, and desktop viewports.</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are touch targets appropriately sized on mobile?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is any content hidden or inaccessible on mobile that's visible on desktop?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the navigation pattern work on mobile? Is it thumb-friendly?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Do forms work on mobile keyboards? Are the right input types being used (numeric keyboards for phone numbers, etc.)?</label>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 9 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 9: Performance Perception</h2>
+    </div>
+    <p class="section-intro">We're not doing a technical performance audit — but we note what we can observe.</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Does the product feel fast? Note any perceived slowness during loading, transitions, or interactions.</label>
+        </div>
+        <div class="check-description">
+          <div class="spacer"></div>
+          <p>Doherty Threshold: Productivity and engagement drop when users have to wait. Perceived performance matters even when actual speed isn't our scope.</p>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are images and media appropriately sized? Obvious oversized assets are worth flagging.</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Are transitions and animations additive or distracting? Do they reinforce hierarchy and state, or are they noise?</label>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- SECTION 10 -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Section 10: Strategic &amp; Forward-Looking Notes</h2>
+    </div>
+    <p class="section-intro">Step back from the individual findings. What's the bigger picture?</p>
+    <div class="checklist">
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">What is the product's single strongest moment? What should we protect and build on?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Where is the product most constrained by past decisions? What would we do differently with today's tools and knowledge?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">What 1–2 changes would have the highest user impact with moderate effort? These are our lead opportunities.</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">Is there a meaningful modernization opportunity? A design system, an accessibility overhaul, a mobile-first rethink?</label>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-row">
+          <input type="checkbox">
+          <label class="check-label">What does "next" look like for this product? What's the exciting version of this story?</label>
+        </div>
+      </div>
+
+    </div>
+    <span class="observations-label">Observations:</span>
+    <div class="observations-area"></div>
+  </div>
+
+  <!-- FINDINGS SUMMARY -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Findings Summary</h2>
+    </div>
+    <p class="section-intro">After completing the walkthrough, list your top findings here before moving to Day 2 synthesis.</p>
+    <table class="findings-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Finding</th>
+          <th>Section</th>
+          <th>Severity</th>
+          <th>Impact</th>
+          <th>Effort</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>2</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>3</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>4</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>5</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>6</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>7</td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>8</td><td></td><td></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CLAUDE PROMPTING NOTES -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Claude Prompting Notes</h2>
+    </div>
+    <p class="section-intro">Prompts that worked well on this audit — use this space to capture any Claude prompts that generated particularly useful output during the walkthrough so we can build a shared library across audits.</p>
+    <div class="observations-area" style="min-height: 120px;"></div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    Part of the UI/UX Partner Re-Engagement Audit Practice<br>
+    Companion document: Audit Practice — Team Guide
+  </div>
+
+</div>
+</body>
+</html>

@@ -29,6 +29,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 | **[bem-structure](skills/bem-structure)** | CSS guidance using BEM (Block Element Modifier) methodology. Naming conventions, nesting rules, and modifier patterns. |
 | **[optics-context](skills/optics-context)** | RoleModel's Optics design system: components, `--op-` design tokens, and theming. Reads tokens and components from the installed `@rolemodel/optics` package; `references/theming.md` covers brand colors, color scales, fonts, and dark mode. |
 | **[ux-review](skills/ux-review)** | Review UI code against Nielsen's 10 heuristics and the Laws of UX, reported as a severity-ranked issue log with file-and-line evidence and Optics-based fixes. |
+| **[ux-audit](skills/ux-audit)** | Run a full UX/UI audit of a web app, from codebase scan to client report (reveal.js, HTML, or Figma), tracked as one Linear issue from the UX Audit form, with PostHog usage data when the app has it. |
 
 ### Rails
 
@@ -79,8 +80,13 @@ There are three ways to add these skills to your project. Choose the one that be
 
 ### Option 0: Claude Code plugin (recommended for Claude Code)
 
-    /plugin marketplace add RoleModel/claude-plugins
-    /plugin install rolemodel-skills@rolemodel
+    /plugin marketplace add RoleModel/skills
+    /plugin install rolemodel-skills@rolemodel-skills
+
+This repo is its own marketplace. It is also listed in the
+[RoleModel/claude-plugins](https://github.com/RoleModel/claude-plugins)
+marketplace, as `rolemodel-skills@rolemodel`, next to RoleModel's other
+plugins. Install it from one marketplace, not both.
 
 Installs every skill plus the subagents `make-it-right` uses. Don't also copy
 or symlink these skills into `.claude/skills/`: you'd get each one twice, and
