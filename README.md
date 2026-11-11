@@ -80,8 +80,13 @@ There are three ways to add these skills to your project. Choose the one that be
 
 ### Option 0: Claude Code plugin (recommended for Claude Code)
 
-    /plugin marketplace add RoleModel/claude-plugins
-    /plugin install rolemodel-skills@rolemodel
+    /plugin marketplace add RoleModel/skills
+    /plugin install rolemodel-skills@rolemodel-skills
+
+This repo is its own marketplace. It is also listed in the
+[RoleModel/claude-plugins](https://github.com/RoleModel/claude-plugins)
+marketplace, as `rolemodel-skills@rolemodel`, next to RoleModel's other
+plugins. Install it from one marketplace, not both.
 
 Installs every skill plus the subagents `make-it-right` uses. Don't also copy
 or symlink these skills into `.claude/skills/`: you'd get each one twice, and
