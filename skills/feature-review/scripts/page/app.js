@@ -1107,8 +1107,8 @@
     return list.map((c) => {
       const k = checkOf(c);
       return '<div class="chk ' + (k.s || '') + '" data-k="' + esc(c.kid) + '"><div class="chkbtns">' +
-        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">&#10003; Looks right</button>' +
-        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">! Concern</button></div>' +
+        '<button type="button" data-chk="ok" class="' + (k.s === 'ok' ? 'on' : '') + '">Looks right</button>' +
+        '<button type="button" data-chk="concern" class="' + (k.s === 'concern' ? 'on' : '') + '">Concern</button></div>' +
         (c.kind === 'should'
           ? '<div class="chktext"><span class="ktag should" title="Behaviour the change should have but doesn\'t yet">Should</span>'
           : '<div class="chktext"><span class="ktag does" title="Behaviour the change implements. Confirm it works and is wanted.">Does</span>') +
@@ -1192,8 +1192,8 @@
     (note ? '<p class="lede">' + note + '</p>' : '') + '</div>';
   const stepFoot = (cur) => {
     const at = STEPS.findIndex((s) => s.id === cur), b = STEPS[at - 1], n = STEPS[at + 1];
-    return '<div class="ovfoot">' + (b ? '<button type="button" class="quiet" data-across="-1">&larr; ' + b.label + ' <kbd>k</kbd></button>' : '') +
-      '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' &rarr; <kbd>j</kbd></button>' : '') + '</div>';
+    return '<div class="ovfoot">' + (b ? '<button type="button" class="quiet" data-across="-1">' + b.label + ' <kbd>k</kbd></button>' : '') +
+      '<span class="sp"></span>' + (n ? '<button type="button" class="primary big" data-across="1">Next: ' + n.label + ' <kbd>j</kbd></button>' : '') + '</div>';
   };
   function checksByStep() {
     const block = (title, list) => list.length ? '<section class="ovblock">' + (title ? '<h3>' + title + '</h3>' : '') + checksHtml(list) + '</section>' : '';
@@ -1316,7 +1316,7 @@
     const c = state.comments.find((x) => x.sid === s.sid);
     const st = c ? 'yes' : state.dismissed.includes(s.sid) ? 'no' : 'open';
     const btn = (act, label) => '<button type="button" data-rc="' + act + '" data-sid="' + esc(s.sid) + '">' + label + '</button>';
-    const acts = st === 'open' ? btn('accept', '&#10003; Accept') + btn('edit', 'Edit') + btn('dismiss', '&#10007; Dismiss')
+    const acts = st === 'open' ? btn('accept', 'Accept') + btn('edit', 'Edit') + btn('dismiss', 'Dismiss')
       : st === 'yes' ? '<span class="tag done">In review</span>' + btn('edit', 'Edit') + btn('remove', 'Remove')
         : '<span class="tag">Dismissed</span>' + btn('restore', 'Restore');
     const mine = editing && editing.inRecs && editing.sid === s.sid;
@@ -1357,7 +1357,7 @@
       '<div class="recdecide">' + (n ? goLink(sugs[0], 'Show in code', 'btn recgo') : '') + '<span class="recwhat">' + what + '</span><span class="sp"></span>' +
       // A lit button reads as the decision made ("Added", "Ignored"); pressing it again takes it back.
       '<button type="button" data-rec="no" class="no' + (st === 'no' ? ' on' : '') + '">' + (st === 'no' ? 'Ignored' : 'Ignore') + ' <kbd>i</kbd></button>' +
-      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">' + (st === 'yes' ? '&#10003; Added' : '+ Add') + ' <kbd>a</kbd></button></div></article>';
+      '<button type="button" data-rec="yes" class="yes' + (st === 'yes' ? ' on' : '') + '">' + (st === 'yes' ? 'Added' : 'Add') + ' <kbd>a</kbd></button></div></article>';
   }
 
   // The flow: one group at a time, its gist first, then each of its recommendations. Recommendations
@@ -1453,11 +1453,11 @@
     // Add and Ignore already move on, so on a recommendation the flow buttons step back to quiet links;
     // only the gist, which has nothing to decide, keeps Next as its main action.
     const onRec = it && it !== 'gist';
-    const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code &rarr;</a>' : '';
+    const groupCode = G.sec && G.sec.title ? '<a class="btn fcode" href="#g' + G.gi + '">Read this group\'s code</a>' : '';
     rv.innerHTML = '<div class="fhero"><div class="ftitle"><div><div class="eyebrow">' + esc(eyebrow) + '</div><h2>' + esc(G.title) + '</h2></div>' + groupCode + '</div>' +
       '<div class="fbar"><div class="pills">' + pillsHtml() + '</div>' +
       '<div class="fnav' + (onRec ? ' quiet' : '') + '"><span class="fnext">Up next: <b>' + upNext + '</b></span>' +
-      '<button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>&larr; Back <kbd>k</kbd></button>' +
+      '<button type="button" data-flow="-1"' + (pos.g === 0 && pos.i === 0 && STEPS[0].id === 'recs' ? ' disabled' : '') + '>Back <kbd>k</kbd></button>' +
       '<button type="button"' + (onRec ? '' : ' class="primary"') + ' data-flow="1">' + (onRec ? 'Skip' : 'Next') + ' <kbd>j</kbd></button></div></div></div>' +
       '<div class="fstage">' + (it === 'gist' ? gistHtml(G) : it ? recHtml(it) : '') + '</div>';
     const gv = rv.querySelector('[data-gvis]');
@@ -1613,7 +1613,7 @@
     { ev: 'REQUEST_CHANGES', label: 'Request changes', cls: 'danger', tip: 'Feedback that must be addressed before merging' },
     { ev: 'COMMENT', label: 'Comment', cls: '', tip: 'Feedback without approving' },
     { ev: 'APPROVE', label: 'Approve', cls: 'primary', tip: 'Approve merging these changes' },
-    { ev: 'APPROVE', shipit: true, label: '<span class="squirrel" aria-hidden="true">&#x1F43F;&#xFE0F;</span> Ship it', cls: 'primary shipit',
+    { ev: 'APPROVE', shipit: true, label: 'Ship it', cls: 'primary shipit',
       tip: 'Approve, with ' + SHIPIT + ' added to the summary' },
   ];
   sv.innerHTML =
@@ -1747,7 +1747,7 @@
     if (waiting) items.push({ warn: 1, html: '<a href="#" data-open="svcomments">' + plural(waiting, 'suggested comment') + ' not in your review</a>' });
     if (concerns().length) items.push({ warn: 1, html: plural(concerns().length, 'concern') + ' in the summary' });
     if (!items.some((i) => i.bad || i.warn)) items.push({ ok: 1, html: 'Everything is decided' });
-    return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + (i.bad ? '&#10007; ' : i.warn ? '&#9675; ' : '&#10003; ') + i.html + '</span>').join('');
+    return items.map((i) => '<span class="svchip' + (i.bad ? ' bad' : i.warn ? ' warn' : ' ok') + '">' + i.html + '</span>').join('');
   }
 
   // How much of what is going out blocks merging: the comments of each severity, plus summary-only
@@ -2039,7 +2039,7 @@
     $('steps').innerHTML = STEPS.map((st, i) => {
       const r = railState(st.id);
       return (st.sep ? '<li class="sep" aria-hidden="true"></li>' : '') + '<li class="' + [st.id === v ? 'on' : '', r.done ? 'done' : '', r.bad ? 'bad' : ''].join(' ') + '">' +
-        '<button type="button" data-step="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (r.done ? '&#10003;' : i + 1) + '</span>' +
+        '<button type="button" data-step="' + st.id + '" title="' + st.label + ' (' + (i + 1) + ')"><span class="rn">' + (i + 1) + '</span>' +
         '<span class="rl">' + st.label + '</span>' + (r.text ? '<span class="rs">' + esc(r.text) + '</span>' : '') + '</button></li>';
     }).join('');
   }
@@ -2059,7 +2059,7 @@
     }
     if (was) ys[was] = window.scrollY;
     if (step !== 'code' && step !== 'done') codeFrom = step;
-    $('gocode').innerHTML = step === 'code' ? '&larr; Back to ' + esc((STEPS.find((x) => x.id === codeFrom) || STEPS[0]).label) : 'View code <span class="hpct">' + readPct + '%</span>';
+    $('gocode').innerHTML = step === 'code' ? 'Back to ' + esc((STEPS.find((x) => x.id === codeFrom) || STEPS[0]).label) : 'View code <span class="hpct">' + readPct + '%</span>';
     mode = step === 'recs' ? 'recs' : 'diff';
     document.body.dataset.view = step;
     document.body.classList.toggle('overviewing', OVERVIEW.includes(step));
