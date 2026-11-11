@@ -10,7 +10,7 @@ allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '3.9'
+  version: '3.10'
 license: MIT
 ---
 
@@ -49,7 +49,7 @@ node $S/build-review.cjs <ref> --pr <N>               # a commit or range inside
 node $S/build-review.cjs <ref> --groups path.groups.json   # reading guide (below)
 node $S/build-review.cjs <ref> --pr <N> --serve       # serve on localhost: Submit, and expanding context
 node $S/build-review.cjs --pr <N> --since last        # re-review: only what changed since your last review
-node $S/build-review.cjs --pr <N> --since <sha>       # ...or since any commit
+node $S/build-review.cjs --pr <N> --since <sha>       # ...or since any commit (falls back to last after a force-push)
 node $S/build-review.cjs --pr <N> --no-threads        # skip loading the PR's existing review threads
 node $S/build-review.cjs --pr <N> --no-description    # skip the PR description and its screenshots
 node $S/pr-media.cjs --pr <N>                         # download the description's screenshots, to reuse as visuals
@@ -107,6 +107,10 @@ directory**, where the slug is a ticket ID from the commit or PR title (e.g.
    build looks up the user's last submitted review on the PR (see
    **Re-reviewing** below) and prints a `re-review:` line.
 5. **Open it.**
+   - **If `FEATURE_REVIEW_NO_OPEN` is set** (the build prints
+     `open: skipped (FEATURE_REVIEW_NO_OPEN)`), never run `open`: something
+     else, such as a menu bar app, opens the page. Still build, still `--serve`
+     in the background, and report the URL or path.
    - With a PR: run the build with `--serve` **in the background** (Bash
      `run_in_background`), then `open` the URL it prints. The server exits after
      a successful submit, which notifies you; report the review URL and any notes
@@ -235,6 +239,26 @@ When the user asks to re-review, or the `re-review:` line reports changes on a
 PR they reviewed before, offer the `--since last` page (or build it if that's
 what they asked for). Reuse the earlier guide where files overlap.
 
+**`FEATURE_REVIEW_SINCE=<sha>`**: when re-reviewing and this is set, build with
+`--since $FEATURE_REVIEW_SINCE` instead of `--since last`. It is the head the
+user last actually saw, which can be newer than their last submitted review.
+If that commit is gone or no longer on the branch (a force-push), the build
+falls back to your last review on its own and says so in the `re-review:`
+line; report that. With no review to fall back to it fails: rebuild with
+`--since last`, or the full page, and say why.
+
+A re-review stays on the delta:
+
+- **Lead with what changed since that commit**: a short summary of the new
+  commits (`git log --oneline <since>..<head>`) and what they do, as the
+  `author` digest or the start of the feature section.
+- **Go through the earlier threads and comments** (the `threads:` line, and
+  your saved `tmp/review/<slug>.review.md` if there is one) and say which ones
+  the new work addresses and which are still open. Recommend resolving or
+  replying to each rather than repeating it.
+- **Review only the delta.** Recommendations and checks are about the new
+  changes; earlier code comes in only where the new work depends on it.
+
 ## The page and submitting
 
 The reviewer drives the page; `references/page.md` describes its steps, keys,
@@ -258,6 +282,7 @@ submit page is their approval step.
 - `scripts/pr-media.cjs`: downloads a PR description's screenshots and recordings (`lib/pr-media.cjs`, shared with the build).
 - `scripts/serve-review.cjs`: localhost server for Save, Submit and `/api/file` (also runs standalone on a built page).
 - `scripts/submit-review.cjs`: posts a review JSON through `gh`; `saveReview` writes the Markdown and JSON.
+- `scripts/lib/events.cjs`: the optional event log and `FEATURE_REVIEW_NO_OPEN` check.
 - `scripts/lib/diff-parse.cjs`: the one diff parser, used by all three and inlined into the page.
 - `scripts/page/`: `style.css`, `highlight.js`, `markdown.js`, `diagrams.js`, `app.js`, inlined into every page.
 - `references/overview.md`: the overview format (feature, checks, shape, diagrams) and how to write it.
@@ -268,6 +293,18 @@ submit page is their approval step.
 - `references/preferences-template.md`: the per-user preferences file.
 - `references/page.md`: the page's steps, keys, threads, submit page and posting rules.
 - `references/developing.md`: constraints, the highlighter, and how to verify a change to the page.
+
+## Hooks for other tools
+
+Both are off unless set, so a plain run is unchanged:
+
+- `FEATURE_REVIEW_NO_OPEN=1`: don't `open` the page (step 5).
+- `FEATURE_REVIEW_EVENTS_DIR=<dir>`: the scripts append JSON lines to
+  `<dir>/<owner>__<repo>__<pr>.jsonl` (PR reviews only), each with `ts`, `pr`
+  and `repo`: `built` (`url` or null, `path`, `head_sha`, `rereview`,
+  `since_sha`), `opened` (first load of the page in a server run),
+  `submitted` (`review_url`, `commit_id`) and `server_exit`. A failed write is
+  ignored (`scripts/lib/events.cjs`).
 
 ## Gotchas
 

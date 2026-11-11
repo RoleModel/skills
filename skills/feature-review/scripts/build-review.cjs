@@ -14,6 +14,10 @@
  *   node build-review.cjs <commit-ish> --serve [--port N]  # serve on localhost so Submit can post
  *   node build-review.cjs --pr <N> --event approve      # default verdict on the submit page
  *   node build-review.cjs --pr <N> --since last         # only what changed since your last review
+ *   node build-review.cjs --pr <N> --since <sha>        # ...or since a commit; falls back to last if it is gone
+ *
+ * Env: FEATURE_REVIEW_NO_OPEN=1 tells the agent not to open the page (prints `open: skipped`);
+ * FEATURE_REVIEW_EVENTS_DIR=<dir> logs built/opened/submitted/server_exit events (lib/events.cjs).
  *   node build-review.cjs --pr <N> --no-threads         # skip loading the PR's existing review threads
  *   node build-review.cjs --pr <N> --no-description     # skip the PR description and its screenshots
  *
@@ -29,6 +33,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { parseDiff, commentableLines, anchorProblem } = require('./lib/diff-parse.cjs');
 const prMedia = require('./lib/pr-media.cjs');
+const events = require('./lib/events.cjs');
 
 const argv = process.argv.slice(2);
 const VALUED = ['-o', '--title', '--groups', '--pr', '--commit', '--port', '--event', '--since'];
@@ -114,11 +119,19 @@ if (opt('--since')) {
     if (!lastReview) die(`you have no submitted review on #${pr.number} to compare against`);
     sha = lastReview.sha;
   }
-  if (!have(sha, pr ? [sha, `pull/${pr.number}/head`] : [sha])) die(`commit ${sha.slice(0, 10)} is not available locally, and fetching it failed`);
   const head = target ? (target.includes('..') ? target.split(/\.{2,3}/)[1] || 'HEAD' : target) : 'HEAD';
+  const reachable = (s) => have(s, pr ? [s, `pull/${pr.number}/head`] : [s]);
+  const onHead = (s) => ok(() => git(['merge-base', '--is-ancestor', s, head]));
+  // A commit from before a force-push is gone or off the branch: diff from your last review instead, if that still is on it.
+  let fellBack = null;
+  if (lastReview && sha !== lastReview.sha && (!reachable(sha) || !onHead(sha)) && reachable(lastReview.sha) && onHead(lastReview.sha)) {
+    fellBack = sha;
+    sha = lastReview.sha;
+  }
+  if (!reachable(sha)) die(`commit ${sha.slice(0, 10)} is not available locally, and fetching it failed`);
   sha = git(['rev-parse', sha]).trim();
-  since = { sha, at: lastReview && lastReview.sha === sha ? lastReview.at : null,
-    rebased: !ok(() => git(['merge-base', '--is-ancestor', sha, head])) };
+  since = { sha, at: lastReview && lastReview.sha === sha ? lastReview.at : null, fellBack,
+    rebased: !onHead(sha) };
   target = `${sha}..${head}`;
 }
 
@@ -160,7 +173,7 @@ if (has('--stdin')) {
   slug = ((wholePr || prSince ? pr.title : subject).match(/[A-Z]+-\d+/) || [wholePr || prSince ? `pr-${pr.number}` : short])[0] +
     (since ? '-since' : '');
 }
-if (!diff.trim()) die('empty diff');
+if (!diff.trim()) die(since && since.fellBack ? `re-review: ${since.fellBack.slice(0, 10)} is no longer on the branch (likely a force-push); fell back to --since last, and nothing changed since your last review at ${since.sha.slice(0, 10)}` : 'empty diff');
 if (pr && !commitId) commitId = pr.headSha;
 
 const parsed = parseDiff(diff);
@@ -588,6 +601,7 @@ if (pr && !has('--no-threads')) {
 }
 if (since) {
   console.error(`re-review: showing changes since ${since.sha.slice(0, 10)}` +
+    (since.fellBack ? ` (your last review; ${since.fellBack.slice(0, 10)} is no longer on the branch, likely a force-push, so fell back to --since last)` : '') +
     (since.rebased ? ' (not an ancestor of the head: the branch was rebased, so this includes upstream changes)' : ''));
 } else if (lastReview) {
   const when = lastReview.at.slice(0, 10);
@@ -597,8 +611,12 @@ if (since) {
     (lastReview.rebased ? ' (rebased since)' : '') + '. Rebuild with --since last to see only those changes.');
 }
 
+const built = (url) => events.emit(pr, 'built', { url, path: path.resolve(out), head_sha: commitId || headRev || null,
+  rereview: !!(since || lastReview), since_sha: since ? since.sha : null });
+if (events.noOpen()) console.error('open: skipped (FEATURE_REVIEW_NO_OPEN)');
 if (has('--serve')) {
-  require('./serve-review.cjs').serve(out, { port: +(opt('--port') || 4823), keepAlive: has('--keep-alive') });
+  require('./serve-review.cjs').serve(out, { port: +(opt('--port') || 4823), keepAlive: has('--keep-alive'), onListening: built });
 } else {
+  built(null);
   console.log(out);
 }
