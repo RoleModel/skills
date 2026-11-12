@@ -21,17 +21,16 @@ Ask these in one batch, with a multiple-choice tool if there is one:
 2. **Data mode.** *Protect existing data* (default): may create records and change or delete only what this run created. *Allow changes to existing data*: local only. *Read-only*: opens everything, submits nothing. The rules for each mode are in [references/safety.md](references/safety.md). Read it now.
 3. **Roles.** Which user roles to map, and for each, how to sign in: test credentials from the project's seeds or fixtures (local hosts only), or the user signs in by hand.
 4. **Scope.** The whole app, or path prefixes such as `/widgets`.
-5. **Browser.** *Headed*: browser windows are visible during sign-in, the crawl, and mapping. *Headless*: no windows. A by-hand sign-in always opens a visible window, since the user has to see it.
 
-Don't start until all five are answered. Below, `[--headed]` means: pass `--headed` when the user chose headed.
+Don't start until all four are answered. Sign-in with seed credentials and the crawl always run headless. Whether mapping runs headed is asked in step 5.
 
 ## 2. Sign in once per role
 
 Set `RUN=tmp/app-map/<YYYYMMDD-HHMM>` and make sure `tmp/` is gitignored. For each role:
 
 ```bash
-playwright-cli -s=<run-id>-auth-<role> open <base>/<sign-in path> [--headed]
-# seed credentials: fill the form and submit. By hand: ask the user to sign in, wait for their go-ahead.
+playwright-cli -s=<run-id>-auth-<role> open <base>/<sign-in path>
+# seed credentials: fill the form and submit. By hand: add --headed to open so the user sees the window, ask the user to sign in, wait for their go-ahead.
 playwright-cli -s=<run-id>-auth-<role> state-save $RUN/auth/<role>.json
 playwright-cli -s=<run-id>-auth-<role> close
 ```
@@ -40,7 +39,7 @@ playwright-cli -s=<run-id>-auth-<role> close
 
 ```bash
 node <skill>/scripts/crawl.mjs --base <url> --start <path> --state $RUN/auth/<role>.json \
-  --role <role> --out $RUN/crawl/<role> [--headed] [--scope /widgets] [--allow-host]
+  --role <role> --out $RUN/crawl/<role> [--scope /widgets] [--allow-host]
 ```
 
 Read the summary it prints, not the whole index. Exit code 2 means the session expired mid-crawl: sign in again and rerun. The crawl only loads pages by following links. It never submits forms or clicks buttons, but a page that writes on its own when it loads will still write. `--help` lists the other options.
@@ -57,7 +56,10 @@ Show the user the sections with their page counts, plus the crawl's skipped patt
 
 ## 5. Map each section
 
-Ask the user, with the section list in front of them, whether to map in parallel subagents, one per section (faster, keeps this session's context small), or one at a time in this session (easier to watch and steer).
+Ask the user two questions in one batch, with the section list in front of them:
+
+1. **Subagents.** Map in parallel subagents, one per section (faster, keeps this session's context small), or one at a time in this session (easier to watch and steer).
+2. **Browser.** *Headed*: mapping browser windows are visible. *Headless*: no windows.
 
 **Without subagents:** map the sections yourself, one at a time, following [references/mapping-a-section.md](references/mapping-a-section.md) with the same values as the brief below.
 

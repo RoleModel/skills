@@ -16,8 +16,7 @@ const USAGE = `Usage: node crawl.mjs --base <url> --out <dir> [options]
   --deny <regex>       Never follow URLs matching this (repeatable)
   --max-pages <n>      Stop after n pages (default 300)
   --per-pattern <n>    Samples per URL pattern like /projects/:id (default 2)
-  --allow-host         Permit a host that is not localhost/.test/.localhost
-  --headed             Show the browser`
+  --allow-host         Permit a host that is not localhost/.test/.localhost`
 
 const { values: opts } = parseArgs({
   options: {
@@ -31,7 +30,6 @@ const { values: opts } = parseArgs({
     'max-pages': { type: 'string', default: '300' },
     'per-pattern': { type: 'string', default: '2' },
     'allow-host': { type: 'boolean', default: false },
-    headed: { type: 'boolean', default: false },
     help: { type: 'boolean', default: false }
   }
 })
@@ -149,7 +147,7 @@ async function main() {
   const outDir = path.resolve(opts.out)
   fs.mkdirSync(path.join(outDir, 'screens'), { recursive: true })
 
-  const browser = await chromium.launch({ headless: !opts.headed })
+  const browser = await chromium.launch()
   const context = await browser.newContext({
     storageState: opts.state,
     viewport: { width: 1440, height: 900 },
