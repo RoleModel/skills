@@ -73,7 +73,7 @@ Write `docs/app-map/README.md` yourself from the crawl and the mappers' reports,
 
 ## 7. Clean up, then report
 
-Follow **Cleanup** in [references/safety.md](references/safety.md): show the merged ledger and ask whether to delete the run's records.
+Follow **Cleanup** in [references/safety.md](references/safety.md): show the merged ledger, ask whether to delete the run's records, and on yes delete them from the Rails console.
 
 Then report: docs written, updated, unchanged, and not reached; problems found (console errors, 5xx responses, broken controls) with their pages; canvas pages flagged for scripted interaction; controls left untouched because of the data mode; and any records still in the app.
 

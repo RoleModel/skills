@@ -24,8 +24,10 @@ Every record the run creates gets the run marker at the start of its name or tit
 Right after a create succeeds, append one line to the ledger, `tmp/app-map/<run-id>/ledger/<section>.jsonl`:
 
 ```json
-{"type":"Widget","name":"QA Map 20261112-1430 Widget","url":"/widgets/812","section":"widgets","role":"admin","createdFrom":"/widgets/new"}
+{"model":"Widget","id":"812","name":"QA Map 20261112-1430 Widget","url":"/widgets/812","section":"widgets","role":"admin","createdFrom":"/widgets/new"}
 ```
+
+`model` is the record's class name and `id` is the identifier from its URL. Cleanup uses these to find the record.
 
 ## What counts as changing existing data
 
@@ -40,4 +42,14 @@ In Protect mode, open such a control to document it (open the modal, read the co
 
 ## Cleanup
 
-At the end of the run, show the user the merged ledger (type, name, URL, role) and ask whether to delete those records. On yes, delete each one through the app's own delete control as the role that created it, and document that delete flow if it isn't documented yet. Report any record that couldn't be deleted, with its URL. Records whose names carry the `QA Map` marker but are missing from the ledger come from a crashed run. List them and ask about them separately.
+At the end of the run, show the user the merged ledger (model, name, URL, role) and ask whether to delete those records. On yes, delete them from the Rails console, not the browser:
+
+1. Write `$RUN/cleanup.rb` with one `[model, id]` pair per ledger record, children before their parents. For each pair, find the record (use the lookup the app's controller uses when the id is a slug), skip it unless one of its attributes contains the run marker `QA Map <run-id>`, then call `destroy`. Print one line per record: destroyed, missing, skipped (no marker), or failed with `errors.full_messages`.
+2. Run it against the database the app under test uses: `bin/rails runner $RUN/cleanup.rb`, with the same `RAILS_ENV` as the running server.
+3. Report each record that wasn't destroyed, with its URL. Ask before deleting a skipped record by any other means.
+
+Use `destroy`, never `delete` or `delete_all`, so callbacks and `dependent:` associations run. A record created inside a ledger record (an unmarked line item on a marked order) goes with its parent. List any that remain afterward.
+
+On a hosted test environment, this machine's console reaches the wrong database. Give the user `cleanup.rb` to run in that environment's console, and don't run it yourself.
+
+Records whose names carry the `QA Map` marker but are missing from the ledger come from a crashed run. List them and ask about them separately.
