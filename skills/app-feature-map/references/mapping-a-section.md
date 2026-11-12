@@ -1,6 +1,6 @@
 # Mapping a section
 
-You document one section of a running web app. Your task names the section, the crawl output folder, the pages to document (new or changed fingerprints), the roles with their storageState files, the data mode, the run id, and the skill folder.
+You document one section of a running web app. Your task names the section, the crawl output folder, the pages to document (new or changed fingerprints), the roles with their storageState files, the data mode, the browser mode (headed or headless), the run id, and the skill folder.
 
 Read these first:
 
@@ -11,7 +11,7 @@ Read these first:
 ## For each page
 
 1. Start from the crawl JSON: headings, elements with locators, forms, canvases, and errors. Look at the screenshot in `screens/<slug>.png` when the layout or a canvas matters.
-2. Open the page in your own session, one per role: `playwright-cli -s=<run-id>-<section>-<role> state-load <state-file>`, then `goto`. Never use the default session, since other mappers are running at the same time.
+2. Open the page in your own session, one per role: `playwright-cli -s=<run-id>-<section>-<role> open`, adding `--headed` when the task's browser mode is headed, then `state-load <state-file>` and `goto`. Never use the default session, since other mappers are running at the same time.
 3. Reveal what the crawl couldn't see: open each menu, dropdown, tab, accordion, modal, and drawer, and empty "new" forms. Snapshot and record each, then close it.
 4. If the mode allows it, exercise the page's main flow once, following safety.md: create a marked record, log it to `ledger/<section>.jsonl`, and change or delete only ledger records. Record what happened under **Flows exercised**, including validation errors you triggered on purpose with one empty required field.
 5. Write the doc. When a doc already exists, keep its hand-written **Notes** and update the rest.
