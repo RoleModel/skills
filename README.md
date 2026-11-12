@@ -64,6 +64,7 @@ What isn't a skill: a project's own conventions (put those in its `AGENTS.md` or
 
 | Skill | Description |
 |-------|-------------|
+| **[app-feature-map](skills/app-feature-map)** | Crawl a running web app with Playwright and write `docs/app-map/`: one doc per page, organized by section, listing every interactive element in plain language with a Playwright locator, for testers and later QA scripts. Asks first whether existing data may be changed (protect, allow, or read-only), maps once per user role, optionally fans sections out to subagents, logs every record it creates, and updates only pages whose structure changed on a re-run. |
 | **[brave-breakdown](skills/brave-breakdown)** | Interactive BRAVE framework thought partner for breaking down a Linear card before starting work. Guides through Brainstorm, Reflect, Approach, Value, and Estimate — one question at a time. |
 | **[make-it-right](skills/make-it-right)** | The pass after code works: test agents check requirements are met (acceptance criteria, coverage, blast radius, UI/UX in a real browser), read-only review agents check it's done correctly (security, maintainable, readability, conventions, data patterns). Verifies every finding against the source, fixes them, and reports what a human still needs to judge. |
 | **[make-it-fast](skills/make-it-fast)** | Optional pass after `make-it-right`: reviews queries, request time, test speed, and page responsiveness, reusing `make-it-right`'s loop. Fixes only what it can measure, and reports before-and-after numbers. |
