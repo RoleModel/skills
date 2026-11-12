@@ -97,9 +97,10 @@ In the page:
     the viewer as `pr.viewer`). With CI failing, Approve and Ship it take a
     second click on the same button, which says why. Without a PR the button
     is **Copy review as Markdown**;
-  - the comments (with their code; replies quote what they answer, and
-    pending suggestions can be accepted or dismissed), recommendations, feature
-    checks and auto-reviewed files, each folded with its counts in the heading;
+  - the comments (with their code; replies quote what they answer,
+    pending suggestions can be accepted or dismissed, and **Edit** opens the
+    editor in place), recommendations, feature checks and auto-reviewed files,
+    each folded with its counts in the heading;
   - an Export row: **Copy as Markdown** (to hand the review to an agent or
     paste it anywhere) and **Copy as JSON** (for `submit-review.cjs`).
 
