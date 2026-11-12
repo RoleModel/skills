@@ -29,9 +29,6 @@ Changes a widget's name, size, and pricing. Reached from **Edit** on a widget's 
 ## Hidden UI
 - **More ▾** menu: Duplicate, Archive (asks "Are you sure?"), Delete (admin only).
 
-## Flows exercised
-- Created *QA Map 20261112-1430 Widget*, then edited its size. Price updated without a reload.
-
 ## Leads to
 - [Widget](show.md) · [Widgets](index.md)
 
@@ -41,11 +38,10 @@ Changes a widget's name, size, and pricing. Reached from **Edit** on a widget's 
 
 Rules:
 
-- Use the locator from the crawl JSON. If an element has none, write the best one you can confirm with `playwright-cli`, or write `locator: none (needs data-testid)`.
+- Build each locator from the `playwright-cli` snapshot: `getByTestId` when the element has a `data-testid` (check with `eval "el => el.dataset.testid" <ref>`), otherwise `getByRole` with the role and name the snapshot shows, or `getByLabel` for a labelled field. If nothing identifies it, write `locator: none (needs data-testid)`.
 - Mark role differences inline: `(admin only)`, `(hidden for member)`.
 - **Notes** records anything a tester should know: errors, console errors, 5xx responses, controls that do nothing, labels that don't match what they do, slow loads. Don't fix anything. Just describe what you saw.
 - Canvas pages: document the toolbars, palettes, and inspectors around the canvas as usual, then add a `## Canvas` section that describes the drawing regions from the screenshot (what's drawn, where the tools act), and end it with `Canvas: needs scripted interaction.`
-- Leave out **Flows exercised** in Read-only mode.
 
 ## Section index
 

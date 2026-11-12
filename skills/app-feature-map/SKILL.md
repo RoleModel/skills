@@ -9,7 +9,7 @@ metadata:
 
 Produces `docs/app-map/` in the target project: a top `README.md`, one folder per app section, and one doc per page (URL pattern). Each doc lists what's interactive on the page, what it does, and a locator for it. QA scripts and smoke tests are built from these docs later, so the locators matter as much as the prose.
 
-The work is split in two. `scripts/crawl.mjs` follows links and records each page's structure deterministically. Then each section is mapped: a section mapper opens what the crawl couldn't see, exercises the flows the data mode allows, and writes the docs. The mappers run either as parallel subagents or one at a time in this session, as the user chooses.
+The work is split in two. `scripts/crawl.mjs` follows links to list the pages, and records a fingerprint of each page's controls, its errors, and a screenshot. Then each section is mapped: a section mapper opens what the crawl couldn't see, exercises the flows the data mode allows, and writes the docs. The mappers run either as parallel subagents or one at a time in this session, as the user chooses.
 
 Prerequisites: the app is running, Playwright is installed in the project (`node_modules/playwright` or `@playwright/test`), and `playwright-cli` is on the path. Run everything from the project root.
 
@@ -21,10 +21,9 @@ Ask these in one batch, with a multiple-choice tool if there is one:
 2. **Data mode.** *Protect existing data* (default): may create records and change or delete only what this run created. *Allow changes to existing data*: local only. *Read-only*: opens everything, submits nothing. The rules for each mode are in [references/safety.md](references/safety.md). Read it now.
 3. **Roles.** Which user roles to map, and for each, how to sign in: test credentials from the project's seeds or fixtures (local hosts only), or the user signs in by hand.
 4. **Scope.** The whole app, or path prefixes such as `/widgets`.
-5. **Subagents.** Map sections in parallel subagents, one per section (faster, keeps this session's context small), or one at a time in this session (easier to watch and steer).
-6. **Browser.** *Headed*: browser windows are visible during sign-in, the crawl, and mapping. *Headless*: no windows. A by-hand sign-in always opens a visible window, since the user has to see it.
+5. **Browser.** *Headed*: browser windows are visible during sign-in, the crawl, and mapping. *Headless*: no windows. A by-hand sign-in always opens a visible window, since the user has to see it.
 
-Don't start until all six are answered. Below, `[--headed]` means: pass `--headed` when the user chose headed.
+Don't start until all five are answered. Below, `[--headed]` means: pass `--headed` when the user chose headed.
 
 ## 2. Sign in once per role
 
@@ -44,7 +43,7 @@ node <skill>/scripts/crawl.mjs --base <url> --start <path> --state $RUN/auth/<ro
   --role <role> --out $RUN/crawl/<role> [--headed] [--scope /widgets] [--allow-host]
 ```
 
-Read the summary it prints, not the page files. Exit code 2 means the session expired mid-crawl: sign in again and rerun. The crawl only loads pages by following links. It never submits forms or clicks buttons, but a page that writes on its own when it loads will still write. `--help` lists the other options.
+Read the summary it prints, not the whole index. Exit code 2 means the session expired mid-crawl: sign in again and rerun. The crawl only loads pages by following links. It never submits forms or clicks buttons, but a page that writes on its own when it loads will still write. `--help` lists the other options.
 
 ## 4. Decide what to document
 
@@ -57,6 +56,8 @@ Merge the role indexes by `pattern`. When `docs/app-map/` already exists, compar
 Show the user the sections with their page counts, plus the crawl's skipped patterns and errors, and go on once they agree.
 
 ## 5. Map each section
+
+Ask the user, with the section list in front of them, whether to map in parallel subagents, one per section (faster, keeps this session's context small), or one at a time in this session (easier to watch and steer).
 
 **Without subagents:** map the sections yourself, one at a time, following [references/mapping-a-section.md](references/mapping-a-section.md) with the same values as the brief below.
 
@@ -78,6 +79,6 @@ Then report: docs written, updated, unchanged, and not reached; problems found (
 
 ## Gotchas
 
-- **Web components hide their controls from `document.querySelector`.** The crawl walks open shadow roots, and `playwright-cli` snapshots see into them, but an `eval` using `document.querySelectorAll` misses them. Elements inside a component carry `shadowHost` in the crawl JSON.
-- **A delete link looks like an ordinary link.** Rails renders `link_to … data: { turbo_method: :delete }` as an `<a href>`. Check `method` and `confirm` in the crawl JSON before clicking any link on an existing record.
+- **Web components hide their controls from `document.querySelector`.** `playwright-cli` snapshots see into open shadow roots, but an `eval` using `document.querySelectorAll` misses them.
+- **A delete link looks like an ordinary link.** Rails renders `link_to … data: { turbo_method: :delete }` as an `<a href>`. Before clicking a link on an existing record, check it with `playwright-cli eval "el => [el.dataset.turboMethod, el.dataset.turboConfirm]" <ref>`. The crawl already skips these links.
 - **The link crawl misses some pages.** Pages reached only by JS (clickable table rows, buttons that navigate) or by query-string views (`?tab=`) don't show up as separate patterns. Mappers find them while exploring. Pass the important ones as extra `--start` paths on the next run.

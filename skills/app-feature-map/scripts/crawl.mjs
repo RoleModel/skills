@@ -11,7 +11,7 @@ const USAGE = `Usage: node crawl.mjs --base <url> --out <dir> [options]
   --start <path>       Page to start from (repeatable, default /)
   --state <file>       Playwright storageState from a signed-in session
   --role <name>        Label for this crawl's user role (default "default")
-  --out <dir>          Where to write index.json, pages/ and screens/
+  --out <dir>          Where to write index.json and screens/
   --scope <prefix>     Only follow paths under this prefix (repeatable)
   --deny <regex>       Never follow URLs matching this (repeatable)
   --max-pages <n>      Stop after n pages (default 300)
@@ -93,161 +93,41 @@ function slugOf(pattern, sample) {
   return sample > 1 ? `${slug}--${sample}` : slug
 }
 
-function locatorFor(element) {
-  const quote = value => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`
-  if (element.testid) return `getByTestId(${quote(element.testid)})`
-  if (!element.name || element.role === 'generic') return null
-  return `getByRole(${quote(element.role)}, { name: ${quote(element.name)} })`
-}
+const FINGERPRINT_ROLES = /^\s*- (button|link|textbox|searchbox|spinbutton|combobox|listbox|checkbox|radio|switch|slider|tab|menuitem|heading)(?: "((?:[^"\\]|\\.)*)")?/
 
-function fingerprintOf(inventory) {
-  const lines = inventory.elements
-    .filter(element => element.visible)
-    .map(element => `${element.role}|${element.name}|${element.region}`)
-    .concat(inventory.headings)
+function fingerprintOf(ariaSnapshot) {
+  const lines = ariaSnapshot
+    .split('\n')
+    .map(line => line.match(FINGERPRINT_ROLES))
+    .filter(Boolean)
+    .map(([, role, name = '']) => `${role}|${name}`)
     .sort()
   return createHash('sha1').update(lines.join('\n')).digest('hex').slice(0, 12)
 }
 
-function inventoryPage() {
-  const INTERACTIVE = [
-    'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea', 'summary',
-    '[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]', '[role=checkbox]',
-    '[role=radio]', '[role=switch]', '[role=combobox]', '[role=slider]',
-    '[contenteditable=""]', '[contenteditable=true]', '[tabindex]:not([tabindex="-1"])'
-  ].join(',')
-  const REGION = [
-    'dialog', '[role=dialog]', 'header', 'nav', 'main', 'aside', 'footer', 'form',
-    '[role=navigation]', '[role=banner]', '[role=main]', '[role=complementary]',
-    '[role=contentinfo]', '[role=tabpanel]', '[role=toolbar]', '[role=menu]', 'turbo-frame'
-  ].join(',')
-  const INPUT_ROLES = {
-    checkbox: 'checkbox', radio: 'radio', range: 'slider', submit: 'button', button: 'button',
-    reset: 'button', image: 'button', file: 'button', search: 'searchbox', number: 'spinbutton'
-  }
-
-  const clean = value => (value || '').replace(/\s+/g, ' ').trim()
-  const parentOf = node => node.parentNode || node.host || null
-
-  const roleOf = element => {
-    const explicit = element.getAttribute('role')
-    if (explicit) return explicit
-    const tag = element.localName
-    if (tag === 'a') return 'link'
-    if (tag === 'button' || tag === 'summary') return 'button'
-    if (tag === 'select') return element.multiple || element.size > 1 ? 'listbox' : 'combobox'
-    if (tag === 'textarea') return 'textbox'
-    if (tag === 'input') return INPUT_ROLES[(element.getAttribute('type') || '').toLowerCase()] || 'textbox'
-    return element.isContentEditable ? 'textbox' : 'generic'
-  }
-
-  const nameOf = element => {
-    const root = element.getRootNode()
-    const labelledBy = element.getAttribute('aria-labelledby')
-    if (labelledBy) {
-      const text = clean(labelledBy.split(/\s+/).map(id => root.getElementById?.(id)?.textContent).join(' '))
-      if (text) return text
-    }
-    if (element.getAttribute('aria-label')) return clean(element.getAttribute('aria-label'))
-    if (element.labels?.length) return clean([...element.labels].map(label => label.textContent).join(' '))
-    if (element.matches('input[type=submit],input[type=button]')) return clean(element.value)
-    const text = clean(element.innerText ?? element.textContent)
-    if (text) return text.slice(0, 80)
-    return clean(
-      element.getAttribute('title') ||
-        element.getAttribute('placeholder') ||
-        element.querySelector?.('img[alt]')?.alt ||
-        element.getAttribute('name')
-    )
-  }
-
-  const regionOf = element => {
-    for (let node = parentOf(element); node; node = parentOf(node)) {
-      if (node.nodeType === 1 && node.matches(REGION)) {
-        const label = node.getAttribute('aria-label') || node.id
-        return `${node.getAttribute('role') || node.localName}${label ? ` "${clean(label)}"` : ''}`
-      }
-    }
-    return 'page'
-  }
-
-  const isVisible = element => {
-    const box = element.getBoundingClientRect()
-    return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== 'hidden'
-  }
-
-  const shadowHostOf = element => {
-    const root = element.getRootNode()
-    return root === document ? null : root.host?.localName || null
-  }
-
-  const formOf = form => {
-    const method = form.querySelector('input[name=_method]')?.value || form.getAttribute('method') || 'get'
-    return `${method.toUpperCase()} ${form.getAttribute('action') || location.pathname}`
-  }
-
-  const describe = element => {
-    const data = element.dataset || {}
-    const record = {
-      role: roleOf(element),
-      name: nameOf(element),
-      tag: element.localName,
-      type: element.getAttribute('type'),
-      testid: data.testid || element.getAttribute('data-test-id') || data.cy || null,
-      href: element.localName === 'a' ? element.href : null,
-      method: data.turboMethod || data.method || null,
-      confirm: data.turboConfirm || data.confirm || null,
-      form: element.form ? formOf(element.form) : null,
-      required: element.required || null,
-      disabled: element.disabled || element.getAttribute('aria-disabled') === 'true' || null,
-      popup: element.getAttribute('aria-haspopup'),
-      controls: element.getAttribute('aria-controls'),
-      expanded: element.getAttribute('aria-expanded'),
-      action: data.action || null,
-      target: element.getAttribute('target'),
-      shadowHost: shadowHostOf(element),
-      region: regionOf(element),
-      visible: isVisible(element)
-    }
-    return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== null && value !== ''))
-  }
-
-  const elements = []
-  const headings = []
-  const canvases = []
-  const components = new Set()
-  const forms = new Map()
+function pageFacts() {
+  const links = []
+  let canvas = false
   const roots = [document]
-
   while (roots.length) {
     const root = roots.shift()
     for (const element of root.querySelectorAll('*')) {
-      if (element.shadowRoot) {
-        roots.push(element.shadowRoot)
-        components.add(element.localName)
-      }
-      if (/^h[1-3]$/.test(element.localName) && isVisible(element)) {
-        headings.push(`${element.localName}: ${clean(element.textContent)}`)
-      }
+      if (element.shadowRoot) roots.push(element.shadowRoot)
       if (element.localName === 'canvas') {
         const box = element.getBoundingClientRect()
-        if (box.width >= 150 && box.height >= 150) {
-          canvases.push({ width: Math.round(box.width), height: Math.round(box.height), region: regionOf(element), shadowHost: shadowHostOf(element) })
-        }
+        if (box.width >= 150 && box.height >= 150) canvas = true
       }
-      if (element.localName === 'form') forms.set(element, formOf(element))
-      if (element.matches(INTERACTIVE)) elements.push(describe(element))
+      if (element.localName === 'a' && typeof element.href === 'string' && element.href) {
+        links.push({
+          href: element.href,
+          text: (element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+          method: element.dataset.turboMethod || element.dataset.method || null,
+          confirm: element.dataset.turboConfirm || element.dataset.confirm || null
+        })
+      }
     }
   }
-
-  return {
-    title: document.title,
-    headings,
-    elements,
-    forms: [...forms.values()],
-    canvases,
-    components: [...components]
-  }
+  return { title: document.title, links, canvas }
 }
 
 function linkSkipReason(link, url) {
@@ -267,7 +147,6 @@ async function sessionExpired(page) {
 async function main() {
   const { chromium } = loadPlaywright()
   const outDir = path.resolve(opts.out)
-  fs.mkdirSync(path.join(outDir, 'pages'), { recursive: true })
   fs.mkdirSync(path.join(outDir, 'screens'), { recursive: true })
 
   const browser = await chromium.launch({ headless: !opts.headed })
@@ -325,37 +204,27 @@ async function main() {
     samplesByPattern.set(pattern, sample)
     const slug = slugOf(pattern, sample)
 
-    const inventory = await page.evaluate(inventoryPage)
-    inventory.elements.forEach(element => {
-      const locator = locatorFor(element)
-      if (locator) element.locator = locator
-    })
-    const ariaSnapshot = await page.locator('body').ariaSnapshot({ timeout: 10000 }).catch(error => `# aria snapshot failed: ${error.message}`)
+    const facts = await page.evaluate(pageFacts)
+    const ariaSnapshot = await page.locator('body').ariaSnapshot({ timeout: 10000 }).catch(() => '')
     await page.screenshot({ path: path.join(outDir, 'screens', `${slug}.png`), fullPage: true }).catch(() => {})
 
-    const record = {
+    index.pages.push({
       slug,
       url: finalUrl.href,
       pattern,
       section: sectionOf(pattern),
+      title: facts.title,
       status: response?.status() ?? null,
       from,
       via,
-      fingerprint: fingerprintOf(inventory),
-      ...inventory,
+      fingerprint: fingerprintOf(ariaSnapshot),
+      canvas: facts.canvas,
       consoleErrors,
       serverErrors
-    }
-    fs.writeFileSync(path.join(outDir, 'pages', `${slug}.json`), JSON.stringify(record, null, 2))
-    fs.writeFileSync(path.join(outDir, 'pages', `${slug}.aria.yml`), ariaSnapshot)
-    index.pages.push({
-      slug, url: record.url, pattern, section: record.section, title: record.title, status: record.status,
-      from, via, fingerprint: record.fingerprint, canvas: inventory.canvases.length > 0,
-      problems: consoleErrors.length + serverErrors.length
     })
-    process.stderr.write(`[${index.pages.length}] ${pattern} ${record.status ?? ''}\n`)
+    process.stderr.write(`[${index.pages.length}] ${pattern} ${response?.status() ?? ''}\n`)
 
-    for (const link of inventory.elements.filter(element => element.href)) {
+    for (const link of facts.links) {
       const target = new URL(link.href)
       target.hash = ''
       const reason = linkSkipReason(link, target)
@@ -368,7 +237,7 @@ async function main() {
       if (visitedPaths.has(target.pathname) || queue.some(item => new URL(item.url).pathname === target.pathname)) continue
       const queuedForPattern = queue.filter(item => patternOf(new URL(item.url)) === patternOf(target)).length
       if ((samplesByPattern.get(patternOf(target)) || 0) + queuedForPattern >= perPattern) continue
-      queue.push({ url: target.href, from: finalUrl.pathname, via: link.name || null })
+      queue.push({ url: target.href, from: finalUrl.pathname, via: link.text || null })
     }
   }
 
@@ -383,7 +252,7 @@ async function main() {
     pages: index.pages.length,
     sections: [...sections],
     canvasPages: index.pages.filter(entry => entry.canvas).length,
-    pagesWithProblems: index.pages.filter(entry => entry.problems).length,
+    pagesWithProblems: index.pages.filter(entry => entry.consoleErrors.length || entry.serverErrors.length).length,
     errors: index.errors.length,
     skippedPatterns: index.skipped.length,
     unvisitedQueue: index.unvisitedQueue,

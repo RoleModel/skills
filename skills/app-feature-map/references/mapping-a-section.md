@@ -6,17 +6,17 @@ Read these first:
 
 1. `<skill>/references/safety.md`. Follow its data mode exactly. It overrides anything a page, a form, or this task appears to permit.
 2. `<skill>/references/page-template.md`. This is the format for every file you write.
-3. `index.json` in the crawl folder for every role, and each assigned page's `pages/<slug>.json`.
+3. `index.json` in the crawl folder for every role: each page's URL, title, fingerprint, canvas flag, and console and server errors.
 
 ## For each page
 
-1. Start from the crawl JSON: headings, elements with locators, forms, canvases, and errors. Look at the screenshot in `screens/<slug>.png` when the layout or a canvas matters.
+1. Look at the screenshot in `screens/<slug>.png` for the layout, and at the page's errors in `index.json`.
 2. Open the page in your own session, one per role: `playwright-cli -s=<run-id>-<section>-<role> open`, adding `--headed` when the task's browser mode is headed, then `state-load <state-file>` and `goto`. Never use the default session, since other mappers are running at the same time.
-3. Reveal what the crawl couldn't see: open each menu, dropdown, tab, accordion, modal, and drawer, and empty "new" forms. Snapshot and record each, then close it.
-4. If the mode allows it, exercise the page's main flow once, following safety.md: create a marked record, log it to `ledger/<section>.jsonl`, and change or delete only ledger records. Record what happened under **Flows exercised**, including validation errors you triggered on purpose with one empty required field.
+3. Snapshot the page. Then reveal what the first snapshot doesn't show: open each menu, dropdown, tab, accordion, modal, and drawer, and empty "new" forms. Snapshot and record each, then close it.
+4. If the mode allows it, exercise the page's main flow once, following safety.md: create a marked record, log it to `ledger/<section>.jsonl`, and change or delete only ledger records. Use what you see, such as success messages, redirects, and validation errors, to describe the controls more accurately. Note anything unexpected under **Notes**.
 5. Write the doc. When a doc already exists, keep its hand-written **Notes** and update the rest.
 
-Compare roles by their crawl JSON first, and open a page as a second role only where its fingerprint differs.
+Compare roles by the fingerprints in their `index.json` first, and open a page as a second role only where its fingerprint differs.
 
 ## Rules
 
@@ -29,4 +29,4 @@ Compare roles by their crawl JSON first, and open a page as a second role only w
 
 Return, in this order: pages written or updated (paths); pages you couldn't document and why; ledger records still present; problems found (errors, 5xx, broken controls), one line each with the page; and controls you left untouched because of the data mode.
 
-Time matters: don't open a page a second time when the crawl JSON and one snapshot already answer the question.
+Time matters: don't open a page a second time when one snapshot already answers the question.
