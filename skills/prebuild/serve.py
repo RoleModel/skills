@@ -12,6 +12,7 @@ WRITE_LOCK = threading.Lock()
 PHOTO_PATH = re.compile(r"/photos/([\w-]+\.jpg)")
 BOARD_PATH = re.compile(r"/whiteboards/([\w-]+(?:\.seed)?\.excalidraw)")
 SKILL_SCRIPTS = {"/diagrams.js", "/whiteboard.js"}
+FONT_PATH = re.compile(r"/fonts/([\w-]+\.woff2)")
 MAX_BOARD_BYTES = 5_000_000
 
 
@@ -44,6 +45,9 @@ def build_handler(session, port):
                 return self.reply(200, "text/html; charset=utf-8", (SKILL_DIR / "presenter.html").read_bytes())
             if self.path in SKILL_SCRIPTS:
                 return self.reply(200, "text/javascript; charset=utf-8", (SKILL_DIR / self.path[1:]).read_bytes())
+            font = FONT_PATH.fullmatch(self.path)
+            if font and (SKILL_DIR / "fonts" / font.group(1)).is_file():
+                return self.reply(200, "font/woff2", (SKILL_DIR / "fonts" / font.group(1)).read_bytes())
             if self.path == "/board.json" and not (session / "board.json").exists():
                 return self.reply(200, "application/json", b"{}")
             super().do_GET()

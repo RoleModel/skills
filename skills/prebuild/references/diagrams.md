@@ -97,9 +97,13 @@ layouts, tables or UI sketches. It renders in a shadow root and is static:
 scripts and `on*` attributes are removed. Give an `<svg>` a `viewBox` and it
 scales to fit.
 
-Colours come from the page: `var(--text)`, `var(--muted)`, `var(--border)`,
-`var(--panel)`, `var(--bg)`, `var(--accent)`, `var(--add-b)` / `var(--add-bg)`
-(green), `var(--del-b)` / `var(--del-bg)` (red).
+Colours come from the page and follow its light, dark and high-contrast
+themes: `var(--ink)`, `var(--ink-2)`, `var(--ink-3)` for text, `var(--rule)` /
+`var(--rule-2)` for lines, `var(--paper)` / `var(--wash)` for fills,
+`var(--link)` for an accent, and `var(--pos)` / `var(--pos-wash)` (green),
+`var(--neg)` / `var(--neg-wash)` (red), `var(--warn)` / `var(--warn-wash)`
+(amber). These are feature-review's names. The older `--text`, `--muted`,
+`--border`, `--panel`, `--bg`, `--accent`, `--add-*` and `--del-*` still work.
 
 Ready-made classes:
 
@@ -121,7 +125,7 @@ The presenter validates every diagram when the slide opens and shows any
 problems (an unknown kind, an edge to a missing node) in red instead of the
 diagram.
 
-Diagrams shrink to fit the slide's column, and **Expand ⤢** opens one to
+Diagrams shrink to fit the slide's column, and **Expand** opens one to
 fill the window (a `compare` pair stays side by side there). Expand is for
 looking closer, not a fix for a diagram that's too big, so render-check each
 slide during prep: open it in the presenter and run `diagramCheck()` in the

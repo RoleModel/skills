@@ -1,6 +1,6 @@
 # Whiteboard (Excalidraw)
 
-Each slide has a **Whiteboard** row above Notes (**Open ▾**), with two modes. Both save to
+Each slide has a **Whiteboard** row above Notes (**Open**), with two modes. Both save to
 the same `whiteboards/<slide>.excalidraw`, so the wrap-up reads them the same
 way.
 
@@ -9,8 +9,8 @@ way.
 An Excalidraw editor inside the slide, for drawing at the keyboard or on a
 screen share. It starts from the slide's question and diagram (boxes keep
 their status colours, arrows stay attached to their boxes), and fits it to
-the view. It saves itself shortly after each edit; opening it without
-drawing saves nothing. **Full screen ⤢** gives it the whole screen.
+the view, and follows the presenter's light or dark theme. It saves itself shortly after each edit; opening it without
+drawing saves nothing. **Full screen** gives it the whole screen.
 
 - Excalidraw loads from esm.sh the first time it's opened, so it needs an
   internet connection then. The rest of the presenter stays offline.
