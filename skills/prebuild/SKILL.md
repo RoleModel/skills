@@ -44,17 +44,14 @@ look for a "BRAVE Breakdown" heading in this conversation first, then in the
 card's description and comments.
 
 **When there is one, build from it:**
-- **Skip the prerequisite questions** it already answers, such as scope and
-  exclusions.
-- **Shorten the explain-back** to one line: "Built from your breakdown:
-  <approach in a sentence>. Still right?"
-- **Turn its scope, approach and estimate into `constraint` facts** with
-  `"ref": "BRAVE breakdown"`, so the teammate can challenge them.
-- **Put its risks and open questions on the boards** they belong to, as
-  pre-filled notes marked Open (see `notes` under Build the deck). These are
-  the owner's own words, so this is allowed even in `interviewer` mode.
-- **Spend prep finding what the breakdown missed:** stale card text, hidden
-  reach, colliding work. Those are the gaps the teammate session is for.
+- Skip questions it already answers, and shorten the explain-back to "Built
+  from your breakdown: <approach in a sentence>. Still right?"
+- Its scope, approach and estimate become `constraint` facts
+  (`"ref": "BRAVE breakdown"`), so the teammate can challenge them.
+- Its risks and open questions go on their boards as `notes` marked Open.
+  They're the owner's own words, so this is allowed even in `interviewer` mode.
+- Spend prep on what it missed: stale card text, hidden reach, colliding
+  work. Those are the gaps the teammate session is for.
 
 **When there isn't one** and the card is 8 points or more, offer to run
 `brave-breakdown` first. Don't insist.
@@ -84,10 +81,8 @@ Drawing set PDF ──┬──▶ Top
                   └┄┄▶ Right?  (new, the card's ask)
 ```
 
-Ask: "Is this the task?" Correct it until they agree. This is
-the first check, and it catches misunderstandings before the teammate is in
-the room. If you're building from a breakdown, use its one-line form instead
-(see Look for a breakdown).
+Ask: "Is this the task?" Correct it until they agree. This catches
+misunderstandings before the teammate is in the room.
 
 ### Build the deck
 Make the session folder `~/.prebuild/<ISSUE-ID>/` and write `deck.json` to it.
@@ -150,35 +145,24 @@ If port 8765 is taken, pick another and use it in the URLs below.
 
 ### 2a. Owner pass (async, owner alone)
 Open `http://localhost:8765/` in your client's browser pane if it has one, or
-with `open` if not. Tell the owner:
-- Go through every slide alone and answer what you can on the boards.
-- For anything you can't settle alone, pick **? Open question** in the box
-  under each board before writing it (it goes back to Note after each one).
-  For an existing note, hover over it and press `?`. Press Enter or **Add**
-  to add a note (Shift+Enter for a new line); anything still typed when you change slides is added too.
-- Use **Add photo** to snap a real whiteboard, or open the **Whiteboard** row above Notes to draw:
-  **Inline** in the slide, or a **Live session** on excalidraw.com for a remote
-  teammate (see `references/whiteboard.md`).
-- Everything saves as you go. Say "done" when you've been through it all.
+with `open` if not. Tell the owner to go through every slide alone, answer
+what they can on the boards, write anything they can't settle as an **Open
+question** (or press **Open** on an existing note), and say "done" at the
+end. Everything saves as they go. The whiteboard is in
+`references/whiteboard.md` if they ask. Then stay quiet until they say done.
 
-Then stay quiet until they say done.
+### 2b. Live session, only if something is Open
+Read `board.json` and count the Open notes per slide, ignoring untouched
+drafts. If none are Open, say so and go straight to wrap-up. Otherwise list
+them in chat (slide and note, one bullet each) and ask whether to run a live
+session with a teammate now or wrap up with them as open questions. With
+`--async`, skip the question and wrap up.
 
-### 2b. Decide whether a live session is needed
-Read `board.json` and count the Open notes per slide (ignore untouched drafts).
-- **None Open:** say so and go straight to wrap-up. No meeting needed.
-- **Some Open:** list them in chat (slide and note, one bullet each) and ask
-  whether to run a live session with a teammate now, or to wrap up with them as
-  open questions. With `--async`, skip the question and wrap up.
-
-### 2c. Live session (owner and teammate, Open items only)
-Open `http://localhost:8765/?open`. That view shows only the slides that still
-have Open notes, with settled notes dimmed for context. Tell them:
-- Talk through each Open note. When it's settled, turn its `?` off and add the
-  answer as a note.
-- Anything still unsettled at the end stays Open and becomes an open question.
-- Say "done" at the end. If they use Granola, it's worth recording the meeting.
-
-Then stay quiet. Answer questions only if they ask you directly.
+For a live session, open `http://localhost:8765/?open`. It shows only slides
+with Open notes, with settled notes dimmed. Tell them to talk through each
+one, turn **Open** off and add the answer once it's settled, and say "done"
+at the end. Anything still Open becomes an open question. If they use
+Granola, it's worth recording. Then stay quiet unless asked directly.
 
 ## 3. Wrap-up (Claude)
 
@@ -189,43 +173,14 @@ Then stay quiet. Answer questions only if they ask you directly.
    fold in what the team added, crossed out or moved.
 2. **Granola** (only if you have Granola tools): ask the owner whether the
    meeting was recorded. If it was, find it (search by the card title or the
-   session time) and pull in decisions or concerns that never reached the board. Mark
-   them *(from discussion)*. If the notes aren't ready yet, say so and carry on.
-3. Skip drafts the team left untouched (`draft: true`).
-4. Redraw the picture diagram with the team's corrections applied, as plain
-   Mermaid (Linear renders it in comments).
-5. Stop the server.
+   session time) and pull in decisions or concerns that never reached the
+   board. If the notes aren't ready yet, say so and carry on.
+3. Redraw the picture diagram with the team's corrections applied.
+4. Stop the server.
 
-Write the summary. Keep it to about half a screen, and leave out empty sections:
-
-````markdown
-### Pre-build: <ISSUE-ID> <title>
-_<tier> · <live with <names> | async>_
-
-```mermaid
-<corrected task diagram>
-```
-
-**Approach**
-- <step, in order>
-
-**In scope:** <items> · **Out of scope:** <items>
-
-**Done when**
-- [ ] <check>
-
-**Risks**
-- <risk> (likelihood/impact) — <mitigation, if discussed>
-
-**Open questions**
-- <question>
-````
-
-Use plain bullets for every list. The only exception is **Done when**, which
-uses checkboxes because people tick it off. Never use numbered lists.
-
-Always save the summary to `~/.prebuild/<ISSUE-ID>/summary.md`. It stays on
-the owner's machine, so this isn't sharing.
+Write the summary in the format in `references/summary.md`, and always save
+it to `~/.prebuild/<ISSUE-ID>/summary.md`. It stays on the owner's machine,
+so this isn't sharing.
 
 ## 4. Share
 
