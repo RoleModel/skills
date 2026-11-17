@@ -45,7 +45,8 @@ card's description and comments.
 
 **When there is one, build from it:**
 - Skip questions it already answers, and shorten the explain-back to "Built
-  from your breakdown: <approach in a sentence>. Still right?"
+  from your breakdown: <approach in a sentence>. Still right?", plus the
+  Assumed and Gaps lists from Explain it back.
 - Its scope, approach and estimate become `constraint` facts
   (`"ref": "BRAVE breakdown"`), so the teammate can challenge them.
 - Its risks and open questions go on their boards as `notes` marked Open.
@@ -81,8 +82,16 @@ Drawing set PDF ──┬──▶ Top
                   └┄┄▶ Right?  (new, the card's ask)
 ```
 
-Ask: "Is this the task?" Correct it until they agree. This catches
-misunderstandings before the teammate is in the room.
+Draw anything you assumed dashed (`┄` in text). Under the diagram, add up to
+three bullets each, and leave a list out when it's empty:
+- **Assumed:** what the summary relies on that neither the card nor the
+  code confirms, e.g. "Archiving can be undone (the card doesn't say)".
+- **Gaps so far:** facts prep found that could change the plan (a `gap` in
+  `references/deck.md`), each with its ref.
+
+Ask: "Is this the task, and are the assumptions right?" Correct it until they
+agree. A corrected assumption becomes a `constraint` fact, one still unsure
+becomes an Open note, and each gap carries into the deck as a `gap` fact.
 
 ### Build the deck
 Make the session folder `~/.prebuild/<ISSUE-ID>/` and write `deck.json` to it.
@@ -105,11 +114,9 @@ Rules for slides:
 - **A diagram on every slide** where there's something to draw. Read
   `references/diagrams.md` before writing the first one, and render-check
   every slide with its `diagramCheck()` before showing the owner the deck.
-- **Facts:** two to four per slide, each verified and with a `ref`. Tag each
-  `gap`, `constraint` or `context` (defined in `references/deck.md`). A gap is
-  anything that would make the owner say "huh, I didn't account for that".
-  Aim for at least one per slide. If prep finds none anywhere, tell the
-  owner, since that's worth knowing too.
+- **Facts:** two to four per slide, each verified and with a `ref`, tagged
+  `gap`, `constraint` or `context` (see `references/deck.md`). Aim for a gap
+  per slide; if prep finds none anywhere, tell the owner.
 - **No prose paragraphs.** If something needs explaining, it belongs in the
   diagram.
 
@@ -121,9 +128,7 @@ If neither is set, use `interviewer`.
 - **`nudge`**: one hidden "Did you consider…" hint per slide (`consider`).
 - **`strawman`**: draft answers on the boards for the team to keep, edit or
   delete (`seed`).
-
-At any level, the owner's own breakdown can go on the boards as real notes
-(`notes`).
+- At any level, the owner's own breakdown can go on as real `notes`.
 
 ### Owner reviews the deck
 Show the owner a short list of the slides (topic, question, a one-line summary
@@ -131,9 +136,6 @@ of the diagram) and ask what to cut, reword or add. Rewrite `deck.json` until
 they're happy. Don't start the session before they approve the deck.
 
 ## 2. Session: owner pass first, then live on what's still Open
-
-The aim is to answer as much as possible before anyone else is pulled in, so
-the live session stays short.
 
 Start the server in the background:
 
@@ -194,6 +196,5 @@ In live mode, list **Keep it here** first. In async mode, list **Post to
 Linear** first. Never post without an explicit yes. Once the owner has chosen,
 the skill is done.
 
-The presenter's wrap-up screen has its own **Copy as Markdown** button, which
-copies the raw boards straight away. Mention it when someone wants to share
-the notes before you've written the summary.
+If someone wants to share the notes before the summary exists, the
+presenter's wrap-up screen has its own **Copy as Markdown** button.
