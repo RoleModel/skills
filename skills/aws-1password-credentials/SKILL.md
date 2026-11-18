@@ -108,7 +108,7 @@ item, then run step 4 again. Nothing else changes.
 | `found 2` (or more) | Two items share a key name. Rename or archive one. |
 | `op` asks you to sign in, or hangs | Unlock 1Password. Check that the CLI setting in step 1 is on. |
 | The first command after unlocking takes about 10 seconds | Normal. Each later command takes about 2 seconds, because every `aws` command asks 1Password again. |
-| `aws` uses the wrong key when you leave out `--profile` | Something gives `aws` other keys. Run `env \| grep '^AWS_'` and unset any key variables it shows. Run `type aws`: if it is a function or alias, a 1Password shell plugin is passing its own keys, so remove the line that loads it from your shell profile. |
+| `aws` uses the wrong key when you leave out `--profile` | Something gives `aws` other keys. Run `env \| cut -d= -f1 \| grep '^AWS_'` to list names without values, and unset credential overrides such as `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` if present. Run `type aws`: if it is a function or alias, a 1Password shell plugin is passing its own keys, so remove the line that loads it from your shell profile. |
 
 ## Why not the 1Password shell plugin
 
