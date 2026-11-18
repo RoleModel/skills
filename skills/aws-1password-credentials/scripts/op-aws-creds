@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# AWS credential_process helper: reads an access key pair from 1Password.
+# Finds the API Credential item whose username ("key name" in the 1Password app)
+# is the given name, and prints it in the JSON shape the AWS CLI and SDKs expect.
+# Usage: op-aws-creds <key name> [vault]
+set -euo pipefail
+
+name="${1:?usage: op-aws-creds <key name> [vault]}"
+vault="${2:-Shared}"
+
+op item list --vault "$vault" --categories "API Credential" --format json |
+  op item get - --reveal --format json |
+  jq -s --arg name "$name" --arg vault "$vault" '
+    [.[] | select(any((.fields // [])[]; .label == "username" and .value == $name))]
+    | if length != 1 then
+        error("expected 1 API Credential item in vault \($vault) with key name \($name), found \(length)")
+      else .[0] end
+    | {
+        Version: 1,
+        AccessKeyId:     (.fields[] | select(.label == "Access Key ID").value),
+        SecretAccessKey: (.fields[] | select(.label == "Secret Access Key").value)
+      }'
