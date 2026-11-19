@@ -52,9 +52,9 @@ delete production data by mistake.
 
 Before you add a profile for a production key:
 
-- Find out what the key can do. If the IAM user name or the 1Password item
-  doesn't make it clear, ask the user. Treat a key that a deployed app uses as
-  one that can change data.
+- Find out what the key can do by checking its effective IAM permissions or
+  asking the user to confirm them; don't infer permissions from names or labels.
+  Treat unknown permissions, or a key that a deployed app uses, as write-capable.
 - If the key can change or delete anything, explain this risk to the user. Add
   the profile only after they clearly say yes.
 - Suggest a read-only key instead: a separate IAM user with the AWS managed
