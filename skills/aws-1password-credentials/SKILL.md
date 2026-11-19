@@ -12,7 +12,7 @@ allowed-tools: Bash Read Edit Write
 compatibility: Designed for Claude Code (or similar products). Needs macOS or Linux, the 1Password app and CLI, jq, and AWS CLI v2.
 metadata:
   author: rolemodel
-  version: "1.0"
+  version: "1.1"
   triggers: "aws profile, aws credentials, aws keys, 1password aws, op aws, credential_process, ~/.aws/config, ~/.aws/credentials, rotate aws key, test aws key"
 license: MIT
 ---
@@ -41,6 +41,28 @@ item that has all of these:
 
 Exactly one item in the vault may have each key name. If two have the same
 name, the helper stops with an error rather than guess.
+
+## Production keys
+
+Any agent that can run `aws` can use every profile in `~/.aws/config`. Don't
+count on the 1Password prompt as a check: after the user unlocks 1Password
+once, any `aws` command can get keys for some minutes without asking again. So
+a profile for a production key that can change or delete things lets an agent
+delete production data by mistake.
+
+Before you add a profile for a production key:
+
+- Find out what the key can do. If the IAM user name or the 1Password item
+  doesn't make it clear, ask the user. Treat a key that a deployed app uses as
+  one that can change data.
+- If the key can change or delete anything, explain this risk to the user. Add
+  the profile only after they clearly say yes.
+- Suggest a read-only key instead: a separate IAM user with the AWS managed
+  policy `ViewOnlyAccess` (it shows which resources exist and how they're set
+  up, not their contents), or `ReadOnlyAccess` if they need to read data such
+  as S3 objects. The user creates that IAM user and its key; this skill doesn't.
+- Put `readonly` in the name of a read-only profile, for example
+  `acme-prod-readonly`.
 
 ## Set up
 
