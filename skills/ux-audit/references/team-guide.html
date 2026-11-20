@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI/UX Audit Practice — Team Guide</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    :root {
+      --dark:   #04242B;
+      --navy:   #193C64;
+      --green:  #86C774;
+      --orange: #FFCD74;
+      --white:  #FFFFFF;
+      --fog:    #F2F4F3;
+      --ink:    #1C1C1C;
+      --mid:    #545454;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #E8EAEB;
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      padding: 48px 0;
+    }
+
+    /* ── SLIDE BASE ── */
+    .slide {
+      width: 900px;
+      aspect-ratio: 8.5 / 11;
+      margin: 0 auto 48px;
+      overflow: hidden;
+      position: relative;
+      background: var(--white);
+      box-shadow: 0 4px 32px rgba(0,0,0,0.18);
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 1 — COVER
+    ════════════════════════════════════════ */
+    .cover {
+      background: var(--dark);
+      display: grid;
+      grid-template-rows: 1fr auto;
+      padding: 64px 72px;
+    }
+
+    .cover-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .cover .eyebrow {
+      color: var(--green);
+      margin-bottom: 28px;
+    }
+
+    .cover h1 {
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      color: var(--white);
+      margin-bottom: 32px;
+    }
+
+    .cover h1 em {
+      font-style: normal;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .cover-sub {
+      font-size: 18px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.6;
+      max-width: 560px;
+      font-weight: 400;
+    }
+
+    .cover-rule {
+      width: 48px;
+      height: 3px;
+      background: var(--orange);
+      margin: 28px 0;
+    }
+
+    .cover-stats {
+      display: flex;
+      gap: 48px;
+    }
+
+    .cover-stat-num {
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--orange);
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .cover-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+
+    .cover-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-top: 32px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .cover-footer-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.08em;
+    }
+
+    .rm-mark {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.06em;
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 2 — WHY
+    ════════════════════════════════════════ */
+    .why-slide {
+      background: var(--navy);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    .why-left {
+      background: var(--dark);
+      padding: 72px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .why-left .eyebrow {
+      color: var(--green);
+      margin-bottom: 24px;
+    }
+
+    .why-left h2 {
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      color: var(--white);
+      margin-bottom: 28px;
+    }
+
+    .why-left h2 em {
+      font-style: normal;
+      color: var(--green);
+    }
+
+    .why-left p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .why-right {
+      padding: 72px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 32px;
+    }
+
+    .why-point {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .why-point:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .why-point-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--orange);
+    }
+
+    .why-point p {
+      font-size: 15px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 3 — FOUR LENSES
+    ════════════════════════════════════════ */
+    .lenses-slide {
+      background: var(--fog);
+      padding: 64px 72px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .lenses-slide .eyebrow {
+      color: #3A70B3;
+      margin-bottom: 20px;
+    }
+
+    .lenses-slide h2 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+      margin-bottom: 40px;
+      line-height: 1.15;
+    }
+
+    .lenses-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .lens-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .lens-num {
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1;
+    }
+
+    .lens-card:nth-child(1) .lens-num { color: var(--navy); }
+    .lens-card:nth-child(2) .lens-num { color: #3A70B3; }
+    .lens-card:nth-child(3) .lens-num { color: #2E7D32; }
+    .lens-card:nth-child(4) .lens-num { color: #E65100; }
+
+    .lens-name {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .lens-body {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--mid);
+      flex: 1;
+    }
+
+    .lens-question {
+      font-size: 12px;
+      font-weight: 600;
+      font-style: italic;
+      color: var(--navy);
+      padding-top: 10px;
+      border-top: 1px solid #E8EAEB;
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 4 — THE PROCESS
+    ════════════════════════════════════════ */
+    .process-slide {
+      background: var(--dark);
+      padding: 64px 72px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .process-slide .eyebrow {
+      color: var(--orange);
+      margin-bottom: 20px;
+    }
+
+    .process-slide h2 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--white);
+      margin-bottom: 40px;
+    }
+
+    .process-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    .process-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 28px 24px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      border-top: 3px solid;
+    }
+
+    .process-col:nth-child(1) { border-color: var(--green); }
+    .process-col:nth-child(2) { border-color: var(--orange); }
+    .process-col:nth-child(3) { border-color: #86B4F0; }
+
+    .process-day {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .process-col:nth-child(1) .process-day { color: var(--green); }
+    .process-col:nth-child(2) .process-day { color: var(--orange); }
+    .process-col:nth-child(3) .process-day { color: #86B4F0; }
+
+    .process-phase {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    .process-body {
+      font-size: 13px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.65);
+      flex: 1;
+    }
+
+    .process-output {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-top: 8px;
+    }
+
+    .process-deliverable {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.6;
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 5 — THEN / NOW / NEXT
+    ════════════════════════════════════════ */
+    .tnn-slide {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .tnn-header {
+      background: var(--dark);
+      padding: 44px 72px 36px;
+    }
+
+    .tnn-header .eyebrow {
+      color: var(--green);
+      margin-bottom: 14px;
+    }
+
+    .tnn-header h2 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--white);
+    }
+
+    .tnn-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .tnn-col {
+      padding: 40px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .tnn-col:nth-child(1) { background: #1A3540; }
+    .tnn-col:nth-child(2) { background: #122950; }
+    .tnn-col:nth-child(3) { background: var(--navy); }
+
+    .tnn-label {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .tnn-col:nth-child(1) .tnn-label { color: var(--green); }
+    .tnn-col:nth-child(2) .tnn-label { color: var(--orange); }
+    .tnn-col:nth-child(3) .tnn-label { color: #86B4F0; }
+
+    .tnn-subtitle {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .tnn-body {
+      font-size: 14px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.75);
+      flex: 1;
+    }
+
+    .tnn-rule {
+      font-size: 13px;
+      font-weight: 600;
+      font-style: italic;
+      color: rgba(255,255,255,0.5);
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 6 — DELIVERABLE STRUCTURE
+    ════════════════════════════════════════ */
+    .deliverable-slide {
+      background: var(--fog);
+      padding: 64px 72px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .deliverable-slide .eyebrow {
+      color: #3A70B3;
+      margin-bottom: 20px;
+    }
+
+    .deliverable-slide h2 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+      margin-bottom: 36px;
+    }
+
+    .deliverable-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .deliverable-item {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 20px;
+      background: var(--white);
+      border-radius: 10px;
+      padding: 24px 28px;
+      align-items: start;
+    }
+
+    .deliverable-n {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      color: var(--navy);
+      padding-top: 2px;
+    }
+
+    .deliverable-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    .deliverable-desc {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--mid);
+    }
+
+    /* ════════════════════════════════════════
+       SLIDE 7 — CLOSE
+    ════════════════════════════════════════ */
+    .close-slide {
+      background: var(--dark);
+      padding: 64px 72px;
+      display: grid;
+      align-content: center;
+      gap: 0;
+    }
+
+    .close-slide .eyebrow {
+      color: var(--green);
+      margin-bottom: 24px;
+    }
+
+    .close-slide h2 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--white);
+      margin-bottom: 48px;
+      line-height: 1.15;
+    }
+
+    .close-slide h2 em {
+      font-style: normal;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .close-recs {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .close-rec {
+      display: flex;
+      align-items: baseline;
+      gap: 24px;
+      padding: 18px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .close-rec:last-child {
+      border-bottom: none;
+    }
+
+    .close-rec-num {
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      color: var(--orange);
+      line-height: 1;
+      min-width: 80px;
+    }
+
+    .close-rec-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+    }
+
+    .close-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 40px;
+      padding-top: 28px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .close-footer-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.08em;
+    }
+
+    .rm-credit {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ SLIDE 1: COVER ══════════════════════ -->
+  <div class="slide cover">
+    <div class="cover-body">
+      <span class="eyebrow">RoleModel Software</span>
+      <h1>UI/UX Audit<br><em>Practice</em></h1>
+      <div class="cover-rule"></div>
+      <p class="cover-sub">How we run partner re-engagement audits — and why the combination of Claude and the Figma MCP changes what's possible.</p>
+    </div>
+    <div class="cover-footer">
+      <div class="cover-stats">
+        <div>
+          <div class="cover-stat-num">3</div>
+          <div class="cover-stat-label">Days</div>
+        </div>
+        <div>
+          <div class="cover-stat-num">4</div>
+          <div class="cover-stat-label">Lenses</div>
+        </div>
+        <div>
+          <div class="cover-stat-num">1</div>
+          <div class="cover-stat-label">Prototype</div>
+        </div>
+      </div>
+      <div class="cover-footer-label">Team Guide · Companion: Day 1 Audit Checklist</div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 2: WHY ════════════════════════ -->
+  <div class="slide why-slide">
+    <div class="why-left">
+      <span class="eyebrow">Why We're Doing This</span>
+      <h2>Show up with<br><em>energy</em>,<br>not a list of<br><em>problems</em>.</h2>
+      <p>We have a real opportunity with long-standing partners — products we may have launched years ago that could genuinely benefit from what we can do today.</p>
+    </div>
+    <div class="why-right">
+      <div class="why-point">
+        <div class="why-point-label">The goal</div>
+        <p>Not to walk in with a list of problems — but with a compelling vision for what these products could become.</p>
+      </div>
+      <div class="why-point">
+        <div class="why-point-label">For partners</div>
+        <p>These audits should feel exciting, not critical. An honest look at where things stand and a motivating picture of what's possible.</p>
+      </div>
+      <div class="why-point">
+        <div class="why-point-label">For us</div>
+        <p>The AI-accelerated workflow compresses over a week of work into 2–3 focused days. That's how we make this practice scale.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 3: FOUR LENSES ════════════════ -->
+  <div class="slide lenses-slide">
+    <span class="eyebrow">What We're Evaluating</span>
+    <h2>Four lenses.<br>Every product, every time.</h2>
+    <div class="lenses-grid">
+      <div class="lens-card">
+        <div class="lens-num">01</div>
+        <div class="lens-name">Experience Gaps</div>
+        <div class="lens-body">Moments where users have to work harder than they should. Confusing navigation, flows that don't match how people think about a task, forms that ask for too much.</div>
+        <div class="lens-question">Where does this product fight the user?</div>
+      </div>
+      <div class="lens-card">
+        <div class="lens-num">02</div>
+        <div class="lens-name">Visual &amp; Brand Coherence</div>
+        <div class="lens-body">Design inconsistency accumulates quietly. Different button treatments, mismatched type scales, color drift — these erode trust even when users can't articulate why.</div>
+        <div class="lens-question">Does this feel like one product?</div>
+      </div>
+      <div class="lens-card">
+        <div class="lens-num">03</div>
+        <div class="lens-name">Modernization Moments</div>
+        <div class="lens-body">High-visibility improvements that have become table stakes since the original design: accessibility compliance, mobile responsiveness, a proper component system.</div>
+        <div class="lens-question">What has the industry moved past us on?</div>
+      </div>
+      <div class="lens-card">
+        <div class="lens-num">04</div>
+        <div class="lens-name">Strategic Opportunities</div>
+        <div class="lens-body">Where is the product constrained by old decisions that are actually solvable now? What could it do that it doesn't today? This section should feel generative — a glimpse of v-next.</div>
+        <div class="lens-question">What becomes possible next?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 4: THE PROCESS ════════════════ -->
+  <div class="slide process-slide">
+    <span class="eyebrow">The 2–3 Day Process</span>
+    <h2>Structured, fast, and repeatable.</h2>
+    <div class="process-cols">
+      <div class="process-col">
+        <div class="process-day">Day 1</div>
+        <div class="process-phase">Discover &amp; Document</div>
+        <div class="process-body">Run a structured heuristic walkthrough using the audit checklist. Use Claude to surface friction points, accessibility gaps, and pattern inconsistencies. Pull existing Figma files — use the Figma MCP to extract tokens, component inventories, and layout patterns.</div>
+        <div class="process-output">Producing:</div>
+        <div class="process-deliverable">Annotated findings list · Component inventory · First-pass friction map</div>
+      </div>
+      <div class="process-col">
+        <div class="process-day">Day 2</div>
+        <div class="process-phase">Synthesize &amp; Prioritize</div>
+        <div class="process-body">Not every finding is worth presenting. Prioritize on two axes: user impact and implementation effort. Claude helps draft the narrative framing. By end of day, rough wireframes in Figma for the 2–3 highest-impact opportunities.</div>
+        <div class="process-output">Producing:</div>
+        <div class="process-deliverable">Prioritized findings · Draft narrative · Initial wireframes</div>
+      </div>
+      <div class="process-col">
+        <div class="process-day">Day 3</div>
+        <div class="process-phase">Prototype &amp; Package</div>
+        <div class="process-body">Pick one or two of the strongest opportunities and build a lightweight vibe-coded prototype. One flow, done well. The goal is an "aha" moment. Then assemble the deliverable — Claude drafts narrative, Figma handles visual presentation.</div>
+        <div class="process-output">Producing:</div>
+        <div class="process-deliverable">Clickable prototype · Complete partner-facing deliverable</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 5: THEN / NOW / NEXT ══════════ -->
+  <div class="slide tnn-slide">
+    <div class="tnn-header">
+      <span class="eyebrow">How We Present It</span>
+      <h2>The "Then / Now / Next" frame.</h2>
+    </div>
+    <div class="tnn-cols">
+      <div class="tnn-col">
+        <div class="tnn-label">Then</div>
+        <div class="tnn-subtitle">Honor the original work</div>
+        <div class="tnn-body">We honor the original work and the context it was built in. What were the constraints? What did it accomplish? We say this genuinely — not as diplomatic setup, but because it's true and it matters.</div>
+        <div class="tnn-rule">"This was well-executed for the context it was built in."</div>
+      </div>
+      <div class="tnn-col">
+        <div class="tnn-label">Now</div>
+        <div class="tnn-subtitle">Name what's changed</div>
+        <div class="tnn-body">We name what's changed: user expectations, technology, the competitive landscape. This isn't criticism — it's context. Framed honestly, partners recognize it immediately and feel respected.</div>
+        <div class="tnn-rule">"When this was built, X — today users expect Y."</div>
+      </div>
+      <div class="tnn-col">
+        <div class="tnn-label">Next</div>
+        <div class="tnn-subtitle">The opportunity</div>
+        <div class="tnn-body">This is where the energy goes. The wireframes, the prototype, the invitation. We're starting a conversation, not closing a sale. What could phase one look like? What would we explore together?</div>
+        <div class="tnn-rule">"Here's what becomes possible."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 6: DELIVERABLE STRUCTURE ══════ -->
+  <div class="slide deliverable-slide">
+    <span class="eyebrow">Deliverable Structure</span>
+    <h2>The output should feel like<br>a magazine, not a bug report.</h2>
+    <div class="deliverable-list">
+      <div class="deliverable-item">
+        <div class="deliverable-n">01</div>
+        <div>
+          <div class="deliverable-name">Executive Summary</div>
+          <div class="deliverable-desc">One page, shareable upward. Plain language, no design jargon. What's the core opportunity, what are the 2–3 things we'd do, and what's the rough shape of the impact.</div>
+        </div>
+      </div>
+      <div class="deliverable-item">
+        <div class="deliverable-n">02</div>
+        <div>
+          <div class="deliverable-name">Findings</div>
+          <div class="deliverable-desc">Organized by theme, not severity. Each finding pairs <em>what we observed</em> with <em>what this means for users.</em> Annotated screenshots throughout. Grounded in behavior, not opinion.</div>
+        </div>
+      </div>
+      <div class="deliverable-item">
+        <div class="deliverable-n">03</div>
+        <div>
+          <div class="deliverable-name">Opportunities</div>
+          <div class="deliverable-desc">Wireframes, UI design sketches, and the prototype. Visually rich, relatively concise. We're showing a direction and making people lean forward — not justifying every decision.</div>
+        </div>
+      </div>
+      <div class="deliverable-item">
+        <div class="deliverable-n">04</div>
+        <div>
+          <div class="deliverable-name">What's Next</div>
+          <div class="deliverable-desc">An explicit invitation. What could phase one look like? What questions would we want to explore together? Leave it open — we're starting a conversation, not closing a sale.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 7: CLOSE ══════════════════════ -->
+  <div class="slide close-slide">
+    <span class="eyebrow">Running This as a Repeatable Practice</span>
+    <h2>What we standardize<br><em>across every engagement.</em></h2>
+    <div class="close-recs">
+      <div class="close-rec">
+        <div class="close-rec-num">01</div>
+        <div class="close-rec-title">Run the Day 1 checklist — it's the consistent foundation that makes every audit start fast</div>
+      </div>
+      <div class="close-rec">
+        <div class="close-rec-num">02</div>
+        <div class="close-rec-title">Use Claude and the Figma MCP throughout — they compress a week of cataloging into hours</div>
+      </div>
+      <div class="close-rec">
+        <div class="close-rec-num">03</div>
+        <div class="close-rec-title">Scope the prototype ruthlessly — one flow, done well, is worth more than five wireframes</div>
+      </div>
+      <div class="close-rec">
+        <div class="close-rec-num">04</div>
+        <div class="close-rec-title">Package the deliverable so it earns a yes — magazine, not bug report</div>
+      </div>
+    </div>
+    <div class="close-footer">
+      <div class="close-footer-label">UI/UX Audit Practice — Team Guide</div>
+      <div class="rm-credit">RoleModel Software</div>
+    </div>
+  </div>
+
+</body>
+</html>

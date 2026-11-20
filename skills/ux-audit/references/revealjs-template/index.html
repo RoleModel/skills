@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Co — Opportunity Assessment (audit-kit demo)</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="reveal-audit-theme.css">
+  <link rel="stylesheet" href="local-fonts.css">
+  <style>
+    /* Brand tokens — consumed by audit-kit (see audit-kit.js baseTokens aliases) */
+    :root {
+      --audit-accent: #F7BD04;
+      --audit-dark: #1a2332;
+      --color-green: #86C774;
+      --color-near-white: #fafafa;
+      --audit-slide-heading-user: var(--color-green);
+      --audit-number-user: var(--color-green);
+      --audit-font-family: 'DM Sans', sans-serif;
+    }
+  </style>
+  <script src="audit-kit.js" defer></script>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- COVER -->
+      <section data-background-color="#1a2332">
+        <audit-cover
+          background="https://framerusercontent.com/images/XMUWenDTl7oPxjNBNQ7TProDO3s.webp"
+          meta="RoleModel Software · February 2026"
+          logo="RMS-lcon.svg"
+          logo-alt="Widget Co logo">
+          <h1>Opportunity Assessment</h1>
+        </audit-cover>
+      </section>
+
+      <!-- EXECUTIVE SUMMARY -->
+      <section>
+        <audit-slide label="Executive Summary">
+          <div style="font-size:.9em;font-weight:700;line-height:1.35;margin-bottom:28px;max-width:820px;color:#1a1a1a;">
+            Widget Co is a genuinely capable product with a strong technical foundation —
+            <em style="font-style:italic; color: var(--color-primary-dark); font-weight:600;">the opportunity is to bring the experience up to the same level as the engineering.</em>
+          </div>
+          <div style="display:flex;gap:64px;">
+            <div style="flex:1;font-size:14px;line-height:1.8;color:#1a1a1a;">
+              <p>The application delivers on its core promise: zero-friction project creation, real-time pipe calculations, and contextual drawing tools that guide users in the moment. These aren't minor wins — they represent deliberate, user-centered decisions that hold up today.</p>
+              <p>What's evolved is the surrounding experience. User expectations around onboarding, accessibility, visual consistency, and workspace efficiency have moved since the original build. The 15 findings in this assessment map directly to those gaps — each with a clear, practical path forward.</p>
+            </div>
+            <div style="width:380px;flex-shrink:0;">
+              <audit-stat number="4" color="var(--color-green)">Areas of improvement shown in this deck, each with a proposed direction.</audit-stat>
+              <audit-stat number="3">Improvements built directly on Optics components — floating panels, settings, and wizard overlay.</audit-stat>
+              <audit-stat number="22">Hardcoded color values to consolidate into Optics tokens with WCAG-safe pairings built in.</audit-stat>
+            </div>
+          </div>
+        </audit-slide>
+      </section>
+
+      <!-- THEN -->
+      <section data-background-color="#04242B">
+        <audit-slide variant="dark" label="What was built">
+          <h2>Then.</h2>
+          <div slot="grid">
+            <audit-strength title="Zero-friction entry">Start designing without an account. Projects are saved locally and the editor is immediately available — no signup wall, no onboarding funnel.</audit-strength>
+            <audit-strength title="Reactive pipe calculator">Recommended pipe size updates in real time as HP and CFM values change, giving users immediate, contextual guidance without a manual lookup step.</audit-strength>
+            <audit-strength title="Contextual tool help">Instruction popups appear exactly when a drawing tool is selected, reducing the learning curve for first-time users of the design canvas.</audit-strength>
+            <audit-strength title="Thoughtful button system">Five button variants with hover and disabled states. "Start Over" uses a distinct destructive style — intentional visual hierarchy from day one.</audit-strength>
+            <audit-strength title="Silent autosave">The editor saves continuously in the background. Users never lose work and never see a save button — the system just handles it.</audit-strength>
+            <audit-strength title="Inline guidance">A 6-step instruction panel and 5 help videos live inside the app. Users can learn the tool without leaving their workspace or opening docs.</audit-strength>
+          </div>
+        </audit-slide>
+      </section>
+
+      <!-- NOW INTRO -->
+      <section>
+        <audit-slide label="Where we are today" centered>
+          <h2>Now.</h2>
+          <p>Four areas where we've done the design work. Each improvement is scoped, practical, and built on the Optics design system you already use.</p>
+        </audit-slide>
+      </section>
+
+      <!-- NOW FINDINGS — each one is a single <audit-finding> -->
+      <section>
+        <audit-finding number="01" label="01 · Toolbar" status="Designed">
+          <span slot="headline">A smarter toolbar that stays out of the way.</span>
+          Drawing tools live in a permanent left sidebar today — always visible, always consuming space. The redesign moves them into a floating, collapsible panel paired with a new top toolbar for undo, redo, snap, and view controls. The canvas gets its space back.
+        </audit-finding>
+      </section>
+
+      <section data-background-color="#04242B">
+        <audit-finding number="02" label="02 · Settings" status="Designed">
+          <span slot="headline">Settings when you need them — not always.</span>
+          Project and building settings are permanently visible in a right sidebar, taking up a third of the screen. A dropdown panel that opens on demand gives the same access without the constant footprint — premium canvas space stays clear for the work that matters.
+        </audit-finding>
+      </section>
+
+      <section>
+        <audit-finding number="03" label="03 · Walkthrough Wizard">
+          <span slot="headline">First-run should feel like a welcome, not a wall.</span>
+          New users currently hit a legal disclaimer and an empty canvas with no orientation. A guided walkthrough wizard introduces core concepts step by step — draw a pipe, set building parameters, generate a report — building confidence before complexity.
+        </audit-finding>
+      </section>
+
+      <section>
+        <audit-finding number="04" label="04 · Mobile">
+          <span slot="headline">Meet users where they are.</span>
+          The application was designed for desktop and doesn't adapt to smaller screens. Field technicians verifying installations on-site currently can't reference their designs on a tablet or phone. The floating panel architecture from the toolbar redesign creates a natural foundation for a responsive layout — mobile becomes an extension, not a rewrite.
+        </audit-finding>
+      </section>
+
+      <section>
+        <audit-slide label="Live preview">
+          <audit-browser
+            url="https://widgetco.vercel.app"
+            source="https://widgetco.vercel.app"
+            preload></audit-browser>
+        </audit-slide>
+      </section>
+      
+
+
+      <!-- COLOR SYSTEM -->
+      <section data-background-color="#1a2332">
+        <audit-slide label="Design System">
+          <h2 style="color:hsl(46,97%,49%) !important;">Color System</h2>
+          <p>Consolidating 22 hardcoded values to Optics tokens — anchored to the Widget Co brand hue with WCAG-safe pairings built in.</p>
+          <audit-palette-row
+            label="Primary — Brand Gold (H:46, S:97%)"
+            swatches='[
+              {"bg":"hsl(46,97%,92%)","label":"+8","light":true},
+              {"bg":"hsl(46,97%,82%)","label":"+5","light":true},
+              {"bg":"hsl(46,97%,62%)","label":"+2","light":true},
+              {"bg":"hsl(46,97%,49%)","label":"base","light":false},
+              {"bg":"hsl(46,97%,36%)","label":"−3","light":false},
+              {"bg":"hsl(46,97%,22%)","label":"−7","light":false},
+              {"bg":"hsl(46,97%,14%)","label":"−9","light":false}
+            ]'></audit-palette-row>
+          <audit-palette-row
+            label="Neutral — Blue-Tinted Gray (H:226, S:5%)"
+            swatches='[
+              {"bg":"hsl(226,5%,95%)","label":"+8","light":true},
+              {"bg":"hsl(226,5%,85%)","label":"+5","light":true},
+              {"bg":"hsl(226,5%,65%)","label":"+2","light":true},
+              {"bg":"hsl(226,5%,50%)","label":"base","light":false},
+              {"bg":"hsl(226,5%,35%)","label":"−5","light":false},
+              {"bg":"hsl(226,5%,22%)","label":"−7","light":false},
+              {"bg":"hsl(226,5%,12%)","label":"−9","light":false}
+            ]'></audit-palette-row>
+          <audit-palette-row
+            label="Alerts — notice · danger · warning · info"
+            swatches='[
+              {"bg":"hsl(134,50%,60%)","label":"notice","light":false},
+              {"bg":"hsl(0,70%,58%)","label":"danger","light":false},
+              {"bg":"hsl(48,90%,55%)","label":"warning","light":true},
+              {"bg":"hsl(217,70%,55%)","label":"info","light":false}
+            ]'></audit-palette-row>
+        </audit-slide>
+      </section>
+
+      <!-- UX PRINCIPLES -->
+      <section>
+        <audit-slide label="UX Principles Assessment">
+          <p>We evaluated the application against core UX principles. Each is assessed based on what we observed in the actual application.</p>
+          <div slot="principles">
+            <audit-principle status="pass" name="Familiar patterns reduce learning time">Standard web patterns used throughout — top nav, sidebar panels, form inputs. Users recognize this layout immediately.</audit-principle>
+            <audit-principle status="pass" name="Real-time feedback builds confidence">Pipe calculator updates instantly as values change. Autosave runs silently in the background.</audit-principle>
+            <audit-principle status="pass" name="Progressive disclosure keeps things manageable">Help content appears contextually when tools are selected. The instruction panel is available but not forced.</audit-principle>
+            <audit-principle status="opportunity" name="Important actions should be easy to reverse">"Start Over" clears the entire drawing with a single click and a browser-native confirm dialog that's easy to dismiss.</audit-principle>
+            <audit-principle status="opportunity" name="Less is more for focused tasks">The toolbar shows all 8 drawing tools simultaneously. Contextual grouping would reduce cognitive load.</audit-principle>
+            <audit-principle status="opportunity" name="First impressions shape long-term perception">New users land on a legal disclaimer followed by an empty canvas. No guided introduction.</audit-principle>
+            <audit-principle status="opportunity" name="Visual consistency signals quality">22 hardcoded color values create subtle inconsistencies. Consolidating to tokens would unify the visual language.</audit-principle>
+            <audit-principle status="attention" name="Keyboard users should reach every feature">Drawing tool buttons, the settings panel, and the help overlay are unreachable via keyboard navigation.</audit-principle>
+            <audit-principle status="attention" name="Touch targets need room to breathe">Toolbar icons are 24×24px with no padding — well below the 44×44px minimum for accessible touch targets.</audit-principle>
+          </div>
+        </audit-slide>
+      </section>
+
+      <!-- RECOMMENDATION -->
+      <section data-background-color="#1a2332">
+        <audit-slide label="Our Recommendation">
+          <div style="font-size:1em;font-weight:400;line-height:1.35;color:white;margin-bottom:48px;max-width:850px;letter-spacing:-0.02em;">
+            Widget Co is a capable product with a strong technical foundation. These three improvements bring the experience up to the same level.
+          </div>
+          <audit-rec-item number="01">Rebuild the toolbar — floating panels and a streamlined tool set declutter the canvas immediately</audit-rec-item>
+          <audit-rec-item number="02">Move settings into a dropdown — the right sidebar is premium canvas space, not a settings panel</audit-rec-item>
+          <audit-rec-item number="03">Ship the walkthrough wizard with the next release — first-run is the highest-leverage moment in the product</audit-rec-item>
+          <audit-footer>RoleModel Software · rolemodelsoftware.com · February 2026</audit-footer>
+        </audit-slide>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      transition: 'fade',
+      controlsTutorial: false,
+      width: 1200,
+      height: 750,
+    });
+  </script>
+</body>
+</html>

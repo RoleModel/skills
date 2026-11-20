@@ -1,0 +1,16 @@
+{
+  "name": "rolemodel-skills",
+  "owner": {
+    "name": "RoleModel Software"
+  },
+  "metadata": {
+    "description": "RoleModel Software's agent skills"
+  },
+  "plugins": [
+    {
+      "name": "rolemodel-skills",
+      "source": "./",
+      "description": "RoleModel's agent skills, with subagents for skills that need them"
+    }
+  ]
+}
