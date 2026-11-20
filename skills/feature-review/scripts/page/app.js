@@ -4,7 +4,7 @@
  * #ws-src (the whitespace-insensitive diff for the files where it differs),
  * #threads-src (the PR's existing review threads), #guide-src (overview,
  * reading guide, auto-reviewed files, suggested comments) and #meta-src (title,
- * slug, PR, commit, file blobs and sizes, last review).
+ * slug, PR, commit, file blobs and sizes, last review, scripts folder).
  *
  * The review runs in steps, one view each: Story (#story: the PR description and
  * how the feature comes together), Checks (#checks), Shape (#shape: diagrams and
@@ -1791,7 +1791,7 @@
       if (!b.dataset.confirm) b.classList.toggle('risky', v.ev === 'APPROVE' && !!(PR.ci && ciCount('fail')));
     });
     $('svhelp').innerHTML = !SERVER
-      ? 'Submitting needs the local server: rebuild with <code>--serve</code>, or Copy JSON and have the agent run <code>pbpaste | node ~/.claude/skills/feature-review/scripts/submit-review.cjs -</code>.'
+      ? 'Submitting needs the local server: rebuild with <code>--serve</code>, or Copy JSON and have the agent run <code>pbpaste | node ' + esc(META.scriptsDir || '<SKILL_DIR>/scripts') + '/submit-review.cjs -</code>.'
       : ownPr ? 'This is your own pull request, so only Comment is open.'
       : 'Each button posts everything above as one review. Comments on lines GitHub can\'t anchor to go into the summary instead.';
     if (stale) status(plural(stale, 'comment') + ' sit on files that changed since you wrote them. Check each one, then Edit and save it (or delete it) to submit.', 'err');

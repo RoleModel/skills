@@ -10,7 +10,7 @@ allowed-tools: Bash Read Write Edit Glob Grep AskUserQuestion
 compatibility: Designed for Claude Code (or similar products). Posting to GitHub needs the gh CLI.
 metadata:
   author: rolemodel
-  version: '3.12'
+  version: '3.13'
 license: MIT
 ---
 
@@ -42,8 +42,10 @@ confirming it.
 
 ## Usage
 
+`SKILL_DIR` is the directory this file was loaded from.
+
 ```bash
-S=~/.claude/skills/feature-review/scripts
+S="$SKILL_DIR/scripts"
 node $S/build-review.cjs <commit-ish>                 # this commit vs its parent
 node $S/build-review.cjs <base>..<head>               # or <base>...<head> from the merge base
 node $S/build-review.cjs --pr <N|url|owner/repo#N>    # the PR's diff; comments can post to it
