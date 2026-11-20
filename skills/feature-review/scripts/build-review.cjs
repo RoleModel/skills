@@ -415,7 +415,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const island = (id, value) => `<script id="${id}" type="application/json">${JSON.stringify(value).replace(/</g, '\\u003c')}</script>`;
 const event = (opt('--event') || 'COMMENT').toUpperCase().replace(/[\s-]+/g, '_');
 if (!['COMMENT', 'APPROVE', 'REQUEST_CHANGES'].includes(event)) die('--event must be comment, approve or request_changes');
-const meta = { title, slug, range, commitId, pr, event, headRev, baseRev, blobs, sizes, lastReview, since,
+const meta = { title, slug, range, commitId, pr, event, headRev, baseRev, blobs, sizes, lastReview, since, scriptsDir: __dirname,
   repoRoot: headRev ? git(['rev-parse', '--show-toplevel']).trim() : null };
 
 const html = require('./lib/page.cjs').render({ titleHtml: esc(title), islands: [
