@@ -1,6 +1,6 @@
 ---
 name: ruby-version
-description: Verify what Ruby versions actually exist and install a specific Ruby via rbenv. Use BEFORE asserting that any Ruby version does or doesn't exist (e.g., "Ruby 4.0 isn't out yet", "the latest Ruby is 3.x", "Ruby X.Y.Z doesn't exist"). Also use when the user asks "what's the latest Ruby", "is Ruby X out", "does Ruby X.Y exist", "install Ruby", "switch to Ruby X", "what Ruby is installed", or mentions a specific Ruby version you're unsure about. Claude's training data may be out of date — run `check.sh` first.
+description: Verify what Ruby versions actually exist and install a specific Ruby via rbenv. Use BEFORE asserting that any Ruby version does or doesn't exist (e.g., "Ruby 4.0 isn't out yet", "the latest Ruby is 3.x", "Ruby X.Y.Z doesn't exist"). Also use when the user asks "what's the latest Ruby", "is Ruby X out", "does Ruby X.Y exist", "install Ruby", "switch to Ruby X", "what Ruby is installed", or mentions a specific Ruby version you're unsure about. Also use when changing a project's Ruby version ("bump Ruby", "upgrade Ruby to X", editing `.ruby-version`). Claude's training data may be out of date — run `check.sh` first.
 license: MIT
 metadata:
   triggers:
@@ -13,11 +13,14 @@ metadata:
     - switch ruby
     - rbenv
     - ruby-build
+    - bump ruby
+    - upgrade ruby
+    - .ruby-version
 ---
 
 # ruby-version
 
-Two-script skill that prevents the agent from hallucinating Ruby release information and provides a one-liner Ruby install.
+Checks which Ruby versions exist, installs one through rbenv, and walks through changing a project's Ruby version.
 
 ## When to invoke this skill
 
@@ -27,6 +30,7 @@ Also invoke when the user:
 - Asks what Ruby versions are installed.
 - Asks for the latest stable Ruby.
 - Wants to install a specific Ruby (`install.sh`).
+- Changes a project's Ruby version (see "Changing a project's Ruby version").
 
 ## Scripts
 
@@ -57,13 +61,40 @@ Does **not** set the version as global or local. After install, suggest the user
 
 If the requested version isn't in `rbenv install -l`, the script prints a hint to upgrade ruby-build (`brew upgrade ruby-build`) rather than failing silently.
 
+## Changing a project's Ruby version
+
+After `check.sh` confirms the version exists, update every place the project pins Ruby:
+
+- `.ruby-version`
+- `RUBY_VERSION` in `Dockerfile`
+- the `RUBY VERSION` line in `Gemfile.lock`: with the new Ruby active, run `bundle update --ruby`, which changes only that line
+
+Search the repo for the old version to find any others.
+
+Then check every `ruby/setup-ruby` step in `.github/workflows/`, not only the workflows that ran on your PR. Some workflows run only when their own file changes, so a green PR does not prove their pin works.
+
+The action can install only the Ruby versions listed in `ruby-builder-versions.json` at the release it pins. If the pin is a floating tag such as `v1`, leave it: it always gets the newest release. For any other pin, this command prints `true` if the pinned release lists the new version:
+
+```bash
+gh api -H "Accept: application/vnd.github.raw" \
+  "repos/ruby/setup-ruby/contents/ruby-builder-versions.json?ref=<pin>" \
+  | jq -e --arg v <version> '.ruby | index($v) != null'
+```
+
+`<pin>` is the text after `@` in the workflow: a tag such as `v1.338.0`, or a commit SHA. If the command prints `false`, change the pin to the newest `ruby/setup-ruby` release in the same form (a tag for a tag, that release's SHA for a SHA), and run the command again. If the newest release still prints `false`, stop and tell the user that setup-ruby does not support this Ruby yet.
+
+## Gotchas
+
+- If a workflow fails with `Unknown version <version> for ruby on <runner>`, its `ruby/setup-ruby` pin is older than that Ruby. Run the pin check above.
+
 ## Assumptions
 
 - macOS with Homebrew, rbenv, and ruby-build installed.
+- The pin check needs `gh` (signed in) and `jq`.
 - Scripts are bash (not Ruby) so they work even when Ruby is missing or broken.
 
 ## Anti-patterns
 
 - Do not assert "Ruby X doesn't exist yet" from memory. Run `check.sh`.
 - Do not have `install.sh` auto-set global or local Ruby — that's a user decision.
-- Do not extend this skill into gemset/bundler management. It is a verification + install helper, nothing more.
+- Do not install gems, run other Bundler commands, or manage gemsets as part of a Ruby bump. This skill only checks Ruby versions, installs Ruby, and updates a project's Ruby pins.
