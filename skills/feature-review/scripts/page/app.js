@@ -726,6 +726,7 @@
     if (editing && (editing.body.trim() || editing.attachments.length) && !(draft.id && draft.id === editing.id)) {
       // Never throw away typed text; send the reviewer back to it instead.
       if (editing.inRecs) { focusRec(recOfSid(editing.sid)); goStep('recs'); }
+      else if (editing.inSubmit) goStep('submit');
       else goToFile(byName.get(editing.path));
       editing.el.scrollIntoView({ block: 'center' });
       editing.el.querySelector('textarea').focus();
@@ -746,6 +747,7 @@
     if (prev && prev.inRecs) redrawRec(recOfSid(prev.sid));
     else if (prev && prev.path !== draft.path) renderFile(byName.get(prev.path));
     goToFile(f);
+    if (prev && prev.inSubmit) renderSubmit();
     renderFile(f);
     editing.el.querySelector('textarea').focus();
   }
@@ -755,14 +757,14 @@
     if (!d.body.trim() && !d.attachments.length) return;
     const c = { id: d.id || uid('c'), sid: d.sid, thread_id: d.thread_id, path: d.path, subject: d.subject, side: d.side, line: d.line,
       start_side: d.start_side, start_line: d.start_line, body: d.body, attachments: d.attachments,
-      sig: d.subject === 'line' ? sigOf(d.path) : undefined };
+      sig: d.subject === 'line' ? sigOf(d.path) ?? d.sig : undefined };
     const at = state.comments.findIndex((x) => x.id === c.id);
     if (at === -1) state.comments.push(c); else state.comments[at] = c;
     editing = null;
     save();
     renderFile(byName.get(c.path));
     render();
-    if (d.inRecs) redrawRec(recOfSid(d.sid));
+    if (d.sid) redrawRec(recOfSid(d.sid));
     if (document.body.classList.contains('submitting')) renderSubmit();
   }
 
@@ -784,7 +786,7 @@
         btn('edit-s', c.sid, 'Edit', 'quiet') + btn('accept', c.sid, 'Accept', 'primary')
       : '<span class="reccst yes">In your review</span><span class="sp"></span>' + btn('delete', c.id, 'Delete', 'quiet') + btn('edit', c.id, 'Edit');
     const label = c.subject === 'reply' ? 'Your reply' : esc(locLabel(c)) + orphanNote(c);
-    return '<div class="card ' + (pending ? 'sugg-pending' : 'yes') + '"><div class="chead"><span>' + label + '</span></div>' +
+    return '<div class="card ' + (pending ? 'sugg-pending' : 'yes') + '" data-key="' + esc(pending ? c.sid : c.id) + '"><div class="chead"><span>' + label + '</span></div>' +
       '<div class="md">' + renderBody(c) + '</div><div class="reccfoot">' + acts + '</div></div>';
   }
 
@@ -836,7 +838,7 @@
       tr.innerHTML = '<td colspan="' + f.cols + '">' + htmls.join('') + '</td>';
       insertAfter(ri, tr);
     });
-    if (editing && editing.path === f.name && !editing.inRecs) {
+    if (editing && editing.path === f.name && !editing.inRecs && !editing.inSubmit) {
       const span = editing.subject === 'reply' ? null : rowsOf(editing);
       const slot = editing.subject === 'reply' && f.el.querySelector('.thread[data-tid="' + editing.thread_id + '"] .rslot');
       if (slot) slot.appendChild(editing.el);
@@ -877,12 +879,12 @@
       state.comments = state.comments.filter((x) => x !== c);
       if (c.sid && !state.dismissed.includes(c.sid)) state.dismissed.push(c.sid);
     } else if (act === 'edit' && c) {
-      openEditor(Object.assign({}, c, { attachments: (c.attachments || []).slice() }));
+      (b.closest('#submitview') ? editInSubmit : openEditor)(Object.assign({}, c, { attachments: (c.attachments || []).slice() }));
       return;
     } else if (act === 'accept' && s) {
       state.comments.push(commentFrom(s));
     } else if (act === 'edit-s' && s) {
-      openEditor({ sid: s.sid, path: s.path, subject: s.subject, side: s.side, line: s.line,
+      (b.closest('#submitview') ? editInSubmit : openEditor)({ sid: s.sid, path: s.path, subject: s.subject, side: s.side, line: s.line,
         start_side: s.start_side ?? null, start_line: s.start_line ?? null, body: s.body, attachments: [], sig: sigOf(s.path) });
       return;
     } else if (act === 'dismiss' && s) {
@@ -1685,6 +1687,37 @@
     return { author: last.author, excerpt: text.length > 280 ? text.slice(0, 280) + '…' : text };
   };
 
+  // Edit a comment, reply or suggested comment where it sits in the Submit list; saving keeps the
+  // reviewer on this page.
+  const isSubmitDraft = (c, pending) => !!(editing && editing.inSubmit &&
+    (pending ? !editing.id && editing.sid === c.sid : editing.id === c.id));
+  function editInSubmit(draft) {
+    if (editing && (editing.body.trim() || editing.attachments.length) && !(draft.id ? draft.id === editing.id : draft.sid === editing.sid)) {
+      flash('Finish or cancel the open comment first.');
+      if (editing.inSubmit) { editing.el.scrollIntoView({ block: 'center' }); editing.el.querySelector('textarea').focus(); }
+      return;
+    }
+    const prev = editing, f = byName.get(draft.path);
+    draft.inSubmit = true;
+    draft.el = makeEditor(draft, {
+      suggest: () => {
+        const span = f && draft.subject !== 'reply' && rowsOf(draft);
+        return span && f.rows.slice(span[0], span[1] + 1).every((r) => r.t !== 'd') ? originalOf(draft) : null;
+      },
+      onSave: () => saveDraft(),
+      onCancel: () => { editing = null; renderFile(f); renderSubmit(); },
+    });
+    draft.el.querySelector('.eloc').textContent = draft.subject === 'reply' ? 'Your reply' : locLabel(draft);
+    draft.el.querySelector('[data-tool="suggest"]').disabled = !draft.el.suggestable();
+    editing = draft;
+    if (prev && prev.inRecs) redrawRec(recOfSid(prev.sid));
+    else if (prev && !prev.inSubmit) renderFile(byName.get(prev.path));
+    renderFile(f);
+    renderSubmit();
+    editing.el.scrollIntoView({ block: 'center' });
+    editing.el.querySelector('textarea').focus();
+  }
+
   function renderSubmit() {
     $('svtarget').innerHTML = PR
       ? 'Posting to <a href="' + esc(PR.url) + '" target="_blank" rel="noopener">' + esc(PR.owner + '/' + PR.repo + '#' + PR.number) +
@@ -1697,12 +1730,14 @@
     let html = '', last = null;
     all.concat(pend).forEach((c) => {
       if (c.path !== last) { html += '<div class="svfile">' + esc(c.path) + '</div>'; last = c.path; }
-      const card = cardHtml(c, !!(c.sid && !c.id));
-      const r = replyingTo(c);
+      const pending = !!(c.sid && !c.id), r = replyingTo(c);
       const quote = r ? '<div class="rquote"><b>' + esc(r.author) + '</b> ' + esc(r.excerpt) + '</div>' : '';
-      html += card.replace('<div class="md">', snippetHtml(c) + quote + '<div class="md">');
+      html += isSubmitDraft(c, pending) ? '<div class="svedit">' + snippetHtml(c) + quote + '</div>'
+        : cardHtml(c, pending).replace('<div class="md">', snippetHtml(c) + quote + '<div class="md">');
     });
     $('svlist').innerHTML = html || '<p class="svnote">No comments yet. Click a line number in the diff to comment on it, drag across line numbers to comment on a range, or use a file\'s Comment button.</p>';
+    const slot = editing && editing.inSubmit && $('svlist').querySelector('.svedit');
+    if (slot) slot.appendChild(editing.el);
     $('svchkblock').classList.toggle('hidden', !checks.length);
     if (checks.length) {
       const open = checks.filter((c) => !checkOf(c).s).length, list = concerns();
