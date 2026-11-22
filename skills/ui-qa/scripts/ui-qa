@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# Runs a ui-qa scenario against this checkout (head) and a base commit, then compares the captures.
+#
+#   ui-qa init                         create tmp/ui-qa/scenario_spec.rb from the template
+#   ui-qa run [--base REF] [--head-only] [--headed] [--scenario PATH]
+#   ui-qa crop KEY TOP HEIGHT          base|head crop of any band of the latest run's capture
+#   ui-qa report [--out DIR]
+#
+# The base runs in one shared worktree beside the main checkout with its own test database.
+# Its captures are cached per (base commit, scenario), and its asset builds per source tree,
+# so rerunning after a fix only reruns head.
+#
+# Settings: UI_QA_DATABASE_ENV (default DATABASE_TEST_NAME) is the variable config/database.yml
+# reads the test database name from; UI_QA_BASE_DB names the base checkout's test database;
+# UI_QA_BUILD is the asset build command (default "yarn build").
+set -euo pipefail
+
+SKILL_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+ROOT=$(git rev-parse --show-toplevel)
+MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+BASE_TREE="$MAIN-ui-qa-base"
+BUILD_CACHE="$MAIN-ui-qa-base.builds"
+BASE_TEST_DB=${UI_QA_BASE_DB:-$(basename "$MAIN")_test_ui_qa_base}
+DATABASE_ENV=${UI_QA_DATABASE_ENV:-DATABASE_TEST_NAME}
+BUILD_COMMAND=${UI_QA_BUILD:-yarn build}
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##' || echo main)
+QA_DIR="$ROOT/tmp/ui-qa"
+ASSET_INPUTS=(app/javascript app/assets/stylesheets package.json yarn.lock webpack.config.js postcss.config.cjs)
+
+die() { echo "ui-qa: $*" >&2; exit 1; }
+note() { echo "ui-qa: $*" >&2; }
+
+newest_mtime() {
+  find "$@" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1
+}
+
+mark_builds_fresh() {
+  find "$1/app/assets/builds" -type f -exec touch {} +
+}
+
+build_head_assets_if_stale() {
+  local sources builds
+  sources=$(cd "$ROOT" && newest_mtime app/javascript app/assets/stylesheets)
+  builds=$(cd "$ROOT" && newest_mtime app/assets/builds)
+  if [ -z "$builds" ] || awk "BEGIN { exit !($sources > $builds) }"; then
+    note "building assets for head"
+    (cd "$ROOT" && $BUILD_COMMAND >/dev/null) || die "$BUILD_COMMAND failed in $ROOT"
+    mark_builds_fresh "$ROOT"
+  fi
+}
+
+restore_or_build_base_assets() {
+  local sha=$1 key
+  key=$(for input in "${ASSET_INPUTS[@]}"; do git -C "$MAIN" rev-parse "$sha:$input" 2>/dev/null || echo "-"; done | sha1sum | cut -c1-16)
+  if [ -d "$BUILD_CACHE/$key" ]; then
+    rsync -a --delete "$BUILD_CACHE/$key/" "$BASE_TREE/app/assets/builds/"
+  else
+    note "building assets for base ${sha:0:12}"
+    (cd "$BASE_TREE" && $BUILD_COMMAND >/dev/null) || die "$BUILD_COMMAND failed in $BASE_TREE"
+    mkdir -p "$BUILD_CACHE"
+    cp -a "$BASE_TREE/app/assets/builds" "$BUILD_CACHE/$key"
+    find "$BUILD_CACHE" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -rn | tail -n +7 | cut -d' ' -f2- | xargs -r rm -rf
+  fi
+  mark_builds_fresh "$BASE_TREE"
+}
+
+prepare_base_tree() {
+  local sha=$1
+  if [ ! -d "$BASE_TREE" ]; then
+    git -C "$MAIN" worktree add --detach "$BASE_TREE" "$sha" >/dev/null 2>&1
+    ln -s "$MAIN/node_modules" "$BASE_TREE/node_modules"
+  else
+    git -C "$BASE_TREE" checkout --detach --force --quiet "$sha"
+  fi
+  if ! psql -d postgres -Atqc "SELECT 1 FROM pg_database WHERE datname = '$BASE_TEST_DB'" | grep -q 1; then
+    (cd "$BASE_TREE" && env "$DATABASE_ENV=$BASE_TEST_DB" RAILS_ENV=test bin/rails db:prepare >/dev/null) \
+      || die "couldn't create $BASE_TEST_DB"
+  fi
+  restore_or_build_base_assets "$sha"
+}
+
+find_base_cache() {
+  local sha=$1 scenario=$2 dir line
+  for dir in "$QA_DIR/base-cache/${sha:0:12}"-*/; do
+    [ -f "$dir/result.json" ] && [ -f "$dir/scenario_spec.rb" ] || continue
+    if cmp -s "$dir/scenario_spec.rb" "$scenario"; then echo "${dir%/}"; return; fi
+    line=$(jq -r '.line // empty' "$dir/result.json" | sed -nE 's/.*_spec\.rb:([0-9]+).*/\1/p')
+    if [ -n "$line" ] && cmp -s <(head -n "$line" "$dir/scenario_spec.rb") <(head -n "$line" "$scenario"); then
+      echo "${dir%/}"; return
+    fi
+  done
+}
+
+record_crash() {
+  local out=$1 cause
+  cause=$(grep -m1 -A4 -E 'Error|error occurred' "$out/rspec.log" | head -5 | cut -c1-300)
+  jq -n --arg cause "${cause:-rspec exited before the scenario; see rspec.log}" \
+    '{status: "crashed", error: $cause, events: []}' >"$out/result.json"
+}
+
+run_scenario() {
+  local tree=$1 out=$2 scenario=$3 db=${4:-}
+  rm -rf "$out" && mkdir -p "$out"
+  (
+    cd "$tree"
+    [ -n "$db" ] && export "$DATABASE_ENV=$db"
+    UI_QA_OUT=$out UI_QA_SUPPORT="$SKILL_DIR/support/ui_qa.rb" RSPEC_RETRY_COUNT=0 \
+      bundle exec rspec "$scenario" --format progress
+  ) >"$out/rspec.log" 2>&1 || true
+  [ -f "$out/result.json" ] || record_crash "$out"
+}
+
+cmd_run() {
+  local base_ref="" head_only=0 headed=0 scenario="$QA_DIR/scenario_spec.rb"
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --base) base_ref=$2; shift 2 ;;
+      --head-only) head_only=1; shift ;;
+      --headed) headed=1; head_only=1; shift ;;
+      --scenario) scenario=$(realpath "$2"); shift 2 ;;
+      -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+      *) die "unknown option $1" ;;
+    esac
+  done
+  [ -f "$scenario" ] || die "no scenario at $scenario; copy $SKILL_DIR/scenario_template.rb there"
+  ruby -c "$scenario" >/dev/null || die "fix the syntax error in $scenario"
+
+  local name stamp run
+  name=$(basename "$scenario" _spec.rb)
+  stamp=$(date +%Y%m%d-%H%M%S)
+  run="$QA_DIR/runs/$stamp-$name"
+  mkdir -p "$run"
+  ln -sfn "$run" "$QA_DIR/latest-$name"
+  [ "$name" != scenario ] || ln -sfn "$run" "$QA_DIR/latest"
+  cp "$scenario" "$run/scenario_spec.rb"
+
+  if [ $headed -eq 1 ]; then
+    (cd "$ROOT" && UI_QA_HEADED=1 UI_QA_OUT="$run/head" UI_QA_SUPPORT="$SKILL_DIR/support/ui_qa.rb" \
+      RSPEC_RETRY_COUNT=0 bundle exec rspec "$scenario")
+    return
+  fi
+
+  build_head_assets_if_stale
+  run_scenario "$ROOT" "$run/head" "$scenario" &
+  local head_pid=$!
+
+  if [ $head_only -eq 0 ]; then
+    [ -n "$base_ref" ] || base_ref=$(git merge-base HEAD "${DEFAULT_BRANCH:-main}")
+    local base_sha cache
+    base_sha=$(git rev-parse --verify "$base_ref^{commit}") || die "unknown base $base_ref"
+    [ "$base_sha" != "$(git rev-parse HEAD)" ] || [ -n "$(git status --porcelain -- app config db lib)" ] \
+      || die "HEAD is the base; pass --base <ref>"
+    cache=$(find_base_cache "$base_sha" "$scenario")
+    if [ -n "$cache" ]; then
+      note "reusing base captures for ${base_sha:0:12}"
+    else
+      cache="$QA_DIR/base-cache/${base_sha:0:12}-$(sha1sum "$scenario" | cut -c1-12)"
+      exec 9>"$BASE_TREE.lock" && flock 9
+      prepare_base_tree "$base_sha"
+      run_scenario "$BASE_TREE" "$cache" "$scenario" "$BASE_TEST_DB"
+      cp "$scenario" "$cache/scenario_spec.rb"
+      flock -u 9
+    fi
+    ln -sfn "$cache" "$run/base"
+    echo "$base_sha" >"$run/base_sha"
+  fi
+  wait $head_pid
+  git rev-parse HEAD >"$run/head_sha"
+
+  (cd "$ROOT" && bundle exec ruby "$SKILL_DIR/scripts/compare.rb" "$run")
+}
+
+cmd_report() {
+  local out="$QA_DIR/report" probes=""
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --out) out=$(realpath -m "$2"); shift 2 ;;
+      -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+      *) die "unknown option $1" ;;
+    esac
+  done
+  [ -e "$QA_DIR/latest" ] || die "no run yet"
+  if [ -e "$QA_DIR/latest-probes" ] && [[ "$(basename "$(realpath "$QA_DIR/latest-probes")")" > "$(basename "$(realpath "$QA_DIR/latest")")" ]]; then
+    probes=$(realpath "$QA_DIR/latest-probes")
+  fi
+  (cd "$ROOT" && bundle exec ruby "$SKILL_DIR/scripts/report.rb" "$(realpath "$QA_DIR/latest")" "$out" $probes) >/dev/null
+  echo "page:  $out/index.html"
+  echo "root:  $out"
+  echo "files: $(cd "$out" && find img -type f | sort | jq -R . | jq -sc .)"
+}
+
+cmd_init() {
+  mkdir -p "$QA_DIR"
+  [ -f "$QA_DIR/scenario_spec.rb" ] && die "$QA_DIR/scenario_spec.rb already exists"
+  cp "$SKILL_DIR/scenario_template.rb" "$QA_DIR/scenario_spec.rb"
+  echo "$QA_DIR/scenario_spec.rb"
+}
+
+cmd_crop() {
+  [ $# -eq 3 ] || die "usage: ui-qa crop KEY TOP HEIGHT"
+  local run out
+  run=$(realpath "$QA_DIR/latest")
+  out="$run/crops/$1-$2.png"
+  (cd "$ROOT" && bundle exec ruby -rvips -e '
+    run, key, top, height, out = ARGV
+    sides = %w[base head].filter_map { |side| path = File.join(run, side, "#{key}.png"); Vips::Image.new_from_file(path) if File.exist?(path) }
+    crops = sides.map { |image| image.crop(0, [top.to_i, image.height - 1].min, image.width, [height.to_i, image.height - [top.to_i, image.height - 1].min].min) }
+    joined = crops.reduce { |left, right| left.join(right, :horizontal, shim: 12, background: [255, 0, 255]) }
+    joined = joined.resize(1400.0 / joined.width) if joined.width > 1400
+    joined.write_to_file(out)
+  ' "$run" "$1" "$2" "$3" "$out")
+  echo "$out"
+}
+
+case ${1:-} in
+  init) shift; cmd_init "$@" ;;
+  run) shift; cmd_run "$@" ;;
+  crop) shift; cmd_crop "$@" ;;
+  report) shift; cmd_report "$@" ;;
+  *) sed -n '2,11p' "$0"; [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; exit $? ;;
+esac
