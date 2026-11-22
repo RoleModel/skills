@@ -1,0 +1,147 @@
+{
+  "_comment": "RoleModel shared 'RoleModel SHM' dashboard template — ONE org-wide dashboard for all apps, not per-app. No substitution needed: post as-is after removing this _comment key. The empty 'projects' array means 'All Projects' so the dashboard's project selector re-scopes every widget per app at view time; do the same for 'environment' (production is the default filter, chosen at view time). Create it only once per org (audit step 3a). Post: sentry api organizations/rolemodel-software/dashboards/ -X POST --input <file>. Widget set is derived from what SHM report writers actually cite (Almanac product health report summaries, Jan-Jul 2026).",
+  "title": "RoleModel SHM",
+  "projects": [],
+  "environment": ["production"],
+  "period": "30d",
+  "filters": {},
+  "widgets": [
+    {
+      "title": "Errors",
+      "displayType": "big_number",
+      "widgetType": "error-events",
+      "interval": "5m",
+      "layout": { "x": 0, "y": 0, "w": 1, "h": 1, "minH": 1 },
+      "queries": [
+        { "name": "", "fields": ["count()"], "aggregates": ["count()"], "columns": [], "conditions": "", "orderby": "" }
+      ]
+    },
+    {
+      "title": "Unique Issues",
+      "displayType": "big_number",
+      "widgetType": "error-events",
+      "interval": "5m",
+      "layout": { "x": 1, "y": 0, "w": 1, "h": 1, "minH": 1 },
+      "queries": [
+        { "name": "", "fields": ["count_unique(issue)"], "aggregates": ["count_unique(issue)"], "columns": [], "conditions": "", "orderby": "" }
+      ]
+    },
+    {
+      "title": "p95 Latency",
+      "displayType": "big_number",
+      "widgetType": "spans",
+      "interval": "5m",
+      "layout": { "x": 2, "y": 0, "w": 1, "h": 1, "minH": 1 },
+      "queries": [
+        { "name": "", "fields": ["p95(span.duration)"], "aggregates": ["p95(span.duration)"], "columns": [], "conditions": "is_transaction:true", "orderby": "" }
+      ]
+    },
+    {
+      "title": "Failure Rate",
+      "displayType": "big_number",
+      "widgetType": "spans",
+      "interval": "5m",
+      "layout": { "x": 3, "y": 0, "w": 1, "h": 1, "minH": 1 },
+      "queries": [
+        { "name": "", "fields": ["failure_rate()"], "aggregates": ["failure_rate()"], "columns": [], "conditions": "", "orderby": "" }
+      ]
+    },
+    {
+      "title": "Errors Over Time",
+      "displayType": "line",
+      "widgetType": "error-events",
+      "interval": "5m",
+      "layout": { "x": 0, "y": 1, "w": 3, "h": 2, "minH": 2 },
+      "queries": [
+        { "name": "Events", "fields": ["count()"], "aggregates": ["count()"], "columns": [], "conditions": "", "orderby": "count()" }
+      ]
+    },
+    {
+      "title": "Latency Over Time",
+      "displayType": "line",
+      "widgetType": "spans",
+      "interval": "5m",
+      "layout": { "x": 3, "y": 1, "w": 3, "h": 2, "minH": 2 },
+      "queries": [
+        { "name": "", "fields": ["p50(span.duration)", "p95(span.duration)"], "aggregates": ["p50(span.duration)", "p95(span.duration)"], "columns": [], "conditions": "is_transaction:true", "orderby": "" }
+      ]
+    },
+    {
+      "title": "Issues For Review",
+      "displayType": "table",
+      "widgetType": "issue",
+      "interval": "5m",
+      "layout": { "x": 0, "y": 3, "w": 3, "h": 4, "minH": 2 },
+      "description": "Most recently seen unresolved issues for review.",
+      "queries": [
+        { "name": "", "fields": ["issue", "assignee", "events", "title"], "aggregates": [], "columns": ["issue", "assignee", "events", "title"], "conditions": "is:unresolved is:for_review", "orderby": "date" }
+      ]
+    },
+    {
+      "title": "Uptime & Cron Failures",
+      "displayType": "table",
+      "widgetType": "issue",
+      "interval": "5m",
+      "layout": { "x": 3, "y": 3, "w": 3, "h": 4, "minH": 2 },
+      "description": "Downtime incidents and failing scheduled jobs this period (answers the uptime and background-job report sections). Resolved incidents intentionally included. Category 'outage' covers both uptime_domain_failure and monitor_check_in_failure; the legacy 'uptime'/'cron' categories parse but match nothing.",
+      "queries": [
+        { "name": "", "fields": ["issue", "assignee", "events", "title"], "aggregates": [], "columns": ["issue", "assignee", "events", "title"], "conditions": "issue.category:outage", "orderby": "date" }
+      ]
+    },
+    {
+      "title": "Performance Issues",
+      "displayType": "table",
+      "widgetType": "issue",
+      "interval": "5m",
+      "layout": { "x": 0, "y": 7, "w": 3, "h": 3, "minH": 2 },
+      "description": "N+1 queries and other performance problems detected by Sentry, most frequent first.",
+      "queries": [
+        { "name": "", "fields": ["issue", "assignee", "events", "title"], "aggregates": [], "columns": ["issue", "assignee", "events", "title"], "conditions": "is:unresolved issue.category:performance", "orderby": "freq" }
+      ]
+    },
+    {
+      "title": "Errors by Transaction",
+      "displayType": "table",
+      "widgetType": "error-events",
+      "interval": "1h",
+      "layout": { "x": 3, "y": 7, "w": 3, "h": 3, "minH": 2 },
+      "queries": [
+        { "name": "", "fields": ["transaction", "count()", "count_unique(issue)"], "aggregates": ["count()", "count_unique(issue)"], "columns": ["transaction"], "conditions": "", "orderby": "-count()" }
+      ]
+    },
+    {
+      "title": "Endpoints - Response Time & Throughput",
+      "displayType": "table",
+      "widgetType": "spans",
+      "interval": "5m",
+      "layout": { "x": 0, "y": 10, "w": 6, "h": 4, "minH": 2 },
+      "queries": [
+        {
+          "name": "",
+          "fields": ["transaction", "count()", "epm()", "p50(span.duration)", "p75(span.duration)", "p95(span.duration)", "p99(span.duration)"],
+          "aggregates": ["count()", "epm()", "p50(span.duration)", "p75(span.duration)", "p95(span.duration)", "p99(span.duration)"],
+          "columns": ["transaction"],
+          "conditions": "is_transaction:true",
+          "orderby": "-p95(span.duration)"
+        }
+      ]
+    },
+    {
+      "title": "Slowest DB Queries (by total time)",
+      "displayType": "table",
+      "widgetType": "spans",
+      "interval": "5m",
+      "layout": { "x": 0, "y": 14, "w": 6, "h": 4, "minH": 2 },
+      "queries": [
+        {
+          "name": "",
+          "fields": ["span.description", "count()", "avg(span.duration)", "sum(span.duration)"],
+          "aggregates": ["count()", "avg(span.duration)", "sum(span.duration)"],
+          "columns": ["span.description"],
+          "conditions": "span.op:db*",
+          "orderby": "-sum(span.duration)"
+        }
+      ]
+    }
+  ]
+}
