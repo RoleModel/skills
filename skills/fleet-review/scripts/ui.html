@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet review</title>
+<style>
+:root{--bg:#0D1117;--panel:#161B22;--line:#21262D;--border:#30363D;--text:#E6EDF3;--soft:#B1BAC4;--muted:#8B949E;--dim:#7D8590;--green:#3FB950;--amber:#E3B341;--red:#FF7B72;--blue:#58A6FF}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:1640px;margin:0 auto;padding:24px 24px 48px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+h1{margin:0;font-size:20px;font-weight:600}
+.chip{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:3px 8px}
+.pill{font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--panel);color:var(--muted)}
+.pill.running{background:rgba(63,185,80,.12);color:var(--green)}
+.pill.done{background:rgba(63,185,80,.12);color:var(--green)}
+.pill.failed{background:rgba(248,81,73,.15);color:var(--red)}
+.stats{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:22px;font-weight:500}
+.stat b small{color:var(--dim);font-size:14px}
+.stat span{font-size:12px;color:var(--muted)}
+.conn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.conn i{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(63,185,80,.8)}
+.conn.off i{background:#545D68;box-shadow:none}
+.stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;list-style:none;margin:0;padding:0}
+.stages li{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--dim)}
+.stages .bar{height:4px;border-radius:2px;background:var(--line)}
+.stages .done .bar{background:var(--green);box-shadow:0 0 8px rgba(63,185,80,.6)}
+.stages .done{color:var(--soft)}
+.stages .running .bar{background:linear-gradient(90deg,var(--line) 0,var(--green) 40%,var(--line) 80%);background-size:200% 100%;animation:sweep 1.6s linear infinite}
+.stages .running{color:var(--green)}
+.stages .failed .bar{background:var(--red)}
+@keyframes sweep{from{background-position:100% 0}to{background-position:-100% 0}}
+.main{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.graphbox{flex:999 1 900px;min-width:0;border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+.graph{position:relative;width:1268px;margin:0 auto}
+.graph svg{position:absolute;left:24px;top:52px;overflow:visible}
+.colhead,.glabel{position:absolute;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.ln{fill:none;stroke-width:2}
+.ln.g{stroke:var(--green);opacity:.8;filter:drop-shadow(0 0 3px rgba(63,185,80,.55))}
+.ln.s{stroke:#30363D;stroke-dasharray:4 5}
+.ln.p{stroke:#484F58;stroke-dasharray:4 5}
+.ln.f{stroke:#F85149;stroke-dasharray:4 5;opacity:.7}
+.ln.r{stroke:var(--green);stroke-dasharray:7 6;animation:flow .7s linear infinite;filter:drop-shadow(0 0 3px rgba(63,185,80,.55))}
+@keyframes flow{to{stroke-dashoffset:-13}}
+@keyframes glow{0%,100%{box-shadow:0 0 6px rgba(63,185,80,.25)}50%{box-shadow:0 0 22px rgba(63,185,80,.6)}}
+.node{position:absolute;margin:0;font:inherit;color:var(--text);text-align:left;cursor:pointer;background:var(--panel);border:1px solid var(--border)}
+.node:hover{background:#1C232C}
+.node:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.node.sel{outline:2px solid var(--blue);outline-offset:3px}
+.big{border-radius:10px;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 14px}
+.big .t{font-weight:600}
+.big .t small{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;font-weight:400;color:var(--muted)}
+.big .m{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big .pbar{display:block;height:4px;border-radius:2px;background:var(--line)}
+.st-running .pbar{background:linear-gradient(90deg,var(--line) 0,var(--green) 40%,var(--line) 80%);background-size:200% 100%;animation:sweep 1.6s linear infinite}
+.st-done .pbar{background:var(--green)}
+.st-failed .pbar{background:#F85149}
+.rn{position:static;width:100%;height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:8px;font-size:13px}
+.rn .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.rn .nm{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rn .m{flex:none;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--muted)}
+.rn .split{flex:none;font-size:10px;font-weight:600;color:var(--amber);background:rgba(210,153,34,.14);border-radius:4px;padding:1px 5px}
+.st-pending .dot{border:2px solid #545D68}
+.st-pending{color:var(--soft)}
+.st-running{border-color:var(--green);animation:glow 1.4s ease-in-out infinite}
+.st-running .dot{background:var(--green)}
+.st-running .m{color:var(--green)}
+.st-done{border-color:rgba(63,185,80,.65);box-shadow:0 0 14px rgba(63,185,80,.22)}
+.st-done .dot{background:var(--green);box-shadow:0 0 8px rgba(63,185,80,.9)}
+.st-skipped{border-style:dashed;background:transparent;color:var(--dim)}
+.st-skipped .dot{border:2px dashed #545D68}
+.st-skipped .m{color:var(--dim)}
+.st-failed{border-color:rgba(248,81,73,.7)}
+.st-failed .dot{background:#F85149}
+.st-failed .m{color:var(--red)}
+.big.st-pending{border-style:dashed;background:var(--bg)}
+.hub{position:absolute;width:12px;height:12px;border-radius:50%;border:2px solid #545D68;background:var(--bg)}
+.hub.on{border:0;background:var(--green);box-shadow:0 0 10px rgba(63,185,80,.8)}
+aside{flex:1 1 360px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 48px);overflow:auto;position:sticky;top:24px}
+aside h2{margin:0;font-size:20px;font-weight:600}
+aside h3{margin:0;font-size:13px;font-weight:600}
+.eyebrow{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.brief{margin:0;color:var(--soft);line-height:1.5}
+.box{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.box .k{font-size:12px;color:var(--muted)}
+.card{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.card .body{display:flex;flex-direction:column;gap:4px;min-width:0;line-height:1.45}
+.card .loc{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.card .sub{font-size:12px;color:var(--soft)}
+.sev{display:inline-block;flex:none;width:44px;text-align:center;padding:2px 0;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.sev-high{background:rgba(248,81,73,.15);color:var(--red)}
+.sev-med{background:rgba(210,153,34,.15);color:var(--amber)}
+.sev-low{background:rgba(139,148,158,.15);color:var(--soft)}
+.verdict{flex:none;font-size:11px;font-weight:600;border-radius:4px;padding:2px 6px}
+.v-confirmed{background:rgba(63,185,80,.15);color:var(--green)}
+.v-rejected{background:rgba(139,148,158,.15);color:var(--soft)}
+.v-unverifiable{background:rgba(210,153,34,.15);color:var(--amber)}
+.yes{color:var(--green)}.no{color:var(--muted)}
+.empty{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.err{margin:0;font-size:13px;color:var(--red);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.log{display:flex;flex-direction:column;gap:4px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;line-height:1.5}
+.log div{display:flex;gap:8px}
+.log time{flex:none;color:var(--dim)}
+.log span{color:var(--soft);overflow-wrap:anywhere}
+.bucket{display:flex;flex-direction:column;gap:8px}
+.bucket h4{margin:0;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+@media (max-width:700px){.wrap{padding:16px}aside{position:static;max-height:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+      <div class="row"><h1>Fleet review</h1><span id="branch" class="chip mono"></span><span id="phase" class="pill"></span></div>
+      <div id="meta" class="mono" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <ol class="stages" id="stages" aria-label="Stages"></ol>
+  <div class="main">
+    <section class="graphbox" aria-label="Pipeline graph"><div class="graph" id="graph"></div></section>
+    <aside id="inspector" aria-label="Selected agent"></aside>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let S = null;
+let selected = null;
+let userPicked = false;
+
+function dur(ms) {
+  if (ms == null || ms < 0) return '';
+  const s = Math.floor(ms / 1000);
+  return s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+}
+function elapsed(n) {
+  if (!n || !n.startedAt) return '';
+  return dur((n.finishedAt || Date.now()) - n.startedAt);
+}
+function clock(t) { return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+function plural(n, w) { return `${n} ${w}${n === 1 ? '' : 's'}`; }
+
+function inEdge(st) { return st === 'running' || st === 'done' ? 'g' : st === 'skipped' ? 's' : st === 'failed' ? 'f' : 'p'; }
+function outEdge(st) { return st === 'running' ? 'r' : st === 'done' ? 'g' : st === 'failed' ? 'f' : 'p'; }
+function curve(x1, y1, x2, y2, cls) { const mx = (x1 + x2) / 2; return `<path class="ln ${cls}" d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}"></path>`; }
+
+function roleMeta(n) {
+  if (n.status === 'pending') return n.kind === 'conditional' && !n.votes ? 'awaiting triage' : 'queued';
+  if (n.status === 'running') return elapsed(n);
+  if (n.status === 'skipped') return 'skipped';
+  if (n.status === 'failed') return 'failed';
+  const c = (n.findings || []).length;
+  return c ? `${c} found` : 'none';
+}
+function isSplit(n) {
+  return n.kind === 'conditional' && n.votes && n.votes.haiku && n.votes.luna && n.votes.haiku.applies !== n.votes.luna.applies;
+}
+
+function validatorMeta(n) {
+  if (n.status === 'running') return `checking · ${elapsed(n)}`;
+  if (n.status === 'done' && n.counts) return `${n.counts.confirmed} ✓ · ${n.counts.rejected} ✗ · ${n.counts.unverifiable} ?`;
+  if (n.status === 'failed') return 'failed';
+  if (n.status === 'skipped') return 'skipped';
+  return 'queued';
+}
+
+function renderGraph() {
+  const N = S.nodes;
+  const core = S.roles.core.map((id) => N[id]);
+  const cond = S.roles.conditional.map((id) => N[id]);
+  const step = 44;
+  const coreTop = 28;
+  const coreY = (i) => coreTop + i * step + 18;
+  const condLabel = coreTop + core.length * step + 20;
+  const condTop = condLabel + 22;
+  const condY = (j) => condTop + j * step + 18;
+  const H = condTop + cond.length * step;
+  const mid = Math.round((coreY(0) + condY(cond.length - 1)) / 2);
+  const triMid = Math.round((condY(0) + condY(cond.length - 1)) / 2);
+  const triA = triMid - 48, triB = triMid + 48;
+  const valA = mid - 48, valB = mid + 48;
+  const triageDone = N.haiku.status !== 'pending' && N.haiku.status !== 'running' && N.luna.status !== 'pending' && N.luna.status !== 'running';
+  const rolesAll = [...core, ...cond];
+  const reviewersDone = triageDone && rolesAll.every((n) => ['done', 'failed', 'skipped'].includes(n.status));
+
+  let p = '';
+  core.forEach((n, i) => { p += curve(150, mid, 470, coreY(i), inEdge(n.status)); });
+  p += curve(150, mid, 210, triA, inEdge(N.haiku.status));
+  p += curve(150, mid, 210, triB, inEdge(N.luna.status));
+  p += curve(380, triA, 420, triMid, outEdge(N.haiku.status));
+  p += curve(380, triB, 420, triMid, outEdge(N.luna.status));
+  cond.forEach((n, j) => { p += curve(420, triMid, 470, condY(j), triageDone ? inEdge(n.status) : 'p'); });
+  rolesAll.forEach((n, k) => {
+    if (n.status === 'skipped') return;
+    const y = k < core.length ? coreY(k) : condY(k - core.length);
+    p += curve(750, y, 800, mid, outEdge(n.status));
+  });
+  p += curve(800, mid, 850, valA, inEdge(N.astra.status));
+  p += curve(800, mid, 850, valB, inEdge(N.sol.status));
+  p += curve(1020, valA, 1070, mid, outEdge(N.astra.status));
+  p += curve(1020, valB, 1070, mid, outEdge(N.sol.status));
+
+  const sel = (id) => (id === selected ? ' sel' : '');
+  const big = (id, x, y, w, h, title, sub, bar) => {
+    const n = N[id];
+    return `<button type="button" class="node big st-${n.status}${sel(id)}" data-id="${id}" style="left:${x + 24}px;top:${y + 52}px;width:${w}px;height:${h}px">
+      <span class="t">${title}</span>${bar ? '<span class="pbar"></span>' : ''}<span class="m">${esc(sub)}</span></button>`;
+  };
+  const roleBtn = (n) => `<button type="button" class="node rn st-${n.status}${sel(n.id)}" data-id="${esc(n.id)}">
+      <span class="dot"></span><span class="nm">${esc(n.name)}</span>${isSplit(n) ? '<span class="split">split vote</span>' : ''}<span class="m">${esc(roleMeta(n))}</span></button>`;
+  const triSub = (n) => (n.status === 'running' ? `reading · ${elapsed(n)}` : n.summary || (n.status === 'pending' ? 'queued' : n.status));
+  const r = S.run;
+
+  $('graph').style.height = `${H + 52 + 24}px`;
+  $('graph').innerHTML = `
+    <div class="colhead" style="left:24px;top:20px">Diff</div>
+    <div class="colhead" style="left:234px;top:20px">Triage</div>
+    <div class="colhead" style="left:494px;top:20px">Role reviewers · ${esc(N[core[0].id].model || '')}</div>
+    <div class="colhead" style="left:874px;top:20px">Validators</div>
+    <div class="colhead" style="left:1094px;top:20px">Final</div>
+    <svg width="1220" height="${H}" viewBox="0 0 1220 ${H}" aria-hidden="true">${p}</svg>
+    ${big('diff', 0, mid - 28, 150, 56, 'Diff', `${plural(r.files, 'file')} · +${r.insertions} −${r.deletions}`)}
+    ${big('haiku', 210, triA - 24, 170, 48, `Haiku <small>triage</small>`, triSub(N.haiku))}
+    ${big('luna', 210, triB - 24, 170, 48, `Luna <small>triage</small>`, triSub(N.luna))}
+    <div class="hub${triageDone ? ' on' : ''}" style="left:${414 + 24}px;top:${triMid - 6 + 52}px"></div>
+    <div class="glabel" style="left:${470 + 24}px;top:${6 + 52}px">Core · always run</div>
+    <div style="position:absolute;left:${470 + 24}px;top:${coreTop + 52}px;width:280px;display:flex;flex-direction:column;gap:8px">${core.map(roleBtn).join('')}</div>
+    <div class="glabel" style="left:${470 + 24}px;top:${condLabel - 2 + 52}px">Conditional · picked by triage</div>
+    <div style="position:absolute;left:${470 + 24}px;top:${condTop + 52}px;width:280px;display:flex;flex-direction:column;gap:8px">${cond.map(roleBtn).join('')}</div>
+    <div class="hub${reviewersDone ? ' on' : ''}" style="left:${794 + 24}px;top:${mid - 6 + 52}px"></div>
+    ${big('astra', 850, valA - 32, 170, 64, `Astra 6 <small>medium</small>`, validatorMeta(N.astra), true)}
+    ${big('sol', 850, valB - 32, 170, 64, `Sol 6.2 <small>high</small>`, validatorMeta(N.sol), true)}
+    ${big('final', 1070, mid - 28, 150, 56, N.final.status === 'done' ? 'Report ready' : 'Sonnet 5.5', N.final.status === 'running' ? `deduping · ${elapsed(N.final)}` : N.final.status === 'done' ? 'click to read' : N.final.status === 'pending' ? 'dedupe · queued' : N.final.status)}
+  `;
+}
+
+function renderHeader() {
+  const r = S.run, N = S.nodes;
+  $('branch').textContent = `${r.branch} → ${r.base}`;
+  const live = !['done', 'failed'].includes(r.phase);
+  const label = { starting: 'Starting', triage: 'Triage', review: 'Reviewing', validate: 'Validating', final: 'Writing report', done: 'Finished', failed: 'Failed' }[r.phase] || r.phase;
+  $('phase').textContent = label;
+  $('phase').className = `pill ${r.phase === 'done' ? 'done' : r.phase === 'failed' ? 'failed' : 'running'}`;
+  $('meta').textContent = `${plural(r.files, 'file')} · +${r.insertions} −${r.deletions} · ${live ? 'started ' + dur(Date.now() - r.startedAt) + ' ago' : 'took ' + dur((r.finishedAt || Date.now()) - r.startedAt)}`;
+  const roles = [...S.roles.core, ...S.roles.conditional].map((id) => N[id]);
+  const triggered = roles.filter((n) => n.status !== 'skipped' && !(n.kind === 'conditional' && !n.votes));
+  const reviewed = roles.filter((n) => n.status === 'done' || n.status === 'failed');
+  const findings = roles.reduce((a, n) => a + (n.findings || []).length, 0);
+  const total = roles.length;
+  const stats = [];
+  stats.push(`<div class="stat"><b style="color:var(--green)">${r.roster ? r.roster.core + r.roster.conditional : '…'}<small> / ${total}</small></b><span>roles triggered</span></div>`);
+  stats.push(`<div class="stat"><b>${reviewed.length}<small> / ${r.roster ? r.roster.core + r.roster.conditional : triggered.length}</small></b><span>reviewers done</span></div>`);
+  if (S.final) {
+    stats.push(`<div class="stat"><b style="color:var(--green)">${S.final.confirmed_both.length + S.final.confirmed_one.length}</b><span>confirmed</span></div>`);
+    stats.push(`<div class="stat"><b style="color:var(--amber)">${S.final.disagreements.length}</b><span>disagreements</span></div>`);
+  } else {
+    stats.push(`<div class="stat"><b>${findings}</b><span>findings so far</span></div>`);
+  }
+  stats.push(`<div class="conn" id="conn"><i></i>${live ? 'live' : 'run ended'}</div>`);
+  $('stats').innerHTML = stats.join('');
+
+  const order = ['triage', 'review', 'validate', 'final', 'done'];
+  const at = order.indexOf(r.phase);
+  const stage = (key, name, nodes) => {
+    const idx = order.indexOf(key);
+    let cls = idx < at || r.phase === 'done' ? 'done' : idx === at ? 'running' : '';
+    if (r.phase === 'failed') cls = nodes.some((n) => n.status === 'failed') ? 'failed' : nodes.every((n) => ['done', 'skipped'].includes(n.status)) ? 'done' : '';
+    const started = nodes.map((n) => n.startedAt).filter(Boolean);
+    const ended = nodes.map((n) => n.finishedAt).filter(Boolean);
+    const t = started.length ? dur((cls === 'running' ? Date.now() : Math.max(...ended, ...started)) - Math.min(...started)) : '';
+    return `<li class="${cls}"><span class="bar"></span><span>${name} <span class="mono" style="color:var(--muted)">${t}${cls === 'running' ? ' · running' : ''}</span></span></li>`;
+  };
+  $('stages').innerHTML = [
+    stage('triage', 'Triage', [N.haiku, N.luna]),
+    stage('review', 'Reviewers', roles.filter((n) => n.status !== 'skipped')),
+    stage('validate', 'Validators', [N.astra, N.sol]),
+    stage('final', 'Final report', [N.final]),
+  ].join('');
+}
+
+function findingCard(f, extra = '') {
+  return `<div class="card"><span class="sev sev-${esc(f.severity)}">${esc(f.severity)}</span><div class="body">
+    <span>${f.id ? `<span class="mono" style="color:var(--muted)">${esc(f.id)}</span> ` : ''}${esc(f.title)}</span>
+    ${f.problem ? `<span class="sub">${esc(f.problem)}</span>` : ''}
+    ${f.impact ? `<span class="sub">Why it matters: ${esc(f.impact)}</span>` : ''}
+    ${f.evidence ? `<span class="sub">Evidence: ${esc(f.evidence)}</span>` : ''}
+    ${extra}
+    <span class="loc">${esc(f.location)}</span></div></div>`;
+}
+
+function renderInspector() {
+  const aside = $('inspector');
+  const scroll = aside.scrollTop;
+  const N = S.nodes;
+  const n = N[selected] || N.diff;
+  const r = S.run;
+  const kindLabel = { input: 'Input', triage: 'Triage', core: 'Core role', conditional: 'Conditional role', validator: 'Validator', final: 'Final' }[n.kind] || '';
+  const statusText = n.status === 'running' ? `running · ${elapsed(n)}` : n.status === 'done' ? `done${n.startedAt ? ' · ' + elapsed(n) : ''}` : n.status;
+  let h = `<div style="display:flex;flex-direction:column;gap:6px">
+    <span class="eyebrow">${kindLabel}</span><h2>${esc(n.id === 'haiku' ? 'Haiku triage' : n.id === 'luna' ? 'Luna triage' : n.id === 'astra' ? 'Astra validator' : n.id === 'sol' ? 'Sol validator' : n.name)}</h2>
+    <div class="row">${n.model ? `<span class="chip mono">${esc(n.model)}</span>` : ''}<span class="mono" style="font-size:12px;color:${n.status === 'running' ? 'var(--green)' : n.status === 'failed' ? 'var(--red)' : 'var(--muted)'}">${esc(statusText)}</span></div></div>`;
+  if (n.brief) h += `<p class="brief">${esc(n.brief.charAt(0).toUpperCase() + n.brief.slice(1))}</p>`;
+  if (n.error) h += `<p class="err">${esc(n.error)}</p>`;
+
+  if (n.id === 'diff') {
+    h += `<div class="box"><span class="k">Comparing</span><span class="mono" style="font-size:12px">${esc(r.branch)} → ${esc(r.base)}</span><span class="k">Merge base</span><span class="mono" style="font-size:12px">${esc(r.mergeBase.slice(0, 12))}</span>
+      <span class="k">Size</span><span>${plural(r.files, 'file')}, +${r.insertions} −${r.deletions}${r.untracked ? `, includes ${plural(r.untracked, 'untracked file')}` : ''}</span>
+      <span class="k">Run folder</span><span class="mono" style="font-size:11px;overflow-wrap:anywhere">${esc(r.runDir)}</span></div>`;
+    if (r.error) h += `<p class="err">${esc(r.error)}</p>`;
+  }
+  if (n.kind === 'conditional' && n.votes) {
+    const v = (x) => (x ? `<span class="mono ${x.applies ? 'yes' : 'no'}">${x.applies ? 'applies' : 'skip'}</span> <span style="color:var(--muted)">${esc(x.reason)}</span>` : '<span class="mono no">no vote (triager failed)</span>');
+    h += `<div class="box"><span class="k">Triage votes</span><div>Haiku: ${v(n.votes.haiku)}</div><div>Luna: ${v(n.votes.luna)}</div>
+      ${isSplit(n) ? '<span style="font-size:12px;color:var(--amber)">Split vote, so it ran.</span>' : ''}</div>`;
+  }
+  if (n.kind === 'triage' && n.votes && Object.keys(n.votes).length) {
+    h += `<div class="bucket"><h3>Votes</h3>${S.roles.conditional.map((id) => {
+      const x = n.votes[id];
+      return x ? `<div class="card"><span class="verdict ${x.applies ? 'v-confirmed' : 'v-rejected'}">${x.applies ? 'applies' : 'skip'}</span><div class="body"><span>${esc(N[id].name)}</span><span class="sub">${esc(x.reason)}</span></div></div>` : '';
+    }).join('')}</div>`;
+  }
+  if (n.kind === 'core' || n.kind === 'conditional') {
+    if (n.status === 'skipped') h += `<p class="empty">Not run. ${esc(n.reason || '')}</p>`;
+    else if (n.status === 'done') {
+      h += `<h3>Findings</h3>`;
+      h += (n.findings || []).length ? n.findings.map((f) => {
+        const va = N.astra.verdicts && N.astra.verdicts[f.id];
+        const vs = N.sol.verdicts && N.sol.verdicts[f.id];
+        const tags = va || vs ? `<span class="row">${va ? `<span class="verdict v-${esc(va)}">Astra: ${esc(va)}</span>` : ''}${vs ? `<span class="verdict v-${esc(vs)}">Sol: ${esc(vs)}</span>` : ''}</span>` : '';
+        return findingCard(f, tags);
+      }).join('') : '<p class="empty">Nothing found.</p>';
+    }
+  }
+  if (n.kind === 'validator' && n.results && n.results.length) {
+    h += `<h3>Verdicts</h3>` + n.results.map((x) => `<div class="card"><span class="verdict v-${esc(x.verdict)}">${esc(x.verdict)}</span><div class="body">
+      <span><span class="mono" style="color:var(--muted)">${esc(x.finding_ids.join(', '))}</span> ${esc(x.title)}</span><span class="sub">${esc(x.reason)}</span><span class="loc">${esc(x.location)}</span></div></div>`).join('');
+  }
+  if (n.id === 'final' && S.final) {
+    const sec = (title, color, items, both) => `<div class="bucket"><h4 style="color:${color}">${title} · ${items.length}</h4>${items.length ? items.map((it) => findingCard({ ...it, problem: it.summary }, both ? `<span class="sub">Astra: ${esc(it.astra)}</span><span class="sub">Sol: ${esc(it.sol)}</span>` : '')).join('') : '<p class="empty">None.</p>'}</div>`;
+    h += sec('Confirmed by both', 'var(--green)', S.final.confirmed_both, false);
+    h += sec('Confirmed by one', '#2EA0A0', S.final.confirmed_one, true);
+    h += sec('Disagreements', 'var(--amber)', S.final.disagreements, true);
+    if (S.final.dropped && S.final.dropped.length) h += `<div class="bucket"><h4 style="color:var(--muted)">Not in the report · ${S.final.dropped.length}</h4>${S.final.dropped.map((d) => `<div class="card"><div class="body"><span>${esc(d.title)}</span><span class="sub">${esc(d.reason)}</span></div></div>`).join('')}</div>`;
+  }
+  if (n.activity && n.activity.length) {
+    h += `<div style="display:flex;flex-direction:column;gap:8px"><h3>Activity</h3><div class="log">${n.activity.slice().reverse().slice(0, 30).map((a) => `<div><time>${clock(a.t)}</time><span>${esc(a.text)}</span></div>`).join('')}</div></div>`;
+  } else if (n.status === 'running') {
+    h += '<p class="empty">Starting up…</p>';
+  }
+  aside.innerHTML = h;
+  aside.scrollTop = scroll;
+}
+
+function autoSelect() {
+  if (userPicked) return;
+  const N = S.nodes;
+  if (N.final.status === 'done' || (S.run.phase === 'done' && S.final)) { selected = 'final'; return; }
+  const running = [...S.roles.core, ...S.roles.conditional, 'haiku', 'luna', 'astra', 'sol', 'final'].find((id) => N[id].status === 'running');
+  if (!selected || N[selected].status !== 'running') selected = running || selected || 'diff';
+}
+
+function render() {
+  if (!S) return;
+  autoSelect();
+  renderHeader();
+  renderGraph();
+  renderInspector();
+  document.title = `Fleet review · ${$('phase').textContent}`;
+}
+
+$('graph').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-id]');
+  if (!b) return;
+  selected = b.dataset.id;
+  userPicked = true;
+  render();
+});
+
+function connect() {
+  const es = new EventSource('/events');
+  es.onmessage = (e) => { S = JSON.parse(e.data); render(); const c = $('conn'); if (c) c.classList.remove('off'); };
+  es.onerror = () => { const c = $('conn'); if (c) { c.classList.add('off'); c.lastChild.textContent = 'reconnecting'; } };
+}
+connect();
+setInterval(() => { if (S && !['done', 'failed'].includes(S.run.phase)) render(); }, 1000);
+</script>
+</body>
+</html>

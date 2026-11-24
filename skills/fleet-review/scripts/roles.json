@@ -1,0 +1,22 @@
+{
+  "core": [
+    { "id": "bug", "name": "Bug hunter", "brief": "logic errors, wrong behavior, broken assumptions" },
+    { "id": "edge", "name": "Edge case finder", "brief": "nil/empty/boundary inputs, concurrency, error paths, unhappy flows" },
+    { "id": "security", "name": "Security", "brief": "auth, injection, data exposure, unsafe input handling" },
+    { "id": "pattern", "name": "Pattern follower", "brief": "places the change departs from how this codebase already does things" },
+    { "id": "scope", "name": "Scope minimizer", "brief": "anything that isn't needed for the change's goal, or could be split out or dropped" }
+  ],
+  "conditional": [
+    { "id": "perf", "name": "Performance auditor", "brief": "N+1 queries, unnecessary work, hot-path costs, memory" },
+    { "id": "tidy", "name": "Tidy code lover", "brief": "naming, dead code, duplication, readability" },
+    { "id": "qa", "name": "QA tester", "brief": "tries to break it: happy/unhappy paths, all states, validation, double-submit, refresh/back, permissions, regressions. Include repro steps. Skip if the diff has no UI." },
+    { "id": "ux", "name": "UX expert", "brief": "flow and friction, feedback, copy and error messages, accessibility (keyboard, focus, screen readers). Skip if the diff has no UI." },
+    { "id": "visual", "name": "Visual reviewer", "brief": "layout breaks, overflow, alignment, responsive sizes, contrast, visual hierarchy, consistency with the design system. Skip if the diff has no visual changes." },
+    { "id": "data", "name": "Data & migrations", "brief": "schema changes, data integrity, reversibility, backfills, locking on large tables" },
+    { "id": "api", "name": "API contract", "brief": "breaking changes to endpoints, payloads, or public interfaces; backward compatibility" },
+    { "id": "jobs", "name": "Background jobs & concurrency", "brief": "idempotency, retries, race conditions, transaction boundaries" },
+    { "id": "tests", "name": "Test quality", "brief": "missing coverage for new behavior, brittle or tautological tests" },
+    { "id": "deps", "name": "Dependencies", "brief": "new or upgraded packages, licensing, necessity" },
+    { "id": "unique", "name": "Unique reviewer", "brief": "anything the change does that no other role covers (config, build/deploy, feature flags, logging, docs). Skip if every part fits another role. Pass it the full role list if spawned.", "needsRoleList": true }
+  ]
+}
