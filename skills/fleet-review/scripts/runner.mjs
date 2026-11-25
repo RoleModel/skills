@@ -6,9 +6,9 @@
 //   node runner.mjs wait [--timeout <sec>]     block until the latest run in this repo finishes, print the report
 //   node runner.mjs status                     print the latest run's phase and URL
 //
-// Pipeline: core roles start at once; Haiku + Luna triage the conditional roles in parallel (a role is
-// dropped only if both say it doesn't apply); selected conditional roles run; Astra + Sol validate every
-// finding; Sonnet dedupes into the final report.
+// Pipeline: Opus triages, picking which conditional roles apply and the effort for every role; core
+// roles and the selected conditional roles run at those efforts; Astra + Sol validate every finding;
+// Sonnet dedupes into the final report.
 
 import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -21,9 +21,9 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 // ---- configuration --------------------------------------------------------------------------
 const AGENTS = {
-  haiku: { provider: 'claude', model: 'claude-haiku-5-5', label: 'Haiku 5.5' },
-  luna: { provider: 'codex', model: 'gpt-6-luna', label: 'Luna 6' },
-  role: { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'high', label: 'Sonnet 5.5 · high' },
+  triage: { provider: 'claude', model: 'claude-opus-5-5', effort: 'medium', label: 'Opus 5.5 · medium' },
+  // Effort per role comes from triage; this is the fallback when triage fails.
+  role: { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'high', label: 'Sonnet 5.5' },
   astra: { provider: 'codex', model: 'gpt-6-astra', effort: 'medium', label: 'Astra 6 · medium', sandbox: 'workspace-write' },
   sol: { provider: 'codex', model: 'gpt-6.2-sol', effort: 'high', label: 'Sol 6.2 · high', sandbox: 'workspace-write' },
   final: { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'medium', label: 'Sonnet 5.5 · medium' },
@@ -131,15 +131,28 @@ function readLatestState() {
 // ---- schemas (strict, so both providers accept them) ----------------------------------------
 const SEVERITY = { type: 'string', enum: ['high', 'med', 'low'] };
 
-function triageSchema(ids) {
+const CORE_EFFORTS = ['high', 'xhigh'];
+const CONDITIONAL_EFFORTS = ['medium', 'high', 'xhigh'];
+
+function triageSchema(coreIds, conditionalIds) {
   return {
-    type: 'object', additionalProperties: false, required: ['roles'],
+    type: 'object', additionalProperties: false, required: ['core', 'conditional'],
     properties: {
-      roles: {
+      core: {
         type: 'array',
         items: {
-          type: 'object', additionalProperties: false, required: ['role', 'applies', 'reason'],
-          properties: { role: { type: 'string', enum: ids }, applies: { type: 'boolean' }, reason: { type: 'string' } },
+          type: 'object', additionalProperties: false, required: ['role', 'effort', 'reason'],
+          properties: { role: { type: 'string', enum: coreIds }, effort: { type: 'string', enum: CORE_EFFORTS }, reason: { type: 'string' } },
+        },
+      },
+      conditional: {
+        type: 'array',
+        items: {
+          type: 'object', additionalProperties: false, required: ['role', 'applies', 'effort', 'reason'],
+          properties: {
+            role: { type: 'string', enum: conditionalIds }, applies: { type: 'boolean' },
+            effort: { type: 'string', enum: CONDITIONAL_EFFORTS }, reason: { type: 'string' },
+          },
         },
       },
     },
@@ -410,29 +423,40 @@ function baseVars() {
   return { diffPath: path.join(runDir, 'diff.patch'), branch: r.branch, base: r.base, mergeBase: r.mergeBase.slice(0, 12) };
 }
 
-async function runTriage(id, roles) {
-  const node = state.nodes[id];
-  const list = roles.conditional.map((r) => `- \`${r.id}\` **${r.name}**: ${r.brief}`).join('\n');
-  const prompt = fill(readPrompt('triage'), { ...baseVars(), conditionalRoles: list });
-  const res = await runAgent(node, AGENTS[id], prompt, triageSchema(roles.conditional.map((r) => r.id)), { timeout: TIMEOUTS.triage, addDirs: [runDir] });
-  const votes = {};
-  if (res.ok) for (const v of res.output.roles || []) votes[v.role] = { applies: !!v.applies, reason: v.reason };
-  node.votes = votes;
-  const applies = roles.conditional.filter((r) => votes[r.id]?.applies).length;
+// Returns { roleId: { applies, effort, reason } } for every role. A role triage leaves out (or every
+// role, if triage fails) runs at the fallback effort.
+async function runTriage(roles) {
+  const node = state.nodes.triage;
+  const list = (rs) => rs.map((r) => `- \`${r.id}\` **${r.name}**: ${r.brief}`).join('\n');
+  const prompt = fill(readPrompt('triage'), { ...baseVars(), coreRoles: list(roles.core), conditionalRoles: list(roles.conditional) });
+  const schema = triageSchema(roles.core.map((r) => r.id), roles.conditional.map((r) => r.id));
+  const res = await runAgent(node, AGENTS.triage, prompt, schema, { timeout: TIMEOUTS.triage, addDirs: [runDir] });
+  const picked = {};
+  if (res.ok) {
+    for (const v of res.output.core || []) picked[v.role] = { applies: true, effort: v.effort, reason: v.reason };
+    for (const v of res.output.conditional || []) picked[v.role] = { applies: !!v.applies, effort: v.effort, reason: v.reason };
+  }
+  const fallback = res.ok ? 'Triage returned no decision for this role' : 'Triage failed';
+  const out = {};
+  for (const r of [...roles.core, ...roles.conditional]) out[r.id] = picked[r.id] || { applies: true, effort: AGENTS.role.effort, reason: fallback, fallback: true };
+  node.decisions = out;
+  const applies = roles.conditional.filter((r) => out[r.id].applies).length;
   node.summary = res.ok ? `${applies} of ${roles.conditional.length} apply` : 'failed: all roles kept';
   save();
-  return votes;
+  return out;
 }
 
-async function runRole(role, roles) {
+async function runRole(role, roles, effort) {
   const node = state.nodes[role.id];
+  node.effort = effort;
+  node.model = `${AGENTS.role.label} · ${effort}`;
   let roleList = '';
   if (role.needsRoleList) {
     const all = [...roles.core, ...roles.conditional].filter((r) => r.id !== role.id);
     roleList = '\nThe other roles, so you know what they already cover:\n' + all.map((r) => `- **${r.name}**: ${r.brief}`).join('\n') + '\n';
   }
   const prompt = fill(readPrompt('role'), { ...baseVars(), roleName: role.name, roleBrief: role.brief, roleList });
-  const res = await runAgent(node, AGENTS.role, prompt, FINDINGS_SCHEMA, { timeout: TIMEOUTS.role, addDirs: [runDir] });
+  const res = await runAgent(node, { ...AGENTS.role, effort }, prompt, FINDINGS_SCHEMA, { timeout: TIMEOUTS.role, addDirs: [runDir] });
   node.findings = res.ok ? (res.output.findings || []).slice().sort(bySeverity) : [];
   save();
 }
@@ -499,26 +523,21 @@ function finish(report, phase = 'done') {
 }
 
 async function pipeline(roles) {
-  const coreRuns = roles.core.map((r) => runRole(r, roles));
   state.run.phase = 'triage';
   save();
-  const [hv, lv] = await Promise.all([runTriage('haiku', roles), runTriage('luna', roles)]);
-  const haikuOk = state.nodes.haiku.status === 'done';
-  const lunaOk = state.nodes.luna.status === 'done';
+  const decisions = await runTriage(roles);
   const selected = [];
-  for (const r of roles.conditional) {
+  for (const r of [...roles.core, ...roles.conditional]) {
     const node = state.nodes[r.id];
-    const h = haikuOk ? (hv[r.id] || { applies: true, reason: 'No vote returned' }) : null;
-    const l = lunaOk ? (lv[r.id] || { applies: true, reason: 'No vote returned' }) : null;
-    node.votes = { haiku: h, luna: l };
-    const applies = (h ? h.applies : true) || (l ? l.applies : true);
-    if (applies) selected.push(r);
-    else { node.status = 'skipped'; node.reason = `Both triagers: ${h.reason} / ${l.reason}`; }
+    const d = decisions[r.id];
+    node.triage = d;
+    if (d.applies) selected.push(r);
+    else { node.status = 'skipped'; node.reason = `Triage: ${d.reason}`; }
   }
-  state.run.roster = { core: roles.core.length, conditional: selected.length, total: roles.core.length + roles.conditional.length };
+  state.run.roster = { core: roles.core.length, conditional: selected.length - roles.core.length, total: roles.core.length + roles.conditional.length };
   state.run.phase = 'review';
   save();
-  await Promise.all([...coreRuns, ...selected.map((r) => runRole(r, roles))]);
+  await Promise.all(selected.map((r) => runRole(r, roles, decisions[r.id].effort)));
 
   const findings = [];
   for (const r of [...roles.core, ...roles.conditional]) {
@@ -586,14 +605,13 @@ async function start() {
 
   const nodes = {
     diff: makeNode('diff', 'input', 'Diff', null, { status: 'done' }),
-    haiku: makeNode('haiku', 'triage', 'Triage', AGENTS.haiku),
-    luna: makeNode('luna', 'triage', 'Triage', AGENTS.luna),
+    triage: makeNode('triage', 'triage', 'Triage', AGENTS.triage),
     astra: makeNode('astra', 'validator', 'Validator', AGENTS.astra),
     sol: makeNode('sol', 'validator', 'Validator', AGENTS.sol),
     final: makeNode('final', 'final', 'Final report', AGENTS.final),
   };
-  for (const r of roles.core) nodes[r.id] = makeNode(r.id, 'core', r.name, AGENTS.role, { brief: r.brief, findings: [] });
-  for (const r of roles.conditional) nodes[r.id] = makeNode(r.id, 'conditional', r.name, AGENTS.role, { brief: r.brief, findings: [], votes: null });
+  for (const r of roles.core) nodes[r.id] = makeNode(r.id, 'core', r.name, AGENTS.role, { brief: r.brief, findings: [], triage: null });
+  for (const r of roles.conditional) nodes[r.id] = makeNode(r.id, 'conditional', r.name, AGENTS.role, { brief: r.brief, findings: [], triage: null });
 
   state = {
     run: {

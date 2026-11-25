@@ -10,7 +10,7 @@ metadata:
 
 # Fleet review
 
-The runner starts core reviewers alongside two triagers. A conditional reviewer runs unless both triagers rule it out. Two validators independently check the findings, and a final agent deduplicates them into a report. Start the runner, wait for it, and relay its report without editing the branch.
+A triager picks which conditional reviewers run and how much reasoning effort each reviewer gets. Core reviewers always run. Two validators independently check the findings, and a final agent deduplicates them into a report. Start the runner, wait for it, and relay its report without editing the branch.
 
 The runner requires Node.js, Git, authenticated `claude` and `codex` CLIs with access to the configured models, and `longrun` for the dashboard session. Resolve `R` to the absolute path of [scripts/runner.mjs](scripts/runner.mjs) relative to this skill file. Run commands from the repository root. Set `R` in each shell that needs it.
 

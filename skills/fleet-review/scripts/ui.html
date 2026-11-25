@@ -63,7 +63,8 @@ h1{margin:0;font-size:20px;font-weight:600}
 .rn .dot{width:8px;height:8px;border-radius:50%;flex:none}
 .rn .nm{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rn .m{flex:none;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--muted)}
-.rn .split{flex:none;font-size:10px;font-weight:600;color:var(--amber);background:rgba(210,153,34,.14);border-radius:4px;padding:1px 5px}
+.rn .eff{flex:none;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.rn .eff.xhigh{color:var(--amber);border-color:rgba(210,153,34,.45)}
 .st-pending .dot{border:2px solid #545D68}
 .st-pending{color:var(--soft)}
 .st-running{border-color:var(--green);animation:glow 1.4s ease-in-out infinite}
@@ -151,15 +152,12 @@ function outEdge(st) { return st === 'running' ? 'r' : st === 'done' ? 'g' : st 
 function curve(x1, y1, x2, y2, cls) { const mx = (x1 + x2) / 2; return `<path class="ln ${cls}" d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}"></path>`; }
 
 function roleMeta(n) {
-  if (n.status === 'pending') return n.kind === 'conditional' && !n.votes ? 'awaiting triage' : 'queued';
+  if (n.status === 'pending') return !n.triage ? 'awaiting triage' : 'queued';
   if (n.status === 'running') return elapsed(n);
   if (n.status === 'skipped') return 'skipped';
   if (n.status === 'failed') return 'failed';
   const c = (n.findings || []).length;
   return c ? `${c} found` : 'none';
-}
-function isSplit(n) {
-  return n.kind === 'conditional' && n.votes && n.votes.haiku && n.votes.luna && n.votes.haiku.applies !== n.votes.luna.applies;
 }
 
 function validatorMeta(n) {
@@ -182,20 +180,16 @@ function renderGraph() {
   const condY = (j) => condTop + j * step + 18;
   const H = condTop + cond.length * step;
   const mid = Math.round((coreY(0) + condY(cond.length - 1)) / 2);
-  const triMid = Math.round((condY(0) + condY(cond.length - 1)) / 2);
-  const triA = triMid - 48, triB = triMid + 48;
   const valA = mid - 48, valB = mid + 48;
-  const triageDone = N.haiku.status !== 'pending' && N.haiku.status !== 'running' && N.luna.status !== 'pending' && N.luna.status !== 'running';
+  const triageDone = N.triage.status !== 'pending' && N.triage.status !== 'running';
   const rolesAll = [...core, ...cond];
   const reviewersDone = triageDone && rolesAll.every((n) => ['done', 'failed', 'skipped'].includes(n.status));
 
   let p = '';
-  core.forEach((n, i) => { p += curve(150, mid, 470, coreY(i), inEdge(n.status)); });
-  p += curve(150, mid, 210, triA, inEdge(N.haiku.status));
-  p += curve(150, mid, 210, triB, inEdge(N.luna.status));
-  p += curve(380, triA, 420, triMid, outEdge(N.haiku.status));
-  p += curve(380, triB, 420, triMid, outEdge(N.luna.status));
-  cond.forEach((n, j) => { p += curve(420, triMid, 470, condY(j), triageDone ? inEdge(n.status) : 'p'); });
+  p += curve(150, mid, 210, mid, inEdge(N.triage.status));
+  p += curve(380, mid, 420, mid, outEdge(N.triage.status));
+  core.forEach((n, i) => { p += curve(420, mid, 470, coreY(i), triageDone ? inEdge(n.status) : 'p'); });
+  cond.forEach((n, j) => { p += curve(420, mid, 470, condY(j), triageDone ? inEdge(n.status) : 'p'); });
   rolesAll.forEach((n, k) => {
     if (n.status === 'skipped') return;
     const y = k < core.length ? coreY(k) : condY(k - core.length);
@@ -213,7 +207,7 @@ function renderGraph() {
       <span class="t">${title}</span>${bar ? '<span class="pbar"></span>' : ''}<span class="m">${esc(sub)}</span></button>`;
   };
   const roleBtn = (n) => `<button type="button" class="node rn st-${n.status}${sel(n.id)}" data-id="${esc(n.id)}">
-      <span class="dot"></span><span class="nm">${esc(n.name)}</span>${isSplit(n) ? '<span class="split">split vote</span>' : ''}<span class="m">${esc(roleMeta(n))}</span></button>`;
+      <span class="dot"></span><span class="nm">${esc(n.name)}</span>${n.effort ? `<span class="eff ${esc(n.effort)}">${esc(n.effort)}</span>` : ''}<span class="m">${esc(roleMeta(n))}</span></button>`;
   const triSub = (n) => (n.status === 'running' ? `reading · ${elapsed(n)}` : n.summary || (n.status === 'pending' ? 'queued' : n.status));
   const r = S.run;
 
@@ -221,15 +215,14 @@ function renderGraph() {
   $('graph').innerHTML = `
     <div class="colhead" style="left:24px;top:20px">Diff</div>
     <div class="colhead" style="left:234px;top:20px">Triage</div>
-    <div class="colhead" style="left:494px;top:20px">Role reviewers · ${esc(N[core[0].id].model || '')}</div>
+    <div class="colhead" style="left:494px;top:20px">Role reviewers · Sonnet 5.5</div>
     <div class="colhead" style="left:874px;top:20px">Validators</div>
     <div class="colhead" style="left:1094px;top:20px">Final</div>
     <svg width="1220" height="${H}" viewBox="0 0 1220 ${H}" aria-hidden="true">${p}</svg>
     ${big('diff', 0, mid - 28, 150, 56, 'Diff', `${plural(r.files, 'file')} · +${r.insertions} −${r.deletions}`)}
-    ${big('haiku', 210, triA - 24, 170, 48, `Haiku <small>triage</small>`, triSub(N.haiku))}
-    ${big('luna', 210, triB - 24, 170, 48, `Luna <small>triage</small>`, triSub(N.luna))}
-    <div class="hub${triageDone ? ' on' : ''}" style="left:${414 + 24}px;top:${triMid - 6 + 52}px"></div>
-    <div class="glabel" style="left:${470 + 24}px;top:${6 + 52}px">Core · always run</div>
+    ${big('triage', 210, mid - 28, 170, 56, `Opus 5.5 <small>triage</small>`, triSub(N.triage))}
+    <div class="hub${triageDone ? ' on' : ''}" style="left:${414 + 24}px;top:${mid - 6 + 52}px"></div>
+    <div class="glabel" style="left:${470 + 24}px;top:${6 + 52}px">Core · always run, effort by triage</div>
     <div style="position:absolute;left:${470 + 24}px;top:${coreTop + 52}px;width:280px;display:flex;flex-direction:column;gap:8px">${core.map(roleBtn).join('')}</div>
     <div class="glabel" style="left:${470 + 24}px;top:${condLabel - 2 + 52}px">Conditional · picked by triage</div>
     <div style="position:absolute;left:${470 + 24}px;top:${condTop + 52}px;width:280px;display:flex;flex-direction:column;gap:8px">${cond.map(roleBtn).join('')}</div>
@@ -249,7 +242,7 @@ function renderHeader() {
   $('phase').className = `pill ${r.phase === 'done' ? 'done' : r.phase === 'failed' ? 'failed' : 'running'}`;
   $('meta').textContent = `${plural(r.files, 'file')} · +${r.insertions} −${r.deletions} · ${live ? 'started ' + dur(Date.now() - r.startedAt) + ' ago' : 'took ' + dur((r.finishedAt || Date.now()) - r.startedAt)}`;
   const roles = [...S.roles.core, ...S.roles.conditional].map((id) => N[id]);
-  const triggered = roles.filter((n) => n.status !== 'skipped' && !(n.kind === 'conditional' && !n.votes));
+  const triggered = roles.filter((n) => n.status !== 'skipped' && n.triage);
   const reviewed = roles.filter((n) => n.status === 'done' || n.status === 'failed');
   const findings = roles.reduce((a, n) => a + (n.findings || []).length, 0);
   const total = roles.length;
@@ -277,7 +270,7 @@ function renderHeader() {
     return `<li class="${cls}"><span class="bar"></span><span>${name} <span class="mono" style="color:var(--muted)">${t}${cls === 'running' ? ' · running' : ''}</span></span></li>`;
   };
   $('stages').innerHTML = [
-    stage('triage', 'Triage', [N.haiku, N.luna]),
+    stage('triage', 'Triage', [N.triage]),
     stage('review', 'Reviewers', roles.filter((n) => n.status !== 'skipped')),
     stage('validate', 'Validators', [N.astra, N.sol]),
     stage('final', 'Final report', [N.final]),
@@ -303,7 +296,7 @@ function renderInspector() {
   const kindLabel = { input: 'Input', triage: 'Triage', core: 'Core role', conditional: 'Conditional role', validator: 'Validator', final: 'Final' }[n.kind] || '';
   const statusText = n.status === 'running' ? `running · ${elapsed(n)}` : n.status === 'done' ? `done${n.startedAt ? ' · ' + elapsed(n) : ''}` : n.status;
   let h = `<div style="display:flex;flex-direction:column;gap:6px">
-    <span class="eyebrow">${kindLabel}</span><h2>${esc(n.id === 'haiku' ? 'Haiku triage' : n.id === 'luna' ? 'Luna triage' : n.id === 'astra' ? 'Astra validator' : n.id === 'sol' ? 'Sol validator' : n.name)}</h2>
+    <span class="eyebrow">${kindLabel}</span><h2>${esc(n.id === 'triage' ? 'Opus triage' : n.id === 'astra' ? 'Astra validator' : n.id === 'sol' ? 'Sol validator' : n.name)}</h2>
     <div class="row">${n.model ? `<span class="chip mono">${esc(n.model)}</span>` : ''}<span class="mono" style="font-size:12px;color:${n.status === 'running' ? 'var(--green)' : n.status === 'failed' ? 'var(--red)' : 'var(--muted)'}">${esc(statusText)}</span></div></div>`;
   if (n.brief) h += `<p class="brief">${esc(n.brief.charAt(0).toUpperCase() + n.brief.slice(1))}</p>`;
   if (n.error) h += `<p class="err">${esc(n.error)}</p>`;
@@ -314,16 +307,21 @@ function renderInspector() {
       <span class="k">Run folder</span><span class="mono" style="font-size:11px;overflow-wrap:anywhere">${esc(r.runDir)}</span></div>`;
     if (r.error) h += `<p class="err">${esc(r.error)}</p>`;
   }
-  if (n.kind === 'conditional' && n.votes) {
-    const v = (x) => (x ? `<span class="mono ${x.applies ? 'yes' : 'no'}">${x.applies ? 'applies' : 'skip'}</span> <span style="color:var(--muted)">${esc(x.reason)}</span>` : '<span class="mono no">no vote (triager failed)</span>');
-    h += `<div class="box"><span class="k">Triage votes</span><div>Haiku: ${v(n.votes.haiku)}</div><div>Luna: ${v(n.votes.luna)}</div>
-      ${isSplit(n) ? '<span style="font-size:12px;color:var(--amber)">Split vote, so it ran.</span>' : ''}</div>`;
+  if ((n.kind === 'core' || n.kind === 'conditional') && n.triage) {
+    const x = n.triage;
+    const verdict = n.kind === 'core' ? 'always runs' : x.applies ? 'applies' : 'skip';
+    h += `<div class="box"><span class="k">Triage</span><div><span class="mono ${x.applies ? 'yes' : 'no'}">${verdict}</span>${x.applies ? ` <span class="mono">· ${esc(x.effort)} effort</span>` : ''}</div>
+      <span style="color:var(--muted)">${esc(x.reason)}</span></div>`;
   }
-  if (n.kind === 'triage' && n.votes && Object.keys(n.votes).length) {
-    h += `<div class="bucket"><h3>Votes</h3>${S.roles.conditional.map((id) => {
-      const x = n.votes[id];
-      return x ? `<div class="card"><span class="verdict ${x.applies ? 'v-confirmed' : 'v-rejected'}">${x.applies ? 'applies' : 'skip'}</span><div class="body"><span>${esc(N[id].name)}</span><span class="sub">${esc(x.reason)}</span></div></div>` : '';
-    }).join('')}</div>`;
+  if (n.kind === 'triage' && n.decisions && Object.keys(n.decisions).length) {
+    const card = (id) => {
+      const x = n.decisions[id];
+      if (!x) return '';
+      const label = N[id].kind === 'core' ? x.effort : x.applies ? `applies · ${x.effort}` : 'skip';
+      return `<div class="card"><span class="verdict ${x.applies ? 'v-confirmed' : 'v-rejected'}">${esc(label)}</span><div class="body"><span>${esc(N[id].name)}</span><span class="sub">${esc(x.reason)}</span></div></div>`;
+    };
+    h += `<div class="bucket"><h3>Core roles</h3>${S.roles.core.map(card).join('')}</div>`;
+    h += `<div class="bucket"><h3>Conditional roles</h3>${S.roles.conditional.map(card).join('')}</div>`;
   }
   if (n.kind === 'core' || n.kind === 'conditional') {
     if (n.status === 'skipped') h += `<p class="empty">Not run. ${esc(n.reason || '')}</p>`;
@@ -361,7 +359,7 @@ function autoSelect() {
   if (userPicked) return;
   const N = S.nodes;
   if (N.final.status === 'done' || (S.run.phase === 'done' && S.final)) { selected = 'final'; return; }
-  const running = [...S.roles.core, ...S.roles.conditional, 'haiku', 'luna', 'astra', 'sol', 'final'].find((id) => N[id].status === 'running');
+  const running = [...S.roles.core, ...S.roles.conditional, 'triage', 'astra', 'sol', 'final'].find((id) => N[id].status === 'running');
   if (!selected || N[selected].status !== 'running') selected = running || selected || 'diff';
 }
 
