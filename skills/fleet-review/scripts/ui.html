@@ -195,10 +195,10 @@ function renderGraph() {
     const y = k < core.length ? coreY(k) : condY(k - core.length);
     p += curve(750, y, 800, mid, outEdge(n.status));
   });
-  p += curve(800, mid, 850, valA, inEdge(N.astra.status));
-  p += curve(800, mid, 850, valB, inEdge(N.sol.status));
-  p += curve(1020, valA, 1070, mid, outEdge(N.astra.status));
-  p += curve(1020, valB, 1070, mid, outEdge(N.sol.status));
+  p += curve(800, mid, 850, valA, inEdge(N.sol.status));
+  p += curve(935, valA + 32, 935, valB - 32, inEdge(N.astra.status));
+  p += curve(1020, valA, 1070, mid, outEdge(N.sol.status));
+  p += curve(1020, valB, 1070, mid, outEdge(N.astra.status));
 
   const sel = (id) => (id === selected ? ' sel' : '');
   const big = (id, x, y, w, h, title, sub, bar) => {
@@ -207,7 +207,7 @@ function renderGraph() {
       <span class="t">${title}</span>${bar ? '<span class="pbar"></span>' : ''}<span class="m">${esc(sub)}</span></button>`;
   };
   const roleBtn = (n) => `<button type="button" class="node rn st-${n.status}${sel(n.id)}" data-id="${esc(n.id)}">
-      <span class="dot"></span><span class="nm">${esc(n.name)}</span>${n.effort ? `<span class="eff ${esc(n.effort)}">${esc(n.effort)}</span>` : ''}<span class="m">${esc(roleMeta(n))}</span></button>`;
+      <span class="dot"></span><span class="nm">${esc(n.name)}</span>${n.effort ? `<span class="eff ${esc(n.effort)}">${esc(n.model)}</span>` : ''}<span class="m">${esc(roleMeta(n))}</span></button>`;
   const triSub = (n) => (n.status === 'running' ? `reading · ${elapsed(n)}` : n.summary || (n.status === 'pending' ? 'queued' : n.status));
   const r = S.run;
 
@@ -215,20 +215,20 @@ function renderGraph() {
   $('graph').innerHTML = `
     <div class="colhead" style="left:24px;top:20px">Diff</div>
     <div class="colhead" style="left:234px;top:20px">Triage</div>
-    <div class="colhead" style="left:494px;top:20px">Role reviewers · Sonnet 5.5</div>
+    <div class="colhead" style="left:494px;top:20px">Role reviewers</div>
     <div class="colhead" style="left:874px;top:20px">Validators</div>
     <div class="colhead" style="left:1094px;top:20px">Final</div>
     <svg width="1220" height="${H}" viewBox="0 0 1220 ${H}" aria-hidden="true">${p}</svg>
     ${big('diff', 0, mid - 28, 150, 56, 'Diff', `${plural(r.files, 'file')} · +${r.insertions} −${r.deletions}`)}
     ${big('triage', 210, mid - 28, 170, 56, `Opus 5.5 <small>triage</small>`, triSub(N.triage))}
     <div class="hub${triageDone ? ' on' : ''}" style="left:${414 + 24}px;top:${mid - 6 + 52}px"></div>
-    <div class="glabel" style="left:${470 + 24}px;top:${6 + 52}px">Core · always run, effort by triage</div>
+    <div class="glabel" style="left:${470 + 24}px;top:${6 + 52}px">Core · Sonnet high</div>
     <div style="position:absolute;left:${470 + 24}px;top:${coreTop + 52}px;width:280px;display:flex;flex-direction:column;gap:8px">${core.map(roleBtn).join('')}</div>
     <div class="glabel" style="left:${470 + 24}px;top:${condLabel - 2 + 52}px">Conditional · picked by triage</div>
     <div style="position:absolute;left:${470 + 24}px;top:${condTop + 52}px;width:280px;display:flex;flex-direction:column;gap:8px">${cond.map(roleBtn).join('')}</div>
     <div class="hub${reviewersDone ? ' on' : ''}" style="left:${794 + 24}px;top:${mid - 6 + 52}px"></div>
-    ${big('astra', 850, valA - 32, 170, 64, `Astra 6 <small>medium</small>`, validatorMeta(N.astra), true)}
-    ${big('sol', 850, valB - 32, 170, 64, `Sol 6.2 <small>high</small>`, validatorMeta(N.sol), true)}
+    ${big('sol', 850, valA - 32, 170, 64, `Sol 6.2 <small>primary</small>`, validatorMeta(N.sol), true)}
+    ${big('astra', 850, valB - 32, 170, 64, `Astra 6 <small>second opinion</small>`, validatorMeta(N.astra), true)}
     ${big('final', 1070, mid - 28, 150, 56, N.final.status === 'done' ? 'Report ready' : 'Sonnet 5.5', N.final.status === 'running' ? `deduping · ${elapsed(N.final)}` : N.final.status === 'done' ? 'click to read' : N.final.status === 'pending' ? 'dedupe · queued' : N.final.status)}
   `;
 }
@@ -300,6 +300,7 @@ function renderInspector() {
     <div class="row">${n.model ? `<span class="chip mono">${esc(n.model)}</span>` : ''}<span class="mono" style="font-size:12px;color:${n.status === 'running' ? 'var(--green)' : n.status === 'failed' ? 'var(--red)' : 'var(--muted)'}">${esc(statusText)}</span></div></div>`;
   if (n.brief) h += `<p class="brief">${esc(n.brief.charAt(0).toUpperCase() + n.brief.slice(1))}</p>`;
   if (n.error) h += `<p class="err">${esc(n.error)}</p>`;
+  if (n.kind === 'validator' && n.reason) h += `<p class="empty">${esc(n.reason)}</p>`;
 
   if (n.id === 'diff') {
     h += `<div class="box"><span class="k">Comparing</span><span class="mono" style="font-size:12px">${esc(r.branch)} → ${esc(r.base)}</span><span class="k">Merge base</span><span class="mono" style="font-size:12px">${esc(r.mergeBase.slice(0, 12))}</span>
@@ -310,14 +311,15 @@ function renderInspector() {
   if ((n.kind === 'core' || n.kind === 'conditional') && n.triage) {
     const x = n.triage;
     const verdict = n.kind === 'core' ? 'always runs' : x.applies ? 'applies' : 'skip';
-    h += `<div class="box"><span class="k">Triage</span><div><span class="mono ${x.applies ? 'yes' : 'no'}">${verdict}</span>${x.applies ? ` <span class="mono">· ${esc(x.effort)} effort</span>` : ''}</div>
+    h += `<div class="box"><span class="k">${n.kind === 'core' ? 'Assignment' : 'Triage'}</span><div><span class="mono ${x.applies ? 'yes' : 'no'}">${verdict}</span>${x.applies ? ` <span class="mono">· ${esc(x.reviewer || x.effort)}</span>` : ''}</div>
       <span style="color:var(--muted)">${esc(x.reason)}</span></div>`;
   }
   if (n.kind === 'triage' && n.decisions && Object.keys(n.decisions).length) {
     const card = (id) => {
       const x = n.decisions[id];
       if (!x) return '';
-      const label = N[id].kind === 'core' ? x.effort : x.applies ? `applies · ${x.effort}` : 'skip';
+      const reviewer = x.reviewer || x.effort;
+      const label = N[id].kind === 'core' ? reviewer : x.applies ? `applies · ${reviewer}` : 'skip';
       return `<div class="card"><span class="verdict ${x.applies ? 'v-confirmed' : 'v-rejected'}">${esc(label)}</span><div class="body"><span>${esc(N[id].name)}</span><span class="sub">${esc(x.reason)}</span></div></div>`;
     };
     h += `<div class="bucket"><h3>Core roles</h3>${S.roles.core.map(card).join('')}</div>`;

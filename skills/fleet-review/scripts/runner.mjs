@@ -6,8 +6,8 @@
 //   node runner.mjs wait [--timeout <sec>]     block until the latest run in this repo finishes, print the report
 //   node runner.mjs status                     print the latest run's phase and URL
 //
-// Pipeline: Opus triages, picking which conditional roles apply and the effort for every role; core
-// roles and the selected conditional roles run at those efforts; Astra + Sol validate every finding;
+// Pipeline: core reviewers use Sonnet high; Opus selects conditional roles and their tiers;
+// Sol validates, with Astra as needed;
 // Sonnet dedupes into the final report.
 
 import { spawn, execFileSync } from 'node:child_process';
@@ -22,12 +22,17 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 // ---- configuration --------------------------------------------------------------------------
 const AGENTS = {
   triage: { provider: 'claude', model: 'claude-opus-5-5', effort: 'medium', label: 'Opus 5.5 · medium' },
-  // Effort per role comes from triage; this is the fallback when triage fails.
-  role: { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'high', label: 'Sonnet 5.5' },
   astra: { provider: 'codex', model: 'gpt-6-astra', effort: 'medium', label: 'Astra 6 · medium', sandbox: 'workspace-write' },
   sol: { provider: 'codex', model: 'gpt-6.2-sol', effort: 'high', label: 'Sol 6.2 · high', sandbox: 'workspace-write' },
   final: { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'medium', label: 'Sonnet 5.5 · medium' },
 };
+const REVIEWERS = {
+  'terra-high': { provider: 'codex', model: 'gpt-6.1-terra', effort: 'high', label: 'Terra · high' },
+  'sonnet-medium': { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'medium', label: 'Sonnet · medium' },
+  'terra-xhigh': { provider: 'codex', model: 'gpt-6.1-terra', effort: 'xhigh', label: 'Terra · xhigh' },
+  'sonnet-high': { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'high', label: 'Sonnet · high' },
+};
+const SONNET_HIGH_TIER = 'sonnet-high';
 const MIN = 60_000;
 const TIMEOUTS = { triage: 15 * MIN, role: 30 * MIN, validator: 45 * MIN, final: 15 * MIN };
 const KEEP_ALIVE_MS = 120 * MIN; // keep the live view up this long after the run ends
@@ -131,27 +136,19 @@ function readLatestState() {
 // ---- schemas (strict, so both providers accept them) ----------------------------------------
 const SEVERITY = { type: 'string', enum: ['high', 'med', 'low'] };
 
-const CORE_EFFORTS = ['high', 'xhigh'];
-const CONDITIONAL_EFFORTS = ['medium', 'high', 'xhigh'];
+const CONDITIONAL_TIERS = Object.keys(REVIEWERS);
 
-function triageSchema(coreIds, conditionalIds) {
+function triageSchema(conditionalIds) {
   return {
-    type: 'object', additionalProperties: false, required: ['core', 'conditional'],
+    type: 'object', additionalProperties: false, required: ['conditional'],
     properties: {
-      core: {
-        type: 'array',
-        items: {
-          type: 'object', additionalProperties: false, required: ['role', 'effort', 'reason'],
-          properties: { role: { type: 'string', enum: coreIds }, effort: { type: 'string', enum: CORE_EFFORTS }, reason: { type: 'string' } },
-        },
-      },
       conditional: {
         type: 'array',
         items: {
-          type: 'object', additionalProperties: false, required: ['role', 'applies', 'effort', 'reason'],
+          type: 'object', additionalProperties: false, required: ['role', 'applies', 'tier', 'reason'],
           properties: {
             role: { type: 'string', enum: conditionalIds }, applies: { type: 'boolean' },
-            effort: { type: 'string', enum: CONDITIONAL_EFFORTS }, reason: { type: 'string' },
+            tier: { type: 'string', enum: CONDITIONAL_TIERS }, reason: { type: 'string' },
           },
         },
       },
@@ -180,7 +177,10 @@ const FINDINGS_SCHEMA = {
   },
 };
 
-function validatorSchema(ids) {
+function validatorSchema(ids, primary) {
+  const secondOpinion = primary
+    ? { second_opinion: { type: 'boolean', description: 'Request an independent check of these finding IDs' } }
+    : {};
   return {
     type: 'object', additionalProperties: false, required: ['results'],
     properties: {
@@ -188,7 +188,7 @@ function validatorSchema(ids) {
         type: 'array',
         items: {
           type: 'object', additionalProperties: false,
-          required: ['finding_ids', 'verdict', 'reason', 'title', 'severity', 'location'],
+          required: ['finding_ids', 'verdict', 'reason', 'title', 'severity', 'location', ...Object.keys(secondOpinion)],
           properties: {
             finding_ids: { type: 'array', items: { type: 'string', enum: ids } },
             verdict: { type: 'string', enum: ['confirmed', 'rejected', 'unverifiable'] },
@@ -196,6 +196,7 @@ function validatorSchema(ids) {
             title: { type: 'string' },
             severity: SEVERITY,
             location: { type: 'string' },
+            ...secondOpinion,
           },
         },
       },
@@ -423,50 +424,75 @@ function baseVars() {
   return { diffPath: path.join(runDir, 'diff.patch'), branch: r.branch, base: r.base, mergeBase: r.mergeBase.slice(0, 12) };
 }
 
-// Returns { roleId: { applies, effort, reason } } for every role. A role triage leaves out (or every
-// role, if triage fails) runs at the fallback effort.
+// A missing triage decision defaults to running the role at the fallback tier.
 async function runTriage(roles) {
   const node = state.nodes.triage;
+  const out = {};
+  for (const r of roles.core) {
+    out[r.id] = {
+      applies: true, tier: SONNET_HIGH_TIER, reviewer: REVIEWERS[SONNET_HIGH_TIER].label,
+      reason: 'Fixed assignment for core roles.',
+    };
+  }
+  node.decisions = out;
+  if (!roles.conditional.length) {
+    node.status = 'skipped';
+    node.summary = 'No conditional roles';
+    save();
+    return out;
+  }
+
   const list = (rs) => rs.map((r) => `- \`${r.id}\` **${r.name}**: ${r.brief}`).join('\n');
   const prompt = fill(readPrompt('triage'), { ...baseVars(), coreRoles: list(roles.core), conditionalRoles: list(roles.conditional) });
-  const schema = triageSchema(roles.core.map((r) => r.id), roles.conditional.map((r) => r.id));
+  const schema = triageSchema(roles.conditional.map((r) => r.id));
   const res = await runAgent(node, AGENTS.triage, prompt, schema, { timeout: TIMEOUTS.triage, addDirs: [runDir] });
   const picked = {};
   if (res.ok) {
-    for (const v of res.output.core || []) picked[v.role] = { applies: true, effort: v.effort, reason: v.reason };
-    for (const v of res.output.conditional || []) picked[v.role] = { applies: !!v.applies, effort: v.effort, reason: v.reason };
+    for (const v of res.output.conditional || []) {
+      if (CONDITIONAL_TIERS.includes(v.tier)) picked[v.role] = { applies: !!v.applies, tier: v.tier, reason: v.reason };
+    }
   }
   const fallback = res.ok ? 'Triage returned no decision for this role' : 'Triage failed';
-  const out = {};
-  for (const r of [...roles.core, ...roles.conditional]) out[r.id] = picked[r.id] || { applies: true, effort: AGENTS.role.effort, reason: fallback, fallback: true };
-  node.decisions = out;
+  for (const r of roles.conditional) {
+    const decision = picked[r.id] || { applies: true, tier: SONNET_HIGH_TIER, reason: fallback, fallback: true };
+    out[r.id] = { ...decision, reviewer: REVIEWERS[decision.tier].label };
+  }
   const applies = roles.conditional.filter((r) => out[r.id].applies).length;
   node.summary = res.ok ? `${applies} of ${roles.conditional.length} apply` : 'failed: all roles kept';
   save();
   return out;
 }
 
-async function runRole(role, roles, effort) {
+async function runRole(role, roles, tier) {
   const node = state.nodes[role.id];
-  node.effort = effort;
-  node.model = `${AGENTS.role.label} · ${effort}`;
+  const reviewer = REVIEWERS[tier];
+  node.effort = reviewer.effort;
+  node.model = reviewer.label;
   let roleList = '';
   if (role.needsRoleList) {
     const all = [...roles.core, ...roles.conditional].filter((r) => r.id !== role.id);
     roleList = '\nThe other roles, so you know what they already cover:\n' + all.map((r) => `- **${r.name}**: ${r.brief}`).join('\n') + '\n';
   }
   const prompt = fill(readPrompt('role'), { ...baseVars(), roleName: role.name, roleBrief: role.brief, roleList });
-  const res = await runAgent(node, { ...AGENTS.role, effort }, prompt, FINDINGS_SCHEMA, { timeout: TIMEOUTS.role, addDirs: [runDir] });
+  const res = await runAgent(node, reviewer, prompt, FINDINGS_SCHEMA, { timeout: TIMEOUTS.role, addDirs: [runDir] });
   node.findings = res.ok ? (res.output.findings || []).slice().sort(bySeverity) : [];
   save();
 }
 
 async function runValidator(id, findings) {
   const node = state.nodes[id];
+  const primary = id === 'sol';
   const scratchDir = path.join(os.tmpdir(), 'fleet-review', state.run.id, id);
   fs.mkdirSync(scratchDir, { recursive: true });
-  const prompt = fill(readPrompt('validator'), { ...baseVars(), scratchDir, findingsJson: JSON.stringify(findings, null, 2) });
-  const res = await runAgent(node, AGENTS[id], prompt, validatorSchema(findings.map((f) => f.id)), { timeout: TIMEOUTS.validator, scratchDir });
+  const validationFocus = primary
+    ? 'Set second_opinion to true when uncertain or when another independent check would meaningfully improve confidence. Use the reason to say what needs checking. Set it to false for routine findings with clear evidence.'
+    : 'You are giving an independent second opinion on the findings below. Review only these finding IDs.';
+  const prompt = fill(readPrompt('validator'), {
+    ...baseVars(), scratchDir, validationFocus, findingsJson: JSON.stringify(findings),
+  });
+  const res = await runAgent(node, AGENTS[id], prompt, validatorSchema(findings.map((f) => f.id), primary), {
+    timeout: TIMEOUTS.validator, scratchDir,
+  });
   node.results = res.ok ? (res.output.results || []).slice().sort(bySeverity) : [];
   const verdicts = {};
   for (const r of node.results) for (const fid of r.finding_ids) verdicts[fid] = r.verdict;
@@ -477,18 +503,18 @@ async function runValidator(id, findings) {
   return res.ok ? node.results : null;
 }
 
-// Used only if the final Sonnet step fails: buckets each finding by the two verdicts, without deduping.
-function fallbackBuckets(findings, va = {}, vs = {}) {
+// Keep verdicts available if the final deduplication step fails.
+function fallbackBuckets(findings, secondOpinionIds, va = {}, vs = {}) {
   const out = { confirmed_both: [], confirmed_one: [], disagreements: [], dropped: [] };
   for (const f of findings) {
-    const a = va[f.id] || 'missing';
-    const s = vs[f.id] || 'missing';
+    const a = va[f.id] || (secondOpinionIds.has(f.id) ? 'no verdict' : 'not requested');
+    const s = vs[f.id] || 'no verdict';
     const item = { title: f.title, severity: f.severity, location: f.location, summary: `${f.problem} ${f.impact}`.trim(), finding_ids: [f.id], astra: a, sol: s };
     const conf = [a, s].filter((v) => v === 'confirmed').length;
     if (conf === 2) out.confirmed_both.push(item);
     else if (conf === 1 && [a, s].includes('rejected')) out.disagreements.push(item);
     else if (conf === 1) out.confirmed_one.push(item);
-    else if (a === 'rejected' && s === 'rejected') continue;
+    else if ([a, s].includes('rejected') && ![a, s].includes('unverifiable') && ![a, s].includes('no verdict')) continue;
     else out.dropped.push({ title: f.title, finding_ids: [f.id], reason: `Astra: ${a}, Sol: ${s}` });
   }
   return out;
@@ -509,7 +535,7 @@ function renderReport(final, note = '') {
     lines.push('');
   };
   section('Confirmed by both', final.confirmed_both, false);
-  section('Confirmed by one, unverifiable by the other', final.confirmed_one, true);
+  section('Confirmed by one', final.confirmed_one, true);
   section('Disagreements', final.disagreements, true);
   return lines.join('\n');
 }
@@ -537,7 +563,7 @@ async function pipeline(roles) {
   state.run.roster = { core: roles.core.length, conditional: selected.length - roles.core.length, total: roles.core.length + roles.conditional.length };
   state.run.phase = 'review';
   save();
-  await Promise.all(selected.map((r) => runRole(r, roles, decisions[r.id].effort)));
+  await Promise.all(selected.map((r) => runRole(r, roles, decisions[r.id].tier)));
 
   const findings = [];
   for (const r of [...roles.core, ...roles.conditional]) {
@@ -560,7 +586,22 @@ async function pipeline(roles) {
 
   state.run.phase = 'validate';
   save();
-  const [ra, rs] = await Promise.all([runValidator('astra', findings), runValidator('sol', findings)]);
+  const rs = await runValidator('sol', findings);
+  const resolvedIds = new Set((rs || [])
+    .filter((r) => !r.second_opinion && ['confirmed', 'rejected'].includes(r.verdict))
+    .flatMap((r) => r.finding_ids));
+  const referredIds = new Set((rs || [])
+    .filter((r) => r.second_opinion || r.verdict === 'unverifiable')
+    .flatMap((r) => r.finding_ids));
+  const secondOpinion = findings.filter((f) => !resolvedIds.has(f.id) || referredIds.has(f.id));
+  const secondOpinionIds = new Set(secondOpinion.map((f) => f.id));
+  const astra = state.nodes.astra;
+  astra.requestedFindingIds = [...secondOpinionIds];
+  if (!secondOpinion.length) {
+    astra.status = 'skipped';
+    astra.reason = 'No second opinion requested.';
+  }
+  const ra = secondOpinion.length ? await runValidator('astra', secondOpinion) : null;
   if (!ra && !rs) {
     state.nodes.final.status = 'skipped';
     const list = findings.map((f, i) => `${i + 1}. **[${f.severity.toUpperCase()}] ${f.title}** \`${f.location}\` (${f.role})\n   ${f.problem}`).join('\n');
@@ -570,22 +611,24 @@ async function pipeline(roles) {
   state.run.phase = 'final';
   save();
   const ids = findings.map((f) => f.id);
-  const validatorNote = !ra || !rs ? `\nOnly ${ra ? 'Astra' : 'Sol'}'s results are available; the other validator failed. Treat its verdicts as missing.\n` : '';
+  const validationNotes = [
+    !rs ? 'Sol failed. Astra was asked to validate all findings.' : '',
+    secondOpinion.length && !ra ? 'Astra failed. Its requested second opinions are unavailable.' : '',
+  ].filter(Boolean);
   const prompt = fill(readPrompt('final'), {
-    validatorA: 'Astra', validatorB: 'Sol', validatorNote,
-    findingsJson: JSON.stringify(findings, null, 2),
-    resultsA: JSON.stringify(ra || [], null, 2),
-    resultsB: JSON.stringify(rs || [], null, 2),
+    secondOpinionIds: JSON.stringify([...secondOpinionIds]),
+    findingsJson: JSON.stringify(findings),
+    astraResults: JSON.stringify(ra || []),
+    solResults: JSON.stringify(rs || []),
   });
   const res = await runAgent(state.nodes.final, AGENTS.final, prompt, finalSchema(ids), { timeout: TIMEOUTS.final });
-  let note = roleNote;
+  let note = [roleNote, ...validationNotes].filter(Boolean).join(' ');
   if (res.ok) {
     state.final = res.output;
   } else {
-    state.final = fallbackBuckets(findings, state.nodes.astra.verdicts, state.nodes.sol.verdicts);
-    note = `The final dedupe step failed (${res.error}), so this report buckets findings directly and isn't deduped. ${roleNote}`;
+    state.final = fallbackBuckets(findings, secondOpinionIds, astra.verdicts, state.nodes.sol.verdicts);
+    note = `The final dedupe step failed (${res.error}). The report lists each finding separately. ${note}`;
   }
-  if (validatorNote) note = `${validatorNote.trim()} ${note}`;
   finish(renderReport(state.final, note.trim()));
 }
 
@@ -610,8 +653,8 @@ async function start() {
     sol: makeNode('sol', 'validator', 'Validator', AGENTS.sol),
     final: makeNode('final', 'final', 'Final report', AGENTS.final),
   };
-  for (const r of roles.core) nodes[r.id] = makeNode(r.id, 'core', r.name, AGENTS.role, { brief: r.brief, findings: [], triage: null });
-  for (const r of roles.conditional) nodes[r.id] = makeNode(r.id, 'conditional', r.name, AGENTS.role, { brief: r.brief, findings: [], triage: null });
+  for (const r of roles.core) nodes[r.id] = makeNode(r.id, 'core', r.name, null, { brief: r.brief, findings: [], triage: null });
+  for (const r of roles.conditional) nodes[r.id] = makeNode(r.id, 'conditional', r.name, null, { brief: r.brief, findings: [], triage: null });
 
   state = {
     run: {
