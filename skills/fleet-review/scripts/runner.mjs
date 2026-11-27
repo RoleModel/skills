@@ -33,6 +33,7 @@ const REVIEWERS = {
   'sonnet-high': { provider: 'claude', model: 'claude-sonnet-5-5', effort: 'high', label: 'Sonnet · high' },
 };
 const SONNET_HIGH_TIER = 'sonnet-high';
+const CONDITIONAL_FALLBACK_TIER = 'sonnet-medium';
 const MIN = 60_000;
 const TIMEOUTS = { triage: 15 * MIN, role: 30 * MIN, validator: 45 * MIN, final: 15 * MIN };
 const KEEP_ALIVE_MS = 120 * MIN; // keep the live view up this long after the run ends
@@ -454,7 +455,7 @@ async function runTriage(roles) {
   }
   const fallback = res.ok ? 'Triage returned no decision for this role' : 'Triage failed';
   for (const r of roles.conditional) {
-    const decision = picked[r.id] || { applies: true, tier: SONNET_HIGH_TIER, reason: fallback, fallback: true };
+    const decision = picked[r.id] || { applies: true, tier: CONDITIONAL_FALLBACK_TIER, reason: fallback, fallback: true };
     out[r.id] = { ...decision, reviewer: REVIEWERS[decision.tier].label };
   }
   const applies = roles.conditional.filter((r) => out[r.id].applies).length;
