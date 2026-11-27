@@ -101,6 +101,7 @@ aside h3{margin:0;font-size:13px;font-weight:600}
 .v-confirmed{background:rgba(63,185,80,.15);color:var(--green)}
 .v-rejected{background:rgba(139,148,158,.15);color:var(--soft)}
 .v-unverifiable{background:rgba(210,153,34,.15);color:var(--amber)}
+.v-low_risk{background:var(--line);color:var(--muted)}
 .yes{color:var(--green)}.no{color:var(--muted)}
 .empty{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
 .err{margin:0;font-size:13px;color:var(--red);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -166,6 +167,10 @@ function validatorMeta(n) {
   if (n.status === 'failed') return 'failed';
   if (n.status === 'skipped') return 'skipped';
   return 'queued';
+}
+
+function verdictLabel(verdict) {
+  return verdict === 'low_risk' ? 'low risk' : verdict;
 }
 
 function renderGraph() {
@@ -332,13 +337,13 @@ function renderInspector() {
       h += (n.findings || []).length ? n.findings.map((f) => {
         const va = N.astra.verdicts && N.astra.verdicts[f.id];
         const vs = N.sol.verdicts && N.sol.verdicts[f.id];
-        const tags = va || vs ? `<span class="row">${va ? `<span class="verdict v-${esc(va)}">Astra: ${esc(va)}</span>` : ''}${vs ? `<span class="verdict v-${esc(vs)}">Sol: ${esc(vs)}</span>` : ''}</span>` : '';
+        const tags = va || vs ? `<span class="row">${va ? `<span class="verdict v-${esc(va)}">Astra: ${esc(va)}</span>` : ''}${vs ? `<span class="verdict v-${esc(vs)}">Sol: ${esc(verdictLabel(vs))}</span>` : ''}</span>` : '';
         return findingCard(f, tags);
       }).join('') : '<p class="empty">Nothing found.</p>';
     }
   }
   if (n.kind === 'validator' && n.results && n.results.length) {
-    h += `<h3>Verdicts</h3>` + n.results.map((x) => `<div class="card"><span class="verdict v-${esc(x.verdict)}">${esc(x.verdict)}</span><div class="body">
+    h += `<h3>Verdicts</h3>` + n.results.map((x) => `<div class="card"><span class="verdict v-${esc(x.verdict)}">${esc(verdictLabel(x.verdict))}</span><div class="body">
       <span><span class="mono" style="color:var(--muted)">${esc(x.finding_ids.join(', '))}</span> ${esc(x.title)}</span><span class="sub">${esc(x.reason)}</span><span class="loc">${esc(x.location)}</span></div></div>`).join('');
   }
   if (n.id === 'final' && S.final) {

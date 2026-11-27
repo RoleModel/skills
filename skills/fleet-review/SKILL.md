@@ -10,7 +10,7 @@ metadata:
 
 # Fleet review
 
-Core roles always run on Sonnet high. Opus selects conditional roles, including security, and chooses the lowest suitable reviewer tier for each. In order of increasing expected quality, the tiers are Terra high, Sonnet medium, Terra xhigh, and Sonnet high. Sonnet medium is the default when the tier is uncertain. Sol checks the findings, Astra gives a second opinion on referrals, and Sonnet deduplicates the report. Start the runner, wait for it, and relay its report without editing the branch.
+Core roles always run on Sonnet high. Opus selects conditional roles, including security, and chooses the lowest suitable reviewer tier for each. In order of increasing expected quality, the tiers are Terra high, Sonnet medium, Terra xhigh, and Sonnet high. Sonnet medium is the default when the tier is uncertain. Sol validates findings and filters low practical risks using likelihood and impact. Astra gives a second opinion on referrals, and Sonnet deduplicates the report. Start the runner, wait for it, and relay its report without editing the branch.
 
 The runner requires Node.js, Git, authenticated `claude` and `codex` CLIs with access to the configured models, and `longrun` for the dashboard session. Resolve `R` to the absolute path of [scripts/runner.mjs](scripts/runner.mjs) relative to this skill file. Run commands from the repository root. Set `R` in each shell that needs it.
 

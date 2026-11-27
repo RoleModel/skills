@@ -179,6 +179,8 @@ const FINDINGS_SCHEMA = {
 };
 
 function validatorSchema(ids, primary) {
+  const verdicts = ['confirmed', 'rejected', 'unverifiable'];
+  if (primary) verdicts.push('low_risk');
   const secondOpinion = primary
     ? { second_opinion: { type: 'boolean', description: 'Request an independent check of these finding IDs' } }
     : {};
@@ -192,8 +194,8 @@ function validatorSchema(ids, primary) {
           required: ['finding_ids', 'verdict', 'reason', 'title', 'severity', 'location', ...Object.keys(secondOpinion)],
           properties: {
             finding_ids: { type: 'array', items: { type: 'string', enum: ids } },
-            verdict: { type: 'string', enum: ['confirmed', 'rejected', 'unverifiable'] },
-            reason: { type: 'string', description: 'How you checked it and what you found' },
+            verdict: { type: 'string', enum: verdicts },
+            reason: { type: 'string', description: 'Evidence and reasoning for the verdict' },
             title: { type: 'string' },
             severity: SEVERITY,
             location: { type: 'string' },
@@ -486,7 +488,7 @@ async function runValidator(id, findings) {
   const scratchDir = path.join(os.tmpdir(), 'fleet-review', state.run.id, id);
   fs.mkdirSync(scratchDir, { recursive: true });
   const validationFocus = primary
-    ? 'Set second_opinion to true when uncertain or when another independent check would meaningfully improve confidence. Use the reason to say what needs checking. Set it to false for routine findings with clear evidence.'
+    ? readPrompt('sol-risk').trim()
     : 'You are giving an independent second opinion on the findings below. Review only these finding IDs.';
   const prompt = fill(readPrompt('validator'), {
     ...baseVars(), scratchDir, validationFocus, findingsJson: JSON.stringify(findings),
@@ -495,13 +497,16 @@ async function runValidator(id, findings) {
     timeout: TIMEOUTS.validator, scratchDir,
   });
   node.results = res.ok ? (res.output.results || []).slice().sort(bySeverity) : [];
-  const verdicts = {};
-  for (const r of node.results) for (const fid of r.finding_ids) verdicts[fid] = r.verdict;
+  const verdicts = findingVerdicts(node.results);
   node.verdicts = verdicts;
-  node.counts = { confirmed: 0, rejected: 0, unverifiable: 0 };
+  node.counts = { confirmed: 0, rejected: 0, unverifiable: 0, low_risk: 0 };
   for (const v of Object.values(verdicts)) node.counts[v]++;
   save();
   return res.ok ? node.results : null;
+}
+
+function findingVerdicts(results) {
+  return Object.fromEntries(results.flatMap((r) => r.finding_ids.map((id) => [id, r.verdict])));
 }
 
 // Keep verdicts available if the final deduplication step fails.
@@ -588,19 +593,40 @@ async function pipeline(roles) {
   state.run.phase = 'validate';
   save();
   const rs = await runValidator('sol', findings);
-  const resolvedIds = new Set((rs || [])
+  const solResults = (rs || []).filter((r) => r.verdict !== 'low_risk');
+  // A conflicting verdict or explicit second-opinion request keeps a finding in review.
+  const reviewIds = new Set((rs || [])
+    .filter((r) => r.verdict !== 'low_risk' || r.second_opinion !== false)
+    .flatMap((r) => r.finding_ids));
+  const filtered = (rs || [])
+    .filter((r) => r.verdict === 'low_risk' && r.second_opinion === false)
+    .map(({ title, finding_ids, reason }) => ({
+      title, finding_ids: finding_ids.filter((id) => !reviewIds.has(id)), reason: `Sol filtered for low practical risk. ${reason}`,
+    }))
+    .filter((r) => r.finding_ids.length);
+  const filteredIds = new Set(filtered.flatMap((r) => r.finding_ids));
+  const remaining = findings.filter((f) => !filteredIds.has(f.id));
+  const riskNote = filteredIds.size
+    ? `Sol filtered ${filteredIds.size} of ${findings.length} findings for low practical risk. Reasons are in the dashboard.`
+    : '';
+  const resolvedIds = new Set(solResults
     .filter((r) => !r.second_opinion && ['confirmed', 'rejected'].includes(r.verdict))
     .flatMap((r) => r.finding_ids));
-  const referredIds = new Set((rs || [])
+  const referredIds = new Set(solResults
     .filter((r) => r.second_opinion || r.verdict === 'unverifiable')
     .flatMap((r) => r.finding_ids));
-  const secondOpinion = findings.filter((f) => !resolvedIds.has(f.id) || referredIds.has(f.id));
+  const secondOpinion = remaining.filter((f) => !resolvedIds.has(f.id) || referredIds.has(f.id));
   const secondOpinionIds = new Set(secondOpinion.map((f) => f.id));
   const astra = state.nodes.astra;
   astra.requestedFindingIds = [...secondOpinionIds];
   if (!secondOpinion.length) {
     astra.status = 'skipped';
     astra.reason = 'No second opinion requested.';
+  }
+  if (!remaining.length) {
+    state.nodes.final.status = 'skipped';
+    state.final = { confirmed_both: [], confirmed_one: [], disagreements: [], dropped: filtered };
+    return finish(renderReport(state.final, [riskNote, roleNote].filter(Boolean).join(' ')));
   }
   const ra = secondOpinion.length ? await runValidator('astra', secondOpinion) : null;
   if (!ra && !rs) {
@@ -611,25 +637,26 @@ async function pipeline(roles) {
 
   state.run.phase = 'final';
   save();
-  const ids = findings.map((f) => f.id);
+  const ids = remaining.map((f) => f.id);
   const validationNotes = [
     !rs ? 'Sol failed. Astra was asked to validate all findings.' : '',
     secondOpinion.length && !ra ? 'Astra failed. Its requested second opinions are unavailable.' : '',
   ].filter(Boolean);
   const prompt = fill(readPrompt('final'), {
     secondOpinionIds: JSON.stringify([...secondOpinionIds]),
-    findingsJson: JSON.stringify(findings),
+    findingsJson: JSON.stringify(remaining),
     astraResults: JSON.stringify(ra || []),
-    solResults: JSON.stringify(rs || []),
+    solResults: JSON.stringify(solResults),
   });
   const res = await runAgent(state.nodes.final, AGENTS.final, prompt, finalSchema(ids), { timeout: TIMEOUTS.final });
-  let note = [roleNote, ...validationNotes].filter(Boolean).join(' ');
+  let note = [riskNote, roleNote, ...validationNotes].filter(Boolean).join(' ');
   if (res.ok) {
     state.final = res.output;
   } else {
-    state.final = fallbackBuckets(findings, secondOpinionIds, astra.verdicts, state.nodes.sol.verdicts);
+    state.final = fallbackBuckets(remaining, secondOpinionIds, astra.verdicts, findingVerdicts(solResults));
     note = `The final dedupe step failed (${res.error}). The report lists each finding separately. ${note}`;
   }
+  state.final.dropped.push(...filtered);
   finish(renderReport(state.final, note.trim()));
 }
 
