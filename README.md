@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon.png" alt="RoleModel Skills icon" width="160"></p>
+
 # RoleModel Skills
 
 A collection of reusable AI agent skills for [RoleModel Software](https://rolemodelsoftware.com). Each skill is a folder with a `SKILL.md` that teaches AI coding agents (Claude Code, GitHub Copilot) a RoleModel workflow or convention.
